@@ -8,6 +8,8 @@ set(VANTAMP_CLIENT_FILES
 
     src/core/ui/ped_debug_ui.cpp
 
+    src/game/boot.cpp
+    src/game/display.cpp
     src/game/population.cpp
 
     src/sdk/game.cpp

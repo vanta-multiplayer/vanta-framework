@@ -34,6 +34,44 @@ namespace VantaMP::SDK {
         // directly - .data has no bytes worth matching.
         uintptr_t CWorld__Players = 0;
 
+        // --- Boot: loading screens and the frontend ---------------------------
+        //
+        // GTA boots into a single-player menu and a sequence of loading screens.
+        // A multiplayer client replaces both with its own connect flow, so these
+        // are the sites that draw them, drive their state machine, or read their
+        // input.
+        uintptr_t CGame__Init3Call           = 0;
+        uintptr_t CLoadingScreen__Draw       = 0;
+        uintptr_t CLoadingScreen__NewChunk   = 0;
+        uintptr_t CLoadingScreen__DrawCall1  = 0;
+        uintptr_t CLoadingScreen__DrawCall2  = 0;
+        uintptr_t CLoadingScreen__DrawReturn = 0;
+        uintptr_t CLoadingScreen__AudioCall  = 0;
+        uintptr_t CGame__StateResetToZero    = 0;
+
+        uintptr_t CMenuManager__ProcessCall       = 0;
+        uintptr_t CMenuManager__DrawStandardMenus = 0;
+        uintptr_t CMenuManager__InputCall         = 0;
+        uintptr_t CMenuManager__BackgroundRect    = 0;
+        uintptr_t CMenuManager__BackgroundTexture = 0;
+        uintptr_t CMenuManager__SetRenderStates   = 0;
+        uintptr_t CMenuManager__EscapeHandler1    = 0;
+        uintptr_t CMenuManager__EscapeHandler2    = 0;
+        uintptr_t CMenuManager__PauseCheck        = 0;
+        uintptr_t CMenuManager__OnFocusLoss       = 0;
+        uintptr_t CMenuManager__AfterAltTabFlag   = 0;
+
+        // Pause flags and the game-state word, all globals - read out of the
+        // operands of instructions that touch them.
+        uintptr_t CTimer__UserPause = 0;
+        uintptr_t CMenuManager__Pause = 0;
+        uintptr_t gGameState = 0;
+
+        // Console chatter the game prints at startup. Silenced; it is not ours
+        // and it is not useful.
+        uintptr_t Print__AspectRatio  = 0;
+        uintptr_t Print__SoundManager = 0;
+
         // --- Population ------------------------------------------------------
         //
         // GTA's autonomous population is off in multiplayer: the server decides

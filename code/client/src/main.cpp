@@ -9,6 +9,7 @@
 #include <utils/string_utils.h>
 
 #include "core/globals.h"
+#include "game/boot.h"
 #include "game/population.h"
 #include "sdk/game_build.h"
 #include "sdk/patterns.h"
@@ -38,6 +39,11 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     // already exists has to be deleted rather than never created - which fights
     // the very lifetime rules this is establishing.
     VantaMP::Game::DisableAutonomousPopulation();
+
+    // Everything above runs before the game has drawn a frame, which is what
+    // makes bypassing its frontend possible at all: these rewrite call sites
+    // the game has not reached yet.
+    VantaMP::Game::ApplyBootPatches();
 
     InitFunction::RunAll();
     MH_EnableHook(MH_ALL_HOOKS);

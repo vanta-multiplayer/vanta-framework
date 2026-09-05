@@ -7,6 +7,7 @@
 #include <utils/hooking/hook_function.h>
 
 #include "core/application.h"
+#include "game/display.h"
 
 namespace {
     constexpr size_t kCreateDeviceSlot = 16;
@@ -59,9 +60,17 @@ namespace {
     }
 
     HRESULT STDMETHODCALLTYPE CreateDevice_Hook(IDirect3D9 *d3d, UINT adapter, D3DDEVTYPE deviceType, HWND focusWindow, DWORD behaviourFlags, D3DPRESENT_PARAMETERS *presentationParameters, IDirect3DDevice9 **returnedDevice) {
+        const auto window = presentationParameters && presentationParameters->hDeviceWindow ? presentationParameters->hDeviceWindow : focusWindow;
+
+        // BEFORE the device is made, because presentation parameters are what
+        // it is made FROM - changing them afterwards means destroying and
+        // recreating the device, and GTA holds references to the old one.
+        VantaMP::Game::ApplyToPresentParameters(presentationParameters, window);
+
         const auto result = gCreateDevice(d3d, adapter, deviceType, focusWindow, behaviourFlags, presentationParameters, returnedDevice);
         if (SUCCEEDED(result) && returnedDevice && *returnedDevice) {
-            const auto window = presentationParameters && presentationParameters->hDeviceWindow ? presentationParameters->hDeviceWindow : focusWindow;
+            // After, so the window is styled against a device that exists.
+            VantaMP::Game::ApplyWindowStyle(window);
             InstallDeviceHooks(*returnedDevice, window);
         }
         return result;
