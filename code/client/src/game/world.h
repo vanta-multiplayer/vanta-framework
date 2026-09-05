@@ -40,6 +40,18 @@ namespace VantaMP::Game {
     void FadeIn(float durationSeconds = 0.5f);
     void FadeOut(float durationSeconds = 0.0f);
 
+    // Puts the local player where the server says, and reveals the world.
+    //
+    // THE SERVER DECIDES WHERE A PLAYER BELONGS. The ped was created during
+    // startup because the world needs one to exist, but it was put at a
+    // placeholder behind a black screen precisely because that position meant
+    // nothing. This is the first position that does.
+    //
+    // Safe to call again on a player already in the world: it moves them, which
+    // is what a respawn is. The screen is only revealed the first time - later
+    // ones would read as a flash.
+    void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour);
+
     // Runs once per frame, from the script call above. Game thread.
     void SetFrameCallback(void (*callback)());
 } // namespace VantaMP::Game

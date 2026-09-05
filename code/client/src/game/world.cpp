@@ -193,6 +193,34 @@ namespace VantaMP::Game {
         Framework::Logging::GetLogger("World")->info("Hiding the world over {:.2f}s", durationSeconds);
     }
 
+    void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour) {
+        const auto &p = SDK::gPatterns;
+
+        const auto player = reinterpret_cast<FindPlayerFn>(p.FindPlayerPed)(0);
+
+        if (!player) {
+            Framework::Logging::GetLogger("World")->error("A spawn arrived before the local player existed");
+            return;
+        }
+
+        reinterpret_cast<SetPosnFn>(p.CPlaceable__SetPosn)(player, x, y, z);
+
+        // Streams the world in around the new position, so the first visible
+        // frame is not an empty landscape.
+        const float position[3] = {x, y, z};
+        reinterpret_cast<LoadSceneFn>(p.CStreaming__LoadScene)(position);
+
+        static bool revealed = false;
+
+        if (!revealed) {
+            revealed = true;
+
+            Framework::Logging::GetLogger("World")->info("Spawned by the server at {:.1f}, {:.1f}, {:.1f}", x, y, z);
+
+            FadeIn();
+        }
+    }
+
     void SetFrameCallback(void (*callback)()) {
         gFrameCallback = callback;
     }

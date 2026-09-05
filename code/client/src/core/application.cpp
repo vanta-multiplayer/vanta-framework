@@ -1,9 +1,12 @@
 #include "application.h"
 
 #include <logging/logger.h>
+#include <core_modules.h>
+#include <networking/network_peer.h>
 #include <networking/replication/entity_registry.h>
 
 #include "shared/player_entity.h"
+#include "shared/rpc/local_player_spawn.h"
 
 #include "core/client_config.h"
 #include "core/globals.h"
@@ -26,6 +29,15 @@ namespace VantaMP::Core {
         // constructs, and remote players are invisible for no stated reason.
         Framework::Networking::Replication::EntityRegistry::Get().Register<Shared::PlayerEntity>(Shared::PlayerEntity::kTypeName);
 
+        // The server placing this player in the world. Until it arrives the
+        // local ped is at a placeholder behind a black screen, because where a
+        // player belongs is not the client's decision.
+        if (auto *net = Framework::CoreModules::GetNetworkPeer()) {
+            net->RegisterRPC<Shared::RPC::LocalPlayerSpawn>([](const Shared::RPC::LocalPlayerSpawn &spawn, MafiaNet::Packet *) {
+                Game::ApplyLocalSpawn(spawn.x, spawn.y, spawn.z, spawn.heading, spawn.health, spawn.armour);
+            });
+        }
+
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client initialized");
     }
 
@@ -38,17 +50,9 @@ namespace VantaMP::Core {
         VantaMP::UI::ReportConnected(GetClientConfig().serverHost);
         VantaMP::UI::ReportConnectionState("connected", "");
 
-        // AND THE SCREEN COMES BACK.
-        //
-        // The local player was created behind a black fade during startup,
-        // because until a server had accepted us there was no position, model
-        // or name that meant anything. This is the first moment that stops
-        // being true.
-        //
-        // The camera needs no setting up: SetupPlayerPed and PlayerInFocus
-        // already told GTA which ped it is following, so revealing the screen
-        // is all that is left.
-        Game::FadeIn();
+        // The screen is NOT revealed here. Being accepted is not being placed:
+        // the server decides where this player belongs, and says so with a
+        // spawn - which is what lifts the fade.
     }
 
     void Application::OnConnectionClosed() {
