@@ -2,6 +2,8 @@ set(VANTAMP_SERVER_FILES
     src/main.cpp
     src/core/server.cpp
 
+    ../shared/player_entity.cpp
+
     ${CMAKE_BINARY_DIR}/vantamp_version.cpp
 )
 
