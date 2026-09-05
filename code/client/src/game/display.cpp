@@ -8,6 +8,7 @@
 
 #include <logging/logger.h>
 #include <utils/hooking/hooking.h>
+#include <utils/hooking/hooking_patterns.h>
 
 #include <algorithm>
 
@@ -165,5 +166,73 @@ namespace VantaMP::Game {
         // Logged on change rather than every frame: a line here after startup
         // means the game re-styled its window behind us, which is worth seeing.
         Framework::Logging::GetLogger("Display")->info("Window {} at {}x{}, origin {},{}", gSettings.borderless ? "borderless" : "windowed", size.cx, size.cy, x, y);
+    }
+    void ApplyWidescreenPatches() {
+        const auto &p = SDK::gPatterns;
+
+        // The resolution gate. Two signed-less-than jumps become unconditional
+        // ones, and three comparisons that feed them are removed.
+        //
+        // UNLOCKING MODES IS NOT THE SAME AS RENDERING AT ONE: this only makes
+        // the wider modes selectable. What the game then draws is still laid out
+        // for 4:3 until ApplyAspectRatio corrects it.
+        hook::put<std::uint32_t>(p.Widescreen__Check1, 0x9090587Du);
+        hook::put<std::uint32_t>(p.Widescreen__Check2, 0x9090127Du);
+        hook::nop(p.Widescreen__Nop1, 2);
+        hook::nop(p.Widescreen__Nop2, 2);
+        hook::nop(p.Widescreen__Nop3, 2);
+
+        // NEUTERED, NOT CORRECTED. This recomputes the aspect ratio every frame
+        // from the game's own 4:3 assumption, so a value written while it still
+        // runs is overwritten before anyone sees it - which looks like the fix
+        // working and then reverting.
+        hook::return_function(p.CDraw__CalculateAspect);
+
+        Framework::Logging::GetLogger("Display")->info("Widescreen modes unlocked");
+    }
+
+    void ApplyAspectRatio(HWND window) {
+        const auto &p = SDK::gPatterns;
+
+        // The window's real shape. Taken from the resolved size rather than the
+        // configured one, because a request of 0 means "the monitor" and a
+        // request larger than the screen is capped.
+        const auto size = ResolveSize(window);
+
+        if (size.cx <= 0 || size.cy <= 0) {
+            // Nothing sensible to derive from. Left at whatever the game
+            // computed rather than writing a ratio of zero, which the
+            // projection would divide by.
+            return;
+        }
+
+        const float ratio = static_cast<float>(size.cx) / static_cast<float>(size.cy);
+
+        hook::put<float>(p.CDraw__AspectRatio, ratio);
+
+        // AND THE HUD, WHICH DOES NOT FOLLOW THE PROJECTION.
+        //
+        // Correcting the camera alone leaves every HUD element laid out for 4:3:
+        // the radar and bars sit inset from the corners rather than at them. The
+        // game scales all of it by one multiplier with the old shape baked in,
+        // so re-deriving that multiplier moves everything at once.
+        constexpr float kFourThirds = 4.0f / 3.0f;
+
+        // 1/448 as shipped, and confirmed by reading the executable. Named
+        // rather than written inline because the expression below is "the game's
+        // own value, re-based from 4:3 to ours" - not an arbitrary number.
+        constexpr float kShippedHudMultiplier = 0.002232143f;
+
+        hook::put<float>(p.CHud__AspectMultiplier, kShippedHudMultiplier / kFourThirds * ratio);
+
+        // The crosshair is a fixed pixel size, so a wider projection stretches it
+        // into an ellipse. Scaled by the INVERSE: it has to shrink horizontally
+        // as the view widens, which is the opposite of what the layout
+        // multiplier does.
+        constexpr float kShippedCrosshairScale = 192.0f;
+
+        hook::put<float>(p.CCamera__CrosshairScale, kShippedCrosshairScale * kFourThirds / ratio);
+
+        Framework::Logging::GetLogger("Display")->info("Aspect ratio {:.4f} for {}x{}; HUD and crosshair rescaled", ratio, size.cx, size.cy);
     }
 } // namespace VantaMP::Game

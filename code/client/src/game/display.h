@@ -51,4 +51,21 @@ namespace VantaMP::Game {
     // what makes the setting stick; it is a no-op once the style already
     // matches, so the cost is a comparison per frame.
     void ApplyWindowStyle(HWND window);
+
+    // Unlocks the game's widescreen modes and projects at the real aspect ratio.
+    //
+    // GTA gates its widescreen resolutions behind a check, and then projects
+    // everything for 4:3 regardless - so a 16:9 window shows a stretched image
+    // with the HUD inset from the corners rather than at them.
+    //
+    // Applied at startup, before the game has computed anything from its own
+    // assumption.
+    void ApplyWidescreenPatches();
+
+    // Recomputes the projection and HUD layout for the window's actual shape.
+    //
+    // Called after the size is known. Separate from the patches above because
+    // the ratio depends on the window, which does not exist when they are
+    // applied.
+    void ApplyAspectRatio(HWND window);
 } // namespace VantaMP::Game

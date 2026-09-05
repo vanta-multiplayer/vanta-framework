@@ -134,6 +134,19 @@ namespace VantaMP::SDK {
         gPatterns.CReplay__Update            = Resolve("A0 52 F8 B5 00 84 C0 0F 85 18"); // 0x00460500
         gPatterns.CReplay__PlayFromHD        = Resolve("55 E8 ? ? ? ? 68 6C 9C 85 00 68 60"); // 0x00460390
 
+        // --- Widescreen --------------------------------------------------------
+
+        gPatterns.Widescreen__Check1      = Resolve("0F 8C B1 00 00 00 D9"); // 0x00745B81
+        gPatterns.Widescreen__Check2      = Resolve("0F 8C E2 00 00 00 81"); // 0x0074596C
+        gPatterns.Widescreen__Nop1        = Resolve("00 00 81 7C 24 14 E0"); // 0x00745970
+        gPatterns.Widescreen__Nop2        = Resolve("00 00 D9 44 24 08 D8 1D 98"); // 0x00745B85
+        gPatterns.Widescreen__Nop3        = Resolve("7A 71 8B 54 24 18"); // 0x007459E1
+        gPatterns.CDraw__CalculateAspect  = Resolve("A0 93 67 BA 00 84 C0 A0"); // 0x006FF420
+        gPatterns.CHud__AspectMultiplier  = Resolve("25 49 12 3B 50 41"); // 0x00859524
+        gPatterns.CCamera__CrosshairScale = Resolve("00 00 40 43 00 00"); // 0x00866C74
+
+        gPatterns.CDraw__AspectRatio = OperandAt(hook::get_pattern("8B 0D ? ? ? ? D8 0D D4"), 2); // site 0x0053EB26 -> 0x00C3EFA4
+
         // --- Population ------------------------------------------------------
 
         gPatterns.CPopulation__Add               = Resolve("6A FF 68 8E EF 83"); // 0x00614720

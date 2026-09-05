@@ -68,6 +68,10 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
 
     VantaMP::Game::ApplyGameplayPatches();
 
+    // Unlocks the wider modes. The projection itself is corrected later, once
+    // there is a window whose shape can be measured.
+    VantaMP::Game::ApplyWidescreenPatches();
+
     InitFunction::RunAll();
     MH_EnableHook(MH_ALL_HOOKS);
 }

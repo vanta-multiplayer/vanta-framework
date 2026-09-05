@@ -79,6 +79,12 @@ namespace {
         if (SUCCEEDED(result) && returnedDevice && *returnedDevice) {
             // After, so the window is styled against a device that exists.
             VantaMP::Game::ApplyWindowStyle(window);
+
+            // And now the window's shape is known, so the projection can be
+            // corrected for it. Has to follow ApplyWidescreenPatches, which
+            // stops the game recomputing this from its own 4:3 assumption
+            // every frame.
+            VantaMP::Game::ApplyAspectRatio(window);
             InstallDeviceHooks(*returnedDevice, window);
         }
         return result;

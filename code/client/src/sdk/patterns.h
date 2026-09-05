@@ -159,6 +159,21 @@ namespace VantaMP::SDK {
         uintptr_t CReplay__Update            = 0;
         uintptr_t CReplay__PlayFromHD        = 0;
 
+        // --- Widescreen --------------------------------------------------------
+        //
+        // The game gates its widescreen modes behind a resolution check and then
+        // projects everything for 4:3 regardless, so a 16:9 window gets a
+        // stretched image with the HUD inset from the corners.
+        uintptr_t Widescreen__Check1      = 0;
+        uintptr_t Widescreen__Check2      = 0;
+        uintptr_t Widescreen__Nop1        = 0;
+        uintptr_t Widescreen__Nop2        = 0;
+        uintptr_t Widescreen__Nop3        = 0;
+        uintptr_t CDraw__CalculateAspect  = 0;
+        uintptr_t CHud__AspectMultiplier  = 0;
+        uintptr_t CCamera__CrosshairScale = 0;
+        uintptr_t CDraw__AspectRatio = 0;
+
         // --- Population ------------------------------------------------------
         //
         // GTA's autonomous population is off in multiplayer: the server decides
