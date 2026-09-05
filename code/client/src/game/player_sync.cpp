@@ -79,6 +79,19 @@ namespace VantaMP::Game {
             // not by integrating a velocity we sent them.
 
             entity->modelId = static_cast<std::uint32_t>(local.modelIndex);
+
+            // WHAT MAKES A REMOTE PLAYER WALK RATHER THAN GLIDE. GTA derives
+            // animation, speed, crouching and strafing from controller input,
+            // so replaying it on the other client reproduces the movement with
+            // a correct walk cycle. Position alone leaves the player sliding
+            // with their legs still on every other screen.
+            const auto input = SDK::ReadLocalInput();
+
+            entity->leftStickX  = input.leftStickX;
+            entity->leftStickY  = input.leftStickY;
+            entity->accelerator = input.accelerator;
+            entity->brake       = input.brake;
+            entity->buttons     = input.buttons;
         }
 
         // Applies a remote entity to its ped, creating one if needed.
@@ -121,15 +134,14 @@ namespace VantaMP::Game {
             SDK::SetRemotePedHealth(slot, entity->health, entity->armour);
 
             // The input the game will act on next time it processes this ped.
-            if (auto *pad = InputForSlot(slot)) {
-                // The first two bytes of CPad are the left stick, which is what
-                // GTA's movement reads. Written as raw bytes because the layout
-                // belongs to plugin-sdk and nothing here needs the rest of it.
-                auto *bytes = static_cast<std::uint8_t *>(pad);
+            SDK::ControllerInput input;
+            input.leftStickX  = entity->leftStickX;
+            input.leftStickY  = entity->leftStickY;
+            input.accelerator = entity->accelerator;
+            input.brake       = entity->brake;
+            input.buttons     = entity->buttons;
 
-                *reinterpret_cast<std::int16_t *>(bytes + 0) = entity->leftStickX;
-                *reinterpret_cast<std::int16_t *>(bytes + 2) = entity->leftStickY;
-            }
+            SDK::WriteRemoteInput(slot, input);
         }
     } // namespace
 

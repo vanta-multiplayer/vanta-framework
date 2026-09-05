@@ -21,6 +21,8 @@ namespace VantaMP::Shared {
 
         fields.Field(leftStickX);
         fields.Field(leftStickY);
+        fields.Field(accelerator);
+        fields.Field(brake);
         fields.Field(buttons);
     }
 } // namespace VantaMP::Shared

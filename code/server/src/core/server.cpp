@@ -14,6 +14,15 @@
 namespace VantaMP {
     namespace Replication = Framework::Networking::Replication;
 
+    namespace {
+        // Grove Street, which is where the client puts the local player until a
+        // server says otherwise. The two have to agree, or a player is streamed
+        // against a position they are not standing at.
+        constexpr float kSpawnX = 2488.562f;
+        constexpr float kSpawnY = -1666.865f;
+        constexpr float kSpawnZ = 12.8757f;
+    } // namespace
+
     void Server::PostInit() {
         // The type has to exist before any entity of it can be created, and its
         // id - the CRC32 of this name - is what goes on the wire. The client
@@ -45,6 +54,22 @@ namespace VantaMP {
         }
 
         player->nickname = data.nickname;
+
+        // WHERE THE PLAYER ACTUALLY IS, not the origin.
+        //
+        // This entity is the connection's viewer, and the interest grid decides
+        // what to send it by measuring from THIS position - the server's copy,
+        // not the client's. Left at (0,0,0) the viewer sits three kilometres
+        // from the spawn point with a hundred-unit radius, so it is told about
+        // nothing and every other player is invisible.
+        //
+        // The symptom is asymmetric and misleading: whoever connects second
+        // still receives the first player in their construction burst, so one
+        // client sees the other and the other sees no one.
+        //
+        // A fixed point for now. Spawn selection is the server's to make, and
+        // this is where that decision will live.
+        player->position = glm::vec3(kSpawnX, kSpawnY, kSpawnZ);
 
         // THE AVATAR IS ALSO THE VIEWER. Its position and stream range decide
         // what this connection is told about, so a player who has no entity sees

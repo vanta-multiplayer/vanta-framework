@@ -4,7 +4,9 @@
 
 #include <integrations/client/instance.h>
 
+#include <cstdint>
 #include <memory>
+#include <string>
 
 struct IDirect3DDevice9;
 
@@ -20,9 +22,26 @@ namespace VantaMP::Core {
         void OnConnectionFinalized(float serverTickRate) override;
         void OnConnectionClosed() override;
 
+        // Queued rather than acted on: this is called from a CEF thread, and
+        // connecting touches state the game thread owns.
+        void RequestConnectTo(const std::string &host, std::uint32_t port) {
+            _pendingHost      = host;
+            _pendingPort      = port;
+            _connectRequested = true;
+        }
+
       private:
-        bool _connectAttempted = false;
+        // Where the player asked to go, once they have asked. Empty until then:
+        // the client no longer connects on its own.
+        std::string _pendingHost;
+        std::uint32_t _pendingPort = 0;
+        bool _connectRequested     = false;
     };
+
+    // Asked for by the menu. Takes effect on the next frame rather than
+    // immediately, because this arrives on a CEF thread and connecting touches
+    // state the game thread owns.
+    void RequestConnect(const std::string &address, const std::string &nickname);
 
     extern std::unique_ptr<Application> gApplication;
 

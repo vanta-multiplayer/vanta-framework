@@ -9,6 +9,8 @@ set(VANTAMP_CLIENT_FILES
     src/core/hooks/mod_init.cpp
     src/core/hooks/render_device.cpp
 
+    src/core/ui/nui.cpp
+    src/core/ui/window_input.cpp
     src/core/ui/ped_debug_ui.cpp
 
     src/game/boot.cpp
@@ -38,3 +40,13 @@ set_target_properties(VantaMPClient PROPERTIES CXX_STANDARD 23)
 set_source_files_properties(src/sdk/game.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${PLUGIN_SDK_SA_INCLUDE_DIRS}"
     COMPILE_DEFINITIONS "${PLUGIN_SDK_SA_DEFINITIONS}")
+
+# The interface, beside the client where it looks for it.
+#
+# One self-contained HTML with every script, style and font inlined - CEF loads
+# it over file://, where there is no origin and nothing to resolve.
+add_custom_command(TARGET VantaMPClient POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../data/ui/index.html"
+        "$<TARGET_FILE_DIR:VantaMPClient>/ui/index.html"
+    COMMENT "Copying the VantaMP interface")

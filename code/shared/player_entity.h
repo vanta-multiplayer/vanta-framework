@@ -51,7 +51,15 @@ namespace VantaMP::Shared {
         // them, not because we described walking.
         std::int16_t leftStickX = 0;
         std::int16_t leftStickY = 0;
-        std::uint32_t buttons   = 0;
+
+        // ANALOGUE, AND SEPARATE FROM THE MASK. In a car these are accelerate
+        // and brake: both can be held at once - that is a drift - and both carry
+        // pressure. A bit can express neither, so every remote car would be flat
+        // out or coasting.
+        std::uint8_t accelerator = 0;
+        std::uint8_t brake       = 0;
+
+        std::uint16_t buttons = 0;
 
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;

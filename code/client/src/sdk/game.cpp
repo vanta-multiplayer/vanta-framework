@@ -6,6 +6,7 @@
 #include "patterns.h"
 
 #include <cmath>
+#include <algorithm>
 #include <cstdint>
 
 static_assert(sizeof(CPlaceable) == 0x18, "CPlaceable layout changed");
@@ -45,6 +46,7 @@ namespace VantaMP::SDK {
         using ClothesInitFn    = void(__thiscall *)(void *);
         using WorldAddFn       = void(__cdecl *)(void *);
         using WorldRemoveFn    = void(__cdecl *)(void *);
+        using GetPadFn         = void *(__cdecl *)(int);
 
         using SetPosnFn = void(__thiscall *)(void *, float, float, float);
 
@@ -235,6 +237,114 @@ namespace VantaMP::SDK {
 
         SetPedPosition(info->m_pPed, x, y, z);
         SetPedRotation(info->m_pPed, heading);
+    }
+
+    ControllerInput ReadLocalInput() {
+        ControllerInput input;
+
+        const auto pad = reinterpret_cast<CPad *>(reinterpret_cast<GetPadFn>(gPatterns.CPad__GetPad)(0));
+
+        if (!pad) {
+            return input;
+        }
+
+        const auto &state = pad->NewState;
+
+        input.leftStickX = state.LeftStickX;
+        input.leftStickY = state.LeftStickY;
+
+        // ANALOGUE AND INDEPENDENT, NOT TWO BITS OF THE MASK. In a car these
+        // are accelerate and brake, both can be held at once - that is a drift -
+        // and they carry pressure, which a bit cannot. Without this every remote
+        // car is flat out or coasting.
+        input.accelerator = static_cast<std::uint8_t>(std::clamp<int>(state.ButtonCross, 0, 255));
+        input.brake       = static_cast<std::uint8_t>(std::clamp<int>(state.ButtonSquare, 0, 255));
+
+        const auto held = [](std::int16_t value) { return value != 0; };
+
+        std::uint16_t buttons = 0;
+
+        // SAMPLED FOR THE CONTEXT THE PLAYER IS IN. GTA reuses its buttons:
+        // cross is sprint on foot and accelerate at the wheel, square is jump
+        // and reverse. Reading them by their on-foot names while driving puts
+        // "sprinting, jumping" on the wire for someone sitting still.
+        //
+        // The pressure values that DO mean something in a car are already sent
+        // above as their own fields, so nothing is lost by leaving these clear.
+        const auto *ped = LocalPed();
+        const bool seated = ped && ped->bInVehicle;
+
+        if (held(state.ButtonCircle)) {
+            buttons |= Button::Fire;
+        }
+
+        if (held(state.RightShoulder1)) {
+            buttons |= Button::Aim;
+        }
+
+        if (!seated) {
+            if (held(state.ButtonSquare)) {
+                buttons |= Button::Jump;
+            }
+            if (held(state.ButtonCross)) {
+                buttons |= Button::Sprint;
+            }
+            if (held(state.ButtonTriangle)) {
+                buttons |= Button::EnterExit;
+            }
+            if (held(state.ShockButtonL)) {
+                buttons |= Button::Crouch;
+            }
+            if (held(state.m_bPedWalk)) {
+                buttons |= Button::Walk;
+            }
+        }
+
+        input.buttons = buttons;
+        return input;
+    }
+
+    void WriteRemoteInput(int slot, const ControllerInput &input) {
+        auto *pad = reinterpret_cast<CPad *>(Game::PadAt(slot));
+
+        if (!pad) {
+            return;
+        }
+
+        // CLEARED FIRST. Anything not set below has to read as released, or the
+        // remote player inherits whatever this client happens to be holding.
+        auto &state = pad->NewState;
+        state       = CControllerState {};
+
+        state.LeftStickX = input.leftStickX;
+        state.LeftStickY = input.leftStickY;
+
+        state.ButtonCross  = static_cast<std::int16_t>(input.accelerator);
+        state.ButtonSquare = static_cast<std::int16_t>(input.brake);
+
+        const auto set = [](bool pressed) -> std::int16_t { return pressed ? 255 : 0; };
+
+        state.ButtonCircle   = set((input.buttons & Button::Fire) != 0);
+        state.RightShoulder1 = set((input.buttons & Button::Aim) != 0);
+        state.ButtonTriangle = set((input.buttons & Button::EnterExit) != 0);
+        state.ShockButtonL   = set((input.buttons & Button::Crouch) != 0);
+        state.m_bPedWalk     = set((input.buttons & Button::Walk) != 0);
+
+        // Jump and sprint share their buttons with the pedals, which were
+        // already written above from their own analogue fields. Setting them
+        // again here would overwrite a car's throttle with an on-foot bit.
+        if ((input.buttons & Button::Jump) != 0) {
+            state.ButtonSquare = 255;
+        }
+
+        if ((input.buttons & Button::Sprint) != 0) {
+            state.ButtonCross = 255;
+        }
+
+        // OldState IS MADE TO MATCH, so the game sees no press edges it was not
+        // told about. Left as whatever was there before, every button this
+        // client just released reads as a fresh release on the remote ped.
+        pad->OldState = state;
     }
 
     void SetRemotePedHealth(int slot, float health, float armour) {
