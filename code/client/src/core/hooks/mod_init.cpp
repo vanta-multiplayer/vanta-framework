@@ -4,6 +4,7 @@
 #include <utils/hooking/hook_function.h>
 
 #include "core/globals.h"
+#include "game/player_slots.h"
 #include "sdk/patterns.h"
 #include "shared/version.h"
 
@@ -24,7 +25,7 @@ static InitFunction init(
     []() {
         const auto logger = Framework::Logging::GetLogger("ModInit");
         logger->info("VantaMP client {} attached, project path {}", VantaMP::Version::rel, VantaMP::Core::gProjectPath);
-        logger->info("CWorld::Players resolved to {:08X}", static_cast<unsigned>(VantaMP::SDK::gPatterns.CWorld__Players));
+        logger->info("Players array relocated to {}", VantaMP::Game::PlayerInfoAt(0));
 
         AddVectoredExceptionHandler(1, ReportFirstChanceFault);
     },

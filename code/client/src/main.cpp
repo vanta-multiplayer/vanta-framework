@@ -14,6 +14,7 @@
 #include "game/display.h"
 #include "game/gameplay.h"
 #include "game/input.h"
+#include "game/player_slots.h"
 #include "game/population.h"
 #include "game/world.h"
 #include "sdk/game_build.h"
@@ -45,6 +46,12 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     (void)VantaMP::SDK::IdentifyGameBuild();
 
     VantaMP::SDK::Patterns::InitPatterns();
+
+    // FIRST OF THE WORLD PATCHES, because it rewrites the code every later
+    // patch is written into. Running it afterwards would scan over bytes Vanta
+    // had already changed, and any of those that happened to look like an array
+    // reference would be rewritten a second time.
+    VantaMP::Game::ExpandPlayerSlots();
 
     // Before the game gets a chance to populate the world. GTA starts inventing
     // pedestrians and traffic as soon as it streams anything in, and a ped that

@@ -1,5 +1,6 @@
 #include "game.h"
 
+#include "game/player_slots.h"
 #include "game_sdk.h"
 #include "patterns.h"
 
@@ -11,7 +12,12 @@ static_assert(sizeof(CEntity) == 0x38, "CEntity layout changed");
 namespace VantaMP::SDK {
     namespace {
         CPed *LocalPed() {
-            return *reinterpret_cast<CPed **>(gPatterns.CWorld__Players);
+            // Slot 0, out of the RELOCATED array. Reading gPatterns.CWorld__Players
+            // instead would find the array the game shipped with, which nothing
+            // writes to any more once the slots have been expanded.
+            const auto slot = Game::PlayerInfoAt(0);
+
+            return slot ? *reinterpret_cast<CPed **>(slot) : nullptr;
         }
 
         // plugin-sdk only declares CPlaceable::GetHeading; its definition is at a 1.0 US address.

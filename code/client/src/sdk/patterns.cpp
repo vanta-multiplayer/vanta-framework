@@ -147,6 +147,18 @@ namespace VantaMP::SDK {
 
         gPatterns.CDraw__AspectRatio = OperandAt(hook::get_pattern("8B 0D ? ? ? ? D8 0D D4"), 2); // site 0x0053EB26 -> 0x00C3EFA4
 
+        // --- Player slots ------------------------------------------------------
+        //
+        // Each of these signatures carries the array it allocates for, as the
+        // size and address the game pushes right after the count - so they
+        // document what they are without a separate comment.
+        gPatterns.Alloc__PlayerInfo1 = Resolve("6A 02 68 90 01 00 00 68 98 CD B7 00 E8 95"); // 0x0084E98A
+        gPatterns.Alloc__PlayerInfo2 = Resolve("6A 02 68 90 01 00 00 68 98 CD B7 00 E8 EC"); // 0x00856505
+        gPatterns.Alloc__Pad1        = Resolve("6A 02 68 34 01 00 00 68 58 34 B7 00 E8 25"); // 0x0084E1FA
+        gPatterns.Alloc__Pad2        = Resolve("6A 02 68 34 01 00 00 68 58 34 B7 00 E8 8C"); // 0x00856465
+
+        gPatterns.CPad__Pads = OperandAt(hook::get_pattern("00 B9 ? ? ? ? E9 C0"), 2); // site 0x0040380C -> 0x00B73458
+
         // --- Population ------------------------------------------------------
 
         gPatterns.CPopulation__Add               = Resolve("6A FF 68 8E EF 83"); // 0x00614720

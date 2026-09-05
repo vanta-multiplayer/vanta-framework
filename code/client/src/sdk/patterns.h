@@ -29,9 +29,16 @@ namespace VantaMP::SDK {
       public:
         // --- World -----------------------------------------------------------
 
-        // CWorld::Players, the player-info array. A global, so it is read out of
-        // the operand of an instruction that indexes it rather than scanned for
-        // directly - .data has no bytes worth matching.
+        // CWorld::Players, the player-info array as the GAME shipped it. A
+        // global, so it is read out of the operand of an instruction that
+        // indexes it rather than scanned for directly - .data has no bytes worth
+        // matching.
+        //
+        // NOT WHERE THE PLAYERS ARE, once ExpandPlayerSlots has run. That
+        // relocates the array and rewrites every reference to it, so the game
+        // writes players somewhere else and this address holds the abandoned
+        // original. Read a player through Game::PlayerInfoAt, which knows where
+        // the live array is; this field is only for the relocation itself.
         uintptr_t CWorld__Players = 0;
 
         // --- Boot: loading screens and the frontend ---------------------------
@@ -173,6 +180,17 @@ namespace VantaMP::SDK {
         uintptr_t CHud__AspectMultiplier  = 0;
         uintptr_t CCamera__CrosshairScale = 0;
         uintptr_t CDraw__AspectRatio = 0;
+
+        // --- Player slots ------------------------------------------------------
+        //
+        // The game allocates room for two players, which is what its co-op mode
+        // needed. These are the four `push imm8` sites that say how many, and
+        // the pad array that has to be relocated alongside CWorld::Players.
+        uintptr_t Alloc__PlayerInfo1 = 0;
+        uintptr_t Alloc__PlayerInfo2 = 0;
+        uintptr_t Alloc__Pad1        = 0;
+        uintptr_t Alloc__Pad2        = 0;
+        uintptr_t CPad__Pads         = 0;
 
         // --- Population ------------------------------------------------------
         //
