@@ -73,6 +73,24 @@ namespace VantaMP::SDK {
         gPatterns.CMenuManager__Pause = OperandAt(hook::get_pattern("1F 00 A0 ? ? ? ? 84 C0 74"), 3); // site 0x0053E81D -> 0x00BA67A4
         gPatterns.gGameState          = OperandAt(hook::get_pattern("83 3D ? ? ? ? 08 75 63"), 2); // site 0x00730EDD -> 0x00C8D4C0
 
+        // --- Script and the local player --------------------------------------
+
+        gPatterns.CRunningScript__ProcessOneCommand = Resolve("66 FF 05 F4 47 A4 00 8B 51"); // 0x00469EB0
+        gPatterns.CRunningScript__OpcodeTable       = Resolve("60 5E 46 00 E0 6D"); // 0x008A6168
+        gPatterns.CRunningScript__ProcessCall       = Resolve("E8 ? ? ? ? 3B FB 8B"); // 0x0046A21B
+        gPatterns.ScmLoadJump                       = Resolve("68 6C 9D 85 00 E8"); // 0x00468EB5
+        gPatterns.ScmLoadSkipTarget                 = Resolve("68 54 8B 85 00 E8 DD"); // 0x00468EE9
+        gPatterns.CPlayerPed__SetupPlayerPed        = Resolve("6A FF 68 7B ED 83"); // 0x0060D790
+        gPatterns.CPlayerPed__ModelIdPush           = Resolve("6A 00 8B CE E8 78"); // 0x0060D5FF
+        gPatterns.FindPlayerPed                     = Resolve("8B 44 24 04 85 C0 7D 07 0F B6 05 74 CD B7 00 69 C0 90 01 00 00 8B 80 98 CD B7 00 C3"); // 0x0056E210
+        gPatterns.CStreaming__LoadScene             = Resolve("83 EC 1C 55 8B 6C"); // 0x0040EB70
+        gPatterns.CPlaceable__SetPosn               = Resolve("E9 ? ? ? ? 7A 4E"); // 0x00420B80
+        gPatterns.CCamera__Fade                     = Resolve("E9 ? ? ? ? 53 8A 59"); // 0x0050AC20
+        gPatterns.CCamera__SetFadeColour            = Resolve("8A 44 24 04 3C 02"); // 0x0050BF00
+
+        gPatterns.CWorld__PlayerInFocus = OperandAt(hook::get_pattern("3B F8 75 19 0F B6 0D"), 7); // site 0x004B5C58 -> 0x00B7CD74
+        gPatterns.TheCamera             = OperandAt(hook::get_pattern("50 56 B9 ? ? ? ? C6"), 3); // site 0x00520D82 -> 0x00B6F028
+
         // --- Population ------------------------------------------------------
 
         gPatterns.CPopulation__Add               = Resolve("6A FF 68 8E EF 83"); // 0x00614720

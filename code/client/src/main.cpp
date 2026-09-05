@@ -11,6 +11,7 @@
 #include "core/globals.h"
 #include "game/boot.h"
 #include "game/population.h"
+#include "game/world.h"
 #include "sdk/game_build.h"
 #include "sdk/patterns.h"
 
@@ -44,6 +45,11 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     // makes bypassing its frontend possible at all: these rewrite call sites
     // the game has not reached yet.
     VantaMP::Game::ApplyBootPatches();
+
+    // Last of the startup patches: this one disables the mission script and
+    // takes over its per-frame call, which is where the local player is
+    // created once the world is complete.
+    VantaMP::Game::ApplyScriptPatches();
 
     InitFunction::RunAll();
     MH_EnableHook(MH_ALL_HOOKS);

@@ -72,6 +72,35 @@ namespace VantaMP::SDK {
         uintptr_t Print__AspectRatio  = 0;
         uintptr_t Print__SoundManager = 0;
 
+        // --- Script and the local player --------------------------------------
+        //
+        // GTA's world is driven by a compiled mission script (the SCM). In
+        // multiplayer nothing about that script applies - it would start
+        // missions, move the player and fight the server for control - so it is
+        // not loaded and its interpreter is stubbed out.
+        //
+        // Its per-frame call is reused: the point where scripts would have
+        // begun running is exactly the point at which the world is ready and a
+        // player can be created.
+        uintptr_t CRunningScript__ProcessOneCommand = 0;
+        uintptr_t CRunningScript__OpcodeTable       = 0;
+        uintptr_t CRunningScript__ProcessCall       = 0;
+        uintptr_t ScmLoadJump                       = 0;
+        uintptr_t ScmLoadSkipTarget                 = 0;
+
+        uintptr_t CPlayerPed__SetupPlayerPed = 0;
+        uintptr_t CPlayerPed__ModelIdPush    = 0;
+        uintptr_t FindPlayerPed              = 0;
+        uintptr_t CStreaming__LoadScene      = 0;
+        uintptr_t CPlaceable__SetPosn        = 0;
+        uintptr_t CWorld__PlayerInFocus      = 0;
+
+        // The camera's fade, used to hide the world until the server has said
+        // where the player belongs in it.
+        uintptr_t CCamera__Fade          = 0;
+        uintptr_t CCamera__SetFadeColour = 0;
+        uintptr_t TheCamera              = 0;
+
         // --- Population ------------------------------------------------------
         //
         // GTA's autonomous population is off in multiplayer: the server decides
