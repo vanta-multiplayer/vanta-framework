@@ -7,6 +7,7 @@
 #include <utils/hooking/hook_function.h>
 
 #include "core/application.h"
+#include "core/ui/window_input.h"
 #include "game/display.h"
 
 namespace {
@@ -39,6 +40,9 @@ namespace {
         // CreateDevice has returned, so styling it there alone is undone before
         // anyone sees it. This re-asserts and is a no-op once it matches.
         VantaMP::Game::ApplyWindowStyle(gGameWindow);
+
+        // Keeps the pointer inside the window, and lets it go on alt-tab.
+        VantaMP::UI::UpdateCursorClip(gGameWindow);
 
         VantaMP::Core::TickApplication();
         return gEndScene(device);

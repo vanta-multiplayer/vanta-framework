@@ -21,4 +21,20 @@ namespace VantaMP::UI {
     void InstallWindowHook(HWND window);
 
     void RemoveWindowHook();
+
+    // Keeps the pointer inside the game's window.
+    //
+    // Without this the cursor walks off the edge mid-game and clicks whatever
+    // is behind - another window, the desktop, the taskbar. Confined to the
+    // CLIENT area rather than the window, so a windowed client's title bar is
+    // not part of the play area.
+    //
+    // RELEASED THE MOMENT FOCUS IS LOST, or alt-tabbing would leave the pointer
+    // trapped in a window the player is no longer looking at, with no way to
+    // reach anything else. That is a mod holding the mouse hostage, and it is
+    // exactly the behaviour people uninstall over.
+    //
+    // Cheap to call every frame: it compares the focus state and only touches
+    // the system when that changes.
+    void UpdateCursorClip(HWND window);
 } // namespace VantaMP::UI

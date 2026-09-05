@@ -54,10 +54,49 @@ namespace VantaMP::UI {
         Framework::Logging::GetLogger("NUI")->info("Window input is being forwarded to the interface");
     }
 
+    void UpdateCursorClip(HWND window) {
+        static bool clipped = false;
+
+        if (!window) {
+            return;
+        }
+
+        const bool focused = GetForegroundWindow() == window;
+
+        if (focused == clipped) {
+            return;
+        }
+
+        clipped = focused;
+
+        if (!focused) {
+            ClipCursor(nullptr);
+            return;
+        }
+
+        // The client area in screen coordinates. GetClientRect gives it
+        // relative to the window, which ClipCursor does not want.
+        RECT client {};
+        GetClientRect(window, &client);
+
+        POINT topLeft {client.left, client.top};
+        POINT bottomRight {client.right, client.bottom};
+
+        ClientToScreen(window, &topLeft);
+        ClientToScreen(window, &bottomRight);
+
+        const RECT screen {topLeft.x, topLeft.y, bottomRight.x, bottomRight.y};
+        ClipCursor(&screen);
+    }
+
     void RemoveWindowHook() {
         if (!gOriginalProc || !gWindow) {
             return;
         }
+
+        // Let the pointer go with the hook, or it stays confined to a window
+        // nothing is forwarding input to any more.
+        ClipCursor(nullptr);
 
         SetWindowLongPtrW(gWindow, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(gOriginalProc));
 
