@@ -1,0 +1,34 @@
+#include "core/server.h"
+
+#include "shared/constants.h"
+#include "shared/version.h"
+
+#include <logging/logger.h>
+
+int main(int argc, char **argv) {
+    Framework::Integrations::Server::InstanceOptions opts;
+    opts.bindHost      = "0.0.0.0";
+    opts.bindPort      = 27015;
+    opts.webBindHost   = "0.0.0.0";
+    opts.webBindPort   = 27016;
+    opts.maxPlayers    = 32;
+    opts.modName       = "VantaMP";
+    opts.modSlug       = "vantamp_server";
+    opts.gameName      = VantaMP::Shared::kGameName;
+    opts.gameVersion   = "1.0.0";
+    opts.modVersion    = VantaMP::Version::rel;
+    opts.bindPassword  = "";
+    opts.enableSignals = true;
+
+    opts.argc = argc;
+    opts.argv = argv;
+
+    VantaMP::Server server;
+    if (const auto result = server.Init(opts); !result) {
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->error("Failed to start server: {}", result.GetError().message);
+        return 1;
+    }
+    server.Run();
+    server.Shutdown();
+    return 0;
+}

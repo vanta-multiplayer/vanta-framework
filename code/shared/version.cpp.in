@@ -1,0 +1,9 @@
+#define VANTAMP_GIT_VERSION_LONG "@VANTAMP_GIT_VERSION_LONG@"
+#define VANTAMP_GIT_VERSION      "@VANTAMP_GIT_VERSION@"
+#define VANTAMP_VERSION          "@VANTAMP_VERSION@"
+
+namespace VantaMP::Version {
+    const char *git     = VANTAMP_GIT_VERSION;
+    const char *gitLong = VANTAMP_GIT_VERSION_LONG;
+    const char *rel     = VANTAMP_VERSION;
+};
