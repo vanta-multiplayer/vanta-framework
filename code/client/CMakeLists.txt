@@ -14,6 +14,7 @@ set(VANTAMP_CLIENT_FILES
     src/game/gameplay.cpp
     src/game/input.cpp
     src/game/player_slots.cpp
+    src/game/remote_players.cpp
     src/game/population.cpp
     src/game/world.cpp
 

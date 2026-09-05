@@ -1,5 +1,6 @@
 #include "world.h"
 
+#include "remote_players.h"
 #include "sdk/patterns.h"
 
 #include <utils/safe_win32.h>
@@ -95,6 +96,13 @@ namespace VantaMP::Game {
             // visible frame is not an empty landscape.
             const float position[3] = {gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z};
             reinterpret_cast<LoadSceneFn>(p.CStreaming__LoadScene)(position);
+
+            // Slot 0 is the local player. The hooks would fall back to it
+            // anyway for a ped they do not recognise, but claiming the slot
+            // makes that the answer rather than the default - and it is what
+            // tells SlotOfPed the difference between "the local player" and "a
+            // ped Vanta does not own".
+            RegisterRemotePlayer(kLocalPlayerSlot, player);
 
             gPlayerSpawned.store(true, std::memory_order_release);
 

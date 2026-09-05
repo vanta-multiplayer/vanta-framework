@@ -15,6 +15,7 @@
 #include "game/gameplay.h"
 #include "game/input.h"
 #include "game/player_slots.h"
+#include "game/remote_players.h"
 #include "game/population.h"
 #include "game/world.h"
 #include "sdk/game_build.h"
@@ -68,6 +69,9 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     // takes over its per-frame call, which is where the local player is
     // created once the world is complete.
     VantaMP::Game::ApplyScriptPatches();
+
+    // After the slots exist, since the hooks index into them.
+    VantaMP::Game::InstallRemotePlayerHooks();
 
     // Has to land before the game acquires the mouse, which it does during its
     // own startup - from a frame callback this would already be too late.

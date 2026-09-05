@@ -192,6 +192,22 @@ namespace VantaMP::SDK {
         uintptr_t Alloc__Pad2        = 0;
         uintptr_t CPad__Pads         = 0;
 
+        // --- Remote players ----------------------------------------------------
+        //
+        // The game processes exactly one player and reads its input, camera and
+        // info from fixed globals. Remote peds are driven by the same code under
+        // a briefly swapped context, so these are the sites that have to be
+        // hooked or saved around.
+        uintptr_t CPlayerPed__ProcessControl      = 0;
+        uintptr_t CPlayerPed__ProcessControlVtable = 0;
+        uintptr_t CPlayerPed__GetPlayerInfo       = 0;
+        uintptr_t CPad__GetPad                    = 0;
+
+        // Camera rotation drives which way "forward" is, and mouse look decides
+        // whether local mouse movement steers whoever is being processed.
+        uintptr_t CCamera__Rotation    = 0;
+        uintptr_t CCamera__MouseLook   = 0;
+
         // --- Population ------------------------------------------------------
         //
         // GTA's autonomous population is off in multiplayer: the server decides

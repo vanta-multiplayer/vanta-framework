@@ -159,6 +159,16 @@ namespace VantaMP::SDK {
 
         gPatterns.CPad__Pads = OperandAt(hook::get_pattern("00 B9 ? ? ? ? E9 C0"), 2); // site 0x0040380C -> 0x00B73458
 
+        // --- Remote players ----------------------------------------------------
+
+        gPatterns.CPlayerPed__ProcessControl       = Resolve("83 EC 34 53 55 56 8B F1 8B"); // 0x0060EA90
+        gPatterns.CPlayerPed__ProcessControlVtable = Resolve("90 EA 60 00 B0 DF"); // 0x0086D190
+        gPatterns.CPlayerPed__GetPlayerInfo        = Resolve("33 C0 BA 98 CD B7"); // 0x00609FF0
+        gPatterns.CPad__GetPad                     = Resolve("8B 44 24 04 69 C0 34"); // 0x0053FB70
+
+        gPatterns.CCamera__Rotation  = OperandAt(hook::get_pattern("FF D8 25 ? ? ? ? D9 5C 24 20"), 3); // site 0x00688FA6 -> 0x00B6F178
+        gPatterns.CCamera__MouseLook = OperandAt(hook::get_pattern("50 A0 ? ? ? ? 64 89 25 00 00 00 00 83 EC 74"), 2); // site 0x0060B65D -> 0x00B6EC2E
+
         // --- Population ------------------------------------------------------
 
         gPatterns.CPopulation__Add               = Resolve("6A FF 68 8E EF 83"); // 0x00614720
