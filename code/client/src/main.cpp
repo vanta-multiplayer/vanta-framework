@@ -9,6 +9,8 @@
 #include <utils/string_utils.h>
 
 #include "core/globals.h"
+#include "game/population.h"
+#include "sdk/game_build.h"
 #include "sdk/patterns.h"
 
 namespace VantaMP::Core {
@@ -24,7 +26,18 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     MH_Initialize();
     hook::set_base();
 
+    // Which build we are in. Recorded rather than enforced: the scans below
+    // decide whether this executable is usable, and they say so loudly if it is
+    // not. Knowing the build first only makes that failure legible.
+    (void)VantaMP::SDK::IdentifyGameBuild();
+
     VantaMP::SDK::Patterns::InitPatterns();
+
+    // Before the game gets a chance to populate the world. GTA starts inventing
+    // pedestrians and traffic as soon as it streams anything in, and a ped that
+    // already exists has to be deleted rather than never created - which fights
+    // the very lifetime rules this is establishing.
+    VantaMP::Game::DisableAutonomousPopulation();
 
     InitFunction::RunAll();
     MH_EnableHook(MH_ALL_HOOKS);

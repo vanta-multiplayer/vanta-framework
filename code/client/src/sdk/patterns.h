@@ -3,11 +3,55 @@
 #include <cstdint>
 
 namespace VantaMP::SDK {
-    // No build plugin-sdk knows matches the RGL one, so every address is scanned for at startup.
-    class Patterns {
+    // Every game address the client uses, resolved by signature scan at startup.
+    //
+    // WHY SCANS AND NOT A TABLE OF ADDRESSES. Vanta's previous client held ~160
+    // literal addresses for GTA:SA 1.0 US. They were correct, and they were
+    // correct for exactly one build: the Rockstar Games Launcher release shares
+    // none of them, and a table pointed at the wrong build corrupts memory at
+    // effectively random locations rather than failing.
+    //
+    // A signature describes what the code DOES, so it finds its own way around
+    // whichever build is loaded. One binary can then serve several builds,
+    // which is the whole reason for the change.
+    //
+    // The old table was not wasted: each address in it was the ground truth a
+    // signature was derived and verified against, by scripts/derive_pattern.py.
+    // Where a comment below names a 1.0 US address, that is its provenance -
+    // the address the signature was proven to resolve to - and not a value the
+    // client uses.
+    //
+    // ONCE RESOLVED, EVERY ENTRY IS VALID. hook::get_pattern asserts on exactly
+    // one match, so a signature that no longer matches, or that became
+    // ambiguous, fails here at startup rather than somewhere later. Nothing
+    // downstream tests these for zero; there is no state in which they are.
+    class Patterns final {
       public:
+        // --- World -----------------------------------------------------------
+
+        // CWorld::Players, the player-info array. A global, so it is read out of
+        // the operand of an instruction that indexes it rather than scanned for
+        // directly - .data has no bytes worth matching.
         uintptr_t CWorld__Players = 0;
 
+        // --- Population ------------------------------------------------------
+        //
+        // GTA's autonomous population is off in multiplayer: the server decides
+        // which peds and vehicles exist. These are the sites that create them,
+        // remove them, or stream models on their behalf.
+        uintptr_t CPopulation__Add               = 0;
+        uintptr_t CPopulation__ManagePed         = 0;
+        uintptr_t CPopulation__RemovePed         = 0;
+        uintptr_t CPopulation__UpdateEarlyOut    = 0;
+        uintptr_t CCarCtrl__GenerateRandomCars   = 0;
+        uintptr_t CCarCtrl__RemoveCarsIfPoolFull = 0;
+        uintptr_t CStreaming__StreamPedsAndCars  = 0;
+        uintptr_t CStreaming__AmbientModelsJump  = 0;
+        uintptr_t CGangWars__Update              = 0;
+        uintptr_t CPedType__InterestingEvents    = 0;
+        uintptr_t CPed__PlayerConversations      = 0;
+
+        // Resolves everything above. Called once, before anything reads a field.
         static void InitPatterns();
     };
 
