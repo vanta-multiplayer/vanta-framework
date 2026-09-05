@@ -2,6 +2,7 @@
 
 #include <launcher/project.h>
 
+#include "game_image.h"
 #include "shared/constants.h"
 
 int main(void) {
@@ -13,9 +14,14 @@ int main(void) {
     config.launchType         = Framework::Launcher::ProjectLaunchType::PE_LOADING;
     config.rockstarTitleKey   = VantaMP::Shared::kRockstarTitleKey;
 
-    // The RGL build ships its code encrypted; capture it once from a launcher-authorised run and
-    // map the game from that cache afterwards.
-    config.useRockstarImageSnapshot = true;
+    // The RGL build ships its code encrypted, so it is captured once from a
+    // launcher-authorised run and the game is mapped from that cache afterwards.
+    //
+    // Asked rather than assumed: Vanta supports the retail and Steam releases
+    // too, and neither is wrapped. Requesting a snapshot for one of those fails
+    // with "make sure the Rockstar Games Launcher is installed", which is not
+    // advice a player who owns the game elsewhere can act on.
+    config.useRockstarImageSnapshot = VantaMP::Launcher::GameNeedsImageSnapshot();
 
     config.allowManualGamePathFallback = true;
     config.promptTitle                 = "Select your GTA: San Andreas executable (gta_sa.exe)";
