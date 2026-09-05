@@ -72,6 +72,7 @@ namespace VantaMP::SDK {
         gPatterns.CTimer__UserPause   = OperandAt(hook::get_pattern("51 A0 ? ? ? ? 84 C0 56 57 8B"), 2); // site 0x004D6DF0 -> 0x00B7CB49
         gPatterns.CMenuManager__Pause = OperandAt(hook::get_pattern("1F 00 A0 ? ? ? ? 84 C0 74"), 3); // site 0x0053E81D -> 0x00BA67A4
         gPatterns.gGameState          = OperandAt(hook::get_pattern("83 3D ? ? ? ? 08 75 63"), 2); // site 0x00730EDD -> 0x00C8D4C0
+        gPatterns.RsGlobal            = OperandAt(hook::get_pattern("C7 05 ? ? ? ? 88 D3"), 2); // site 0x00619602 -> 0x00C17040
 
         // --- Script and the local player --------------------------------------
 

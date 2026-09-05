@@ -2,6 +2,7 @@ set(VANTAMP_CLIENT_FILES
     src/main.cpp
 
     src/core/application.cpp
+    src/core/client_config.cpp
 
     src/core/hooks/mod_init.cpp
     src/core/hooks/render_device.cpp

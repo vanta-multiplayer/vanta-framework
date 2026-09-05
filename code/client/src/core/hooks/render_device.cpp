@@ -31,8 +31,15 @@ namespace {
         return (*reinterpret_cast<void ***>(object))[slot];
     }
 
+    HWND gGameWindow = nullptr;
+
     // The only point in the frame that is both inside a scene and after the world updated.
     HRESULT STDMETHODCALLTYPE EndScene_Hook(IDirect3DDevice9 *device) {
+        // The game sets its own window style during device setup, after
+        // CreateDevice has returned, so styling it there alone is undone before
+        // anyone sees it. This re-asserts and is a no-op once it matches.
+        VantaMP::Game::ApplyWindowStyle(gGameWindow);
+
         VantaMP::Core::TickApplication();
         return gEndScene(device);
     }
@@ -49,6 +56,7 @@ namespace {
             return;
         }
         gDeviceHooksInstalled = true;
+        gGameWindow           = window;
 
         MH_CreateHook(VTableEntry(device, kEndSceneSlot), reinterpret_cast<LPVOID>(&EndScene_Hook), reinterpret_cast<void **>(&gEndScene));
         MH_CreateHook(VTableEntry(device, kResetSlot), reinterpret_cast<LPVOID>(&Reset_Hook), reinterpret_cast<void **>(&gReset));

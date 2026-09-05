@@ -67,6 +67,11 @@ namespace VantaMP::SDK {
         uintptr_t CMenuManager__Pause = 0;
         uintptr_t gGameState = 0;
 
+        // RsGlobal. Its maximumWidth/maximumHeight (at +4 and +8) are what the
+        // engine believes it is rendering at - nearly five hundred sites read
+        // them - so they have to agree with the back buffer's actual size.
+        uintptr_t RsGlobal = 0;
+
         // Console chatter the game prints at startup. Silenced; it is not ours
         // and it is not useful.
         uintptr_t Print__AspectRatio  = 0;

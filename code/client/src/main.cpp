@@ -8,8 +8,10 @@
 #include <utils/hooking/hooking.h>
 #include <utils/string_utils.h>
 
+#include "core/client_config.h"
 #include "core/globals.h"
 #include "game/boot.h"
+#include "game/display.h"
 #include "game/population.h"
 #include "game/world.h"
 #include "sdk/game_build.h"
@@ -24,6 +26,13 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
 
     Framework::Logging::GetInstance()->SetLogName("VantaMP");
     Framework::Logging::GetInstance()->SetLogFolder(fmt::format("{}/logs", VantaMP::Core::gProjectPath));
+
+    // Before anything reads a setting. The display module in particular is
+    // consulted from the CreateDevice hook, which the game can reach as soon as
+    // its first frame - there is no later point that is still early enough.
+    const auto &config = VantaMP::Core::LoadClientConfig(VantaMP::Core::gProjectPath);
+
+    VantaMP::Game::SetDisplaySettings({config.displayWidth, config.displayHeight, config.displayBorderless});
 
     MH_Initialize();
     hook::set_base();

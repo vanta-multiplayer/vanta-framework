@@ -40,10 +40,15 @@ namespace VantaMP::Game {
 
     // Sizes and positions the game's window to match what was asked for.
     //
-    // Called after the device exists, because the window has to be styled
-    // before it is measured: the style decides how much larger the outer
-    // window is than its client area, and getting that order wrong leaves the
-    // client area a title bar short - the game then renders at a size nothing
-    // else agrees with.
+    // The window has to be styled before it is measured: the style decides how
+    // much larger the outer window is than its client area, so doing it the
+    // other way round leaves the client area a title bar short.
+    //
+    // CALLED REPEATEDLY, NOT ONCE. GTA sets its own window style during device
+    // setup, after CreateDevice returns, so a single application at that point
+    // is silently undone - the log says "windowed" while the window on screen
+    // is still the game's borderless popup. Re-asserting from the frame loop is
+    // what makes the setting stick; it is a no-op once the style already
+    // matches, so the cost is a comparison per frame.
     void ApplyWindowStyle(HWND window);
 } // namespace VantaMP::Game
