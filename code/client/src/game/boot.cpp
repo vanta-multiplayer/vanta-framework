@@ -9,6 +9,8 @@
 #include <utils/hooking/hooking.h>
 
 #include <atomic>
+#include <cstdio>
+#include <cstring>
 
 namespace VantaMP::Game {
     namespace {
@@ -174,5 +176,33 @@ namespace VantaMP::Game {
 
     bool IsFrontendBypassed() {
         return gFrontendBypassed.load(std::memory_order_acquire);
+    }
+
+    void AllowMultipleInstances() {
+        const auto &p = SDK::gPatterns;
+
+        // The call site first - this is the one that actually has to work.
+        hook::nop(p.MultiInstanceCheckCall, 9);
+
+        // And the function, returning "not already running".
+        hook::return_value_function(p.IsAlreadyRunning, 0);
+
+        // A name no other instance will pick. Static storage because the game
+        // keeps the pointer: a local would leave it reading a dead stack frame.
+        static char name[9] {};
+        std::snprintf(name, sizeof(name), "%08X", static_cast<unsigned>(GetTickCount()));
+
+        // Written into the string the game reads, not repointed at ours - the
+        // address is baked into instructions all over the streaming code.
+        //
+        // THROUGH putVP, WHICH UNPROTECTS FIRST. The string lives in .rdata,
+        // which is read-only: a plain memcpy here faults inside memmove before
+        // the client has drawn anything, and the stack blames the CRT rather
+        // than the write.
+        for (std::size_t i = 0; i < sizeof(name); ++i) {
+            hook::putVP<char>(p.CdStreamSemaphoreName + i, name[i]);
+        }
+
+        Framework::Logging::GetLogger("Boot")->info("Single-instance guard removed; cdstream semaphore is '{}'", name);
     }
 } // namespace VantaMP::Game

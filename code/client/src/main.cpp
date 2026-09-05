@@ -48,6 +48,11 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
 
     VantaMP::SDK::Patterns::InitPatterns();
 
+    // FIRST OF THE PATCHES. GTA's single-instance guard runs at the very top of
+    // WinMain, which the launcher resumes the moment this returns - so anything
+    // applied after the other patches has already lost the race.
+    VantaMP::Game::AllowMultipleInstances();
+
     // FIRST OF THE WORLD PATCHES, because it rewrites the code every later
     // patch is written into. Running it afterwards would scan over bytes Vanta
     // had already changed, and any of those that happened to look like an array

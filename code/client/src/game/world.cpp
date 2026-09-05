@@ -1,5 +1,6 @@
 #include "world.h"
 
+#include "player_sync.h"
 #include "remote_players.h"
 #include "sdk/patterns.h"
 
@@ -121,6 +122,10 @@ namespace VantaMP::Game {
                 spawned = true;
                 SpawnLocalPlayer();
             }
+
+            // The network, once per frame and on the game thread - which is
+            // the only thread allowed to touch peds.
+            UpdatePlayerSync();
 
             // Guarded, because a throwing callback must not unwind into the
             // game's own frame processing, where nothing would catch it.

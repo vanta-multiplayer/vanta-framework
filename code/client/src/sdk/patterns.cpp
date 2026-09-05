@@ -186,6 +186,12 @@ namespace VantaMP::SDK {
         gPatterns.CWorld__Add                        = Resolve("56 8B 74 24 08 8B 46 18 85 C0 74"); // 0x00563220
         gPatterns.CWorld__Remove                     = Resolve("56 8B 74 24 08 8B 06 8B CE FF 50 0C"); // 0x00563280
 
+        // --- Running more than one client --------------------------------------
+
+        gPatterns.MultiInstanceCheckCall = Resolve("E8 ? ? ? ? 85 C0 75 0F 53"); // 0x0074872D
+        gPatterns.IsAlreadyRunning       = Resolve("A1 24 62 8D 00 50"); // 0x007468E0
+        gPatterns.CdStreamSemaphoreName  = OperandAt(hook::get_pattern("00 68 ? ? ? ? A3 EC"), 2); // site 0x00406944 -> 0x00858AD4
+
         // --- Population ------------------------------------------------------
 
         gPatterns.CPopulation__Add               = Resolve("6A FF 68 8E EF 83"); // 0x00614720

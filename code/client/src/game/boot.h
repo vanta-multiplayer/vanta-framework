@@ -25,4 +25,24 @@ namespace VantaMP::Game {
 
     // True once the frontend has been told the game is playing.
     [[nodiscard]] bool IsFrontendBypassed();
+
+    // Lets a second client run alongside the first.
+    //
+    // GTA refuses to start twice, and testing a multiplayer platform means
+    // running two clients on one machine constantly. Three things have to give
+    // way, and doing only the obvious one is not enough:
+    //
+    //   the call site, because WinMain runs the instant the launcher resumes
+    //   the process and a patch that only stubs the function loses the race -
+    //   the second client exits before the log is even open;
+    //
+    //   the function too, so it is harmless if reached another way. Together
+    //   these also stop the focus theft: SetForegroundWindow lives inside the
+    //   branch being removed, so without them a second client yanks focus back
+    //   to the first and then dies, which reads as the launcher misbehaving;
+    //
+    //   and the cdstream semaphore name, because two instances sharing one
+    //   deadlock each other's streaming thread - the game comes up and then
+    //   hangs loading, which looks nothing like an instance problem.
+    void AllowMultipleInstances();
 } // namespace VantaMP::Game

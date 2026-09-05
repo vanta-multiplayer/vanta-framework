@@ -1,0 +1,24 @@
+#pragma once
+
+namespace VantaMP::Game {
+    // Keeps the game and the network in step, in both directions.
+    //
+    // Outbound: the local player's position, heading, health and input are
+    // copied into its replicated entity each tick. The framework does the rest -
+    // an owned entity serializes upstream on its own.
+    //
+    // Inbound: every entity that is not ours gets a GTA ped, and that ped is
+    // moved to wherever the entity says it is. The ped's animation and physics
+    // are not sent: the game computes them from the input that is, which is why
+    // a remote player walks rather than sliding.
+    //
+    // Called once per frame from the game's own tick, so everything here runs
+    // on the game thread and can touch the world directly.
+    void UpdatePlayerSync();
+
+    // Drops every remote ped, without touching the entities.
+    //
+    // For a disconnect: the peds belong to this client and have to go, while the
+    // entities are the network's to clean up.
+    void ClearRemotePlayers();
+} // namespace VantaMP::Game

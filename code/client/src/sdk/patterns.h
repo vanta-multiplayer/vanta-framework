@@ -226,6 +226,14 @@ namespace VantaMP::SDK {
         uintptr_t CWorld__Add    = 0;
         uintptr_t CWorld__Remove = 0;
 
+        // --- Running more than one client --------------------------------------
+        //
+        // GTA refuses to start twice, and testing a multiplayer platform means
+        // running two clients on one machine constantly.
+        uintptr_t MultiInstanceCheckCall = 0;
+        uintptr_t IsAlreadyRunning       = 0;
+        uintptr_t CdStreamSemaphoreName  = 0;
+
         // --- Population ------------------------------------------------------
         //
         // GTA's autonomous population is off in multiplayer: the server decides
