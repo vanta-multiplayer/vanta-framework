@@ -10,6 +10,7 @@
 #include "core/ui/nui.h"
 #include "core/ui/window_input.h"
 #include "core/ui/ped_debug_ui.h"
+#include "game/boot.h"
 #include "game/player_sync.h"
 #include "game/world.h"
 #include "shared/constants.h"
@@ -34,6 +35,18 @@ namespace VantaMP::Core {
         // The world is the thing to look at now, not the menu.
         VantaMP::UI::SetMenuVisible(false);
         VantaMP::UI::ReportConnectionState("connected", "");
+
+        // AND THE SCREEN COMES BACK.
+        //
+        // The local player was created behind a black fade during startup,
+        // because until a server had accepted us there was no position, model
+        // or name that meant anything. This is the first moment that stops
+        // being true.
+        //
+        // The camera needs no setting up: SetupPlayerPed and PlayerInFocus
+        // already told GTA which ped it is following, so revealing the screen
+        // is all that is left.
+        Game::FadeIn();
     }
 
     void Application::OnConnectionClosed() {
@@ -43,6 +56,10 @@ namespace VantaMP::Core {
         // their peds belong to this client, while the entities were the
         // network's.
         Game::ClearRemotePlayers();
+
+        // Back behind the fade: the menu belongs over a black screen, not over
+        // a world the player is no longer in.
+        Game::FadeOut();
 
         VantaMP::UI::SetMenuVisible(true);
         VantaMP::UI::ReportConnectionState("disconnected", "");
@@ -76,6 +93,17 @@ namespace VantaMP::Core {
     }
 
     void Application::PostUpdate() {
+        // The menu waits for the game's own startup to finish.
+        //
+        // The copyright notice is the one screen Vanta does not remove, so it
+        // is also the one screen the interface must not cover. The frontend
+        // being bypassed is the moment after it, and the earliest point at
+        // which the menu is the only thing worth looking at.
+        if (!_menuShown && Game::IsFrontendBypassed()) {
+            _menuShown = true;
+            VantaMP::UI::SetMenuVisible(true);
+        }
+
         // THE VIEWS ARE DRAWN THROUGH IMGUI, NOT BY Manager::Render().
         //
         // Render() paints the page into a texture; SubmitImGuiDraws() is what

@@ -75,18 +75,15 @@ namespace VantaMP::UI {
             return;
         }
 
-        // SHOWN, BECAUSE A VIEW IS CREATED HIDDEN. Both Render and
-        // SubmitImGuiDraw return immediately while _shouldDisplay is false, so
-        // without this CEF initialises, the page loads, the log says the
-        // interface is up - and the screen stays black.
-        view->Display(true);
-
-        // AND FOCUSED, OR NOTHING IS CLICKABLE. A view that does not have focus
-        // is not told about mouse or keyboard messages even when the host is
-        // forwarding them, and the manager only mirrors a cursor shape for a
-        // focused view - so an unfocused menu is visible, pointer-less and
-        // completely inert.
-        view->Focus(true);
+        // LEFT HIDDEN FOR NOW. The page loads and CEF starts painting it, but
+        // it stays off screen until the game has finished its own startup - a
+        // connect menu over the copyright notice is the mod talking over the
+        // thing it is legally obliged to show.
+        //
+        // A view is created hidden anyway: both Render and SubmitImGuiDraw
+        // return immediately while _shouldDisplay is false, which is worth
+        // knowing because it looks exactly like CEF failing to work at all.
+        view->Display(false);
 
         // An invoke carries an id the page is waiting on; answering it is what
         // stops a promise hanging until its timeout.
@@ -201,8 +198,11 @@ namespace VantaMP::UI {
         if (auto *view = FindView()) {
             view->Display(visible);
 
-            // Focus follows visibility: the world takes the input back when the
-            // menu goes away.
+            // FOCUS FOLLOWS VISIBILITY, and without it the menu is inert: an
+            // unfocused view is never told about mouse or keyboard messages
+            // even while the host forwards them, and the manager only mirrors a
+            // cursor shape for a focused view. So an unfocused menu is visible,
+            // pointer-less and unclickable.
             view->Focus(visible);
 
             view->EvaluateScript(visible ? "window.__vantaDispatch && window.__vantaDispatch('vanta:menu:show', '{}');" : "window.__vantaDispatch && window.__vantaDispatch('vanta:menu:hide', '{}');");

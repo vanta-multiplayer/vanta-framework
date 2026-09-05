@@ -36,6 +36,9 @@ namespace VantaMP::Core {
         std::string _pendingHost;
         std::uint32_t _pendingPort = 0;
         bool _connectRequested     = false;
+
+        // The menu is held back until the game's own startup screens are done.
+        bool _menuShown = false;
     };
 
     // Asked for by the menu. Takes effect on the next frame rather than
