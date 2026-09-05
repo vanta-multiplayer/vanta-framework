@@ -208,6 +208,24 @@ namespace VantaMP::SDK {
         uintptr_t CCamera__Rotation    = 0;
         uintptr_t CCamera__MouseLook   = 0;
 
+        // --- Game methods called directly --------------------------------------
+        //
+        // plugin-sdk is used header-only here, so it DECLARES these but their
+        // definitions live at 1.0 US addresses in .cpp files this build does not
+        // compile - linking against them fails. Resolving them as patterns keeps
+        // the SDK to layouts, which is what it is here for, and keeps the calls
+        // build-independent like everything else.
+        uintptr_t CPed__operator_new       = 0;
+        uintptr_t CPed__operator_delete    = 0;
+        uintptr_t CPlayerPed__Constructor  = 0;
+        uintptr_t CPed__SetModelIndex      = 0;
+        uintptr_t CPlaceable__SetOrientation = 0;
+        uintptr_t CPedIntelligence__FlushImmediately = 0;
+        uintptr_t CPedClothesDesc__Constructor = 0;
+        uintptr_t CPedClothesDesc__Initialise  = 0;
+        uintptr_t CWorld__Add    = 0;
+        uintptr_t CWorld__Remove = 0;
+
         // --- Population ------------------------------------------------------
         //
         // GTA's autonomous population is off in multiplayer: the server decides

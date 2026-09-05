@@ -169,6 +169,23 @@ namespace VantaMP::SDK {
         gPatterns.CCamera__Rotation  = OperandAt(hook::get_pattern("FF D8 25 ? ? ? ? D9 5C 24 20"), 3); // site 0x00688FA6 -> 0x00B6F178
         gPatterns.CCamera__MouseLook = OperandAt(hook::get_pattern("50 A0 ? ? ? ? 64 89 25 00 00 00 00 83 EC 74"), 2); // site 0x0060B65D -> 0x00B6EC2E
 
+        // --- Game methods called directly --------------------------------------
+
+        gPatterns.CPed__operator_new                 = Resolve("8B 0D 90 44 B7 00 E9"); // 0x005E4720
+
+        // Its matching delete has no unique signature of its own - the body is
+        // too short and too ordinary - so it is reached through a call to it,
+        // which get_opcode_address follows to the target.
+        gPatterns.CPed__operator_delete = static_cast<uintptr_t>(hook::get_opcode_address("E8 ? ? ? ? 83 C4 04 8B C6 5E C2 04 00 90 90 83 EC 20 53 55 56 57")); // call at 0x0060A9B0 -> 0x005E4760
+        gPatterns.CPlayerPed__Constructor            = Resolve("6A FF 68 58 ED 83"); // 0x0060D5B0
+        gPatterns.CPed__SetModelIndex                = Resolve("56 8B F1 81 4E 1C"); // 0x005E4880
+        gPatterns.CPlaceable__SetOrientation         = Resolve("83 EC 0C 56 8B F1 8B 4E 14"); // 0x00439A80
+        gPatterns.CPedIntelligence__FlushImmediately = Resolve("6A FF 68 26 E8 83"); // 0x00601640
+        gPatterns.CPedClothesDesc__Constructor       = Resolve("8B D1 57 33 C0 B9 0A 00 00 00 8B FA F3 AB 8D 7A 28 B9 12 00 00 00 F3 AB 89 42 70 89 42 74 8B"); // 0x005A8020
+        gPatterns.CPedClothesDesc__Initialise        = Resolve("8B D1 57 33 C0 B9 0A 00 00 00 8B FA F3 AB 8D 7A 28 B9 12 00 00 00 F3 AB 89 42 70 89 42 74 5F"); // 0x005A78F0
+        gPatterns.CWorld__Add                        = Resolve("56 8B 74 24 08 8B 46 18 85 C0 74"); // 0x00563220
+        gPatterns.CWorld__Remove                     = Resolve("56 8B 74 24 08 8B 06 8B CE FF 50 0C"); // 0x00563280
+
         // --- Population ------------------------------------------------------
 
         gPatterns.CPopulation__Add               = Resolve("6A FF 68 8E EF 83"); // 0x00614720

@@ -6,4 +6,11 @@
 #pragma warning(push)
 #pragma warning(disable : 4005 4244 4267 4302 4311 4838)
 #include <plugin_sa.h>
+
+// plugin_sa.h does not pull these in, and the remote-ped code needs their
+// layouts rather than just their names.
+#include <CPlayerInfo.h>
+#include <CPlayerPed.h>
+#include <CPedClothesDesc.h>
+#include <CWorld.h>
 #pragma warning(pop)
