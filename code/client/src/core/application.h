@@ -39,6 +39,9 @@ namespace VantaMP::Core {
 
         // The menu is held back until the game's own startup screens are done.
         bool _menuShown = false;
+
+        // Mirrors the ImGui cursor state, so it is only toggled on a change.
+        bool _cursorShown = false;
     };
 
     // Asked for by the menu. Takes effect on the next frame rather than

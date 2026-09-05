@@ -17,8 +17,15 @@
 
 namespace VantaMP::UI {
     namespace {
-        int gViewId    = -1;
-        bool gVisible  = true;
+        int gViewId = -1;
+
+        // Whether the view is on screen at all.
+        bool gVisible = false;
+
+        // Whether the page says its menu panel is open. Separate from the above:
+        // the interface stays up in game for the console and the netgraph, and
+        // only the menu decides whether it wants the mouse.
+        bool gMenuOpen = true;
 
         Framework::GUI::View *FindView() {
             auto *manager = Framework::CoreModules::GetWebManager();
@@ -130,7 +137,13 @@ namespace VantaMP::UI {
                 const auto parsed  = nlohmann::json::parse(payload);
                 const auto &fields = parsed.contains("payload") ? parsed["payload"] : parsed;
 
-                gVisible = fields.value("visible", true);
+                gMenuOpen = fields.value("visible", true);
+
+                // The page opening or closing its menu is what decides whether
+                // the interface wants the pointer.
+                if (auto *target = FindView()) {
+                    target->Focus(gMenuOpen);
+                }
             }
             catch (const std::exception &) {
                 // A malformed message is not worth changing state over.
@@ -192,25 +205,45 @@ namespace VantaMP::UI {
         Framework::Logging::GetLogger("NUI")->info("Interface up at {}x{}", width, height);
     }
 
-    void SetMenuVisible(bool visible) {
+    void SetInterfaceVisible(bool visible) {
         gVisible = visible;
 
         if (auto *view = FindView()) {
             view->Display(visible);
 
-            // FOCUS FOLLOWS VISIBILITY, and without it the menu is inert: an
-            // unfocused view is never told about mouse or keyboard messages
-            // even while the host forwards them, and the manager only mirrors a
-            // cursor shape for a focused view. So an unfocused menu is visible,
-            // pointer-less and unclickable.
-            view->Focus(visible);
-
-            view->EvaluateScript(visible ? "window.__vantaDispatch && window.__vantaDispatch('vanta:menu:show', '{}');" : "window.__vantaDispatch && window.__vantaDispatch('vanta:menu:hide', '{}');");
+            // FOCUS FOLLOWS THE MENU, NOT THE VIEW. An unfocused view is never
+            // told about mouse or keyboard messages even while the host is
+            // forwarding them, and the manager only mirrors a cursor shape for
+            // a focused one - so a focused view is what makes the interface
+            // clickable. But focusing it whenever it is merely VISIBLE takes
+            // the mouse away from the game, because the console and the
+            // netgraph stay up in play.
+            view->Focus(visible && gMenuOpen);
         }
     }
 
-    bool IsMenuVisible() {
+    bool IsInterfaceVisible() {
         return gVisible;
+    }
+
+    bool IsMenuOpen() {
+        return gVisible && gMenuOpen;
+    }
+
+    void ReportConnected(const std::string &serverName) {
+        // The page closes its own menu on this, and leaves the console and the
+        // netgraph where they are. Hiding the view instead would take all three
+        // away, which is what it used to do.
+        gMenuOpen = false;
+
+        if (auto *view = FindView()) {
+            view->Focus(false);
+
+            nlohmann::json payload;
+            payload["name"] = serverName;
+
+            view->EvaluateScript("window.__vantaDispatch && window.__vantaDispatch('vanta:connected', " + nlohmann::json(payload.dump()).dump() + ");");
+        }
     }
 
     void ReportConnectionState(const std::string &state, const std::string &detail) {

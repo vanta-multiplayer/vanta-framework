@@ -16,11 +16,26 @@ namespace VantaMP::UI {
     // happens to be running in.
     void BringUpInterface(int width, int height);
 
-    // Shows or hides the menu. Called when the player connects or disconnects,
-    // and by the page itself when it wants the screen back.
-    void SetMenuVisible(bool visible);
+    // Puts the interface on screen, or takes it off entirely.
+    //
+    // THE WHOLE VIEW, WHICH IS RARELY WHAT YOU WANT. The connect menu, the
+    // console and the netgraph are all one page, so hiding the view hides all
+    // three - correct while the game is still starting up, wrong the moment a
+    // player is in a world where they still want a console.
+    //
+    // To close the menu on its own, tell the page it connected and let it close
+    // itself: it owns which of its panels is up.
+    void SetInterfaceVisible(bool visible);
 
-    [[nodiscard]] bool IsMenuVisible();
+    [[nodiscard]] bool IsInterfaceVisible();
+
+    // The page's own notion of whether its menu is open, which it reports.
+    // Drives whether the interface wants the mouse.
+    [[nodiscard]] bool IsMenuOpen();
+
+    // Tells the page a connection succeeded, so it closes its menu and leaves
+    // the console and netgraph up.
+    void ReportConnected(const std::string &serverName);
 
     // Tears the view down. Safe when nothing was ever brought up.
     void ShutdownInterface();

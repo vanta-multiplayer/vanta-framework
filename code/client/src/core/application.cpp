@@ -32,8 +32,10 @@ namespace VantaMP::Core {
     void Application::OnConnectionFinalized(float serverTickRate) {
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Connected; the server ticks at {:.0f} Hz", serverTickRate);
 
-        // The world is the thing to look at now, not the menu.
-        VantaMP::UI::SetMenuVisible(false);
+        // THE PAGE CLOSES ITS OWN MENU, and keeps its console and netgraph.
+        // Hiding the view would take all three, which is not what a player who
+        // just joined a server wants.
+        VantaMP::UI::ReportConnected(GetClientConfig().serverHost);
         VantaMP::UI::ReportConnectionState("connected", "");
 
         // AND THE SCREEN COMES BACK.
@@ -61,7 +63,6 @@ namespace VantaMP::Core {
         // a world the player is no longer in.
         Game::FadeOut();
 
-        VantaMP::UI::SetMenuVisible(true);
         VantaMP::UI::ReportConnectionState("disconnected", "");
     }
 
@@ -101,7 +102,22 @@ namespace VantaMP::Core {
         // which the menu is the only thing worth looking at.
         if (!_menuShown && Game::IsFrontendBypassed()) {
             _menuShown = true;
-            VantaMP::UI::SetMenuVisible(true);
+            VantaMP::UI::SetInterfaceVisible(true);
+        }
+
+        // THE CURSOR BELONGS TO WHOEVER HAS FOCUS, EVERY FRAME.
+        //
+        // Turning it on once at startup leaves it drawn over the game for ever,
+        // so a player in a world has a pointer they cannot use and no mouse
+        // look. It follows the menu instead: up while the menu is, gone the
+        // moment the page closes it.
+        if (auto *imgui = GetImGUI(); imgui && imgui->IsInitialized()) {
+            const bool wantsPointer = VantaMP::UI::IsMenuOpen();
+
+            if (wantsPointer != _cursorShown) {
+                _cursorShown = wantsPointer;
+                imgui->ShowCursor(wantsPointer);
+            }
         }
 
         // THE VIEWS ARE DRAWN THROUGH IMGUI, NOT BY Manager::Render().
@@ -213,16 +229,7 @@ namespace VantaMP::Core {
                 // handed to it by whoever owns the one on screen.
                 VantaMP::UI::InstallWindowHook(window);
 
-                // AND A CURSOR TO POINT WITH.
-                //
-                // ImGui's, not the operating system's. The framework mirrors the
-                // page's cursor shape onto ImGui and expects the host to be
-                // drawing a software cursor; the OS one is hidden by the game
-                // and would be the wrong pointer anyway - it does not know what
-                // the page is hovering.
-                if (auto *imgui = gApplication->GetImGUI(); imgui && imgui->IsInitialized()) {
-                    imgui->ShowCursor(true);
-                }
+
             }
         }
     }
