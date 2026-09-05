@@ -4,6 +4,8 @@ set(VANTAMP_CLIENT_FILES
     src/core/application.cpp
     src/core/client_config.cpp
 
+    ../shared/player_entity.cpp
+
     src/core/hooks/mod_init.cpp
     src/core/hooks/render_device.cpp
 

@@ -39,6 +39,9 @@ namespace VantaMP::Core {
             document["display_width"]      = config.displayWidth;
             document["display_height"]     = config.displayHeight;
             document["display_borderless"] = config.displayBorderless;
+            document["server_host"]        = config.serverHost;
+            document["server_port"]        = config.serverPort;
+            document["nickname"]           = config.nickname;
 
             std::ofstream file(path);
 
@@ -76,6 +79,9 @@ namespace VantaMP::Core {
         gConfig.displayWidth      = document.GetDefault<std::uint32_t>("display_width", gConfig.displayWidth);
         gConfig.displayHeight     = document.GetDefault<std::uint32_t>("display_height", gConfig.displayHeight);
         gConfig.displayBorderless = document.GetDefault<bool>("display_borderless", gConfig.displayBorderless);
+        gConfig.serverHost        = document.GetDefault<std::string>("server_host", gConfig.serverHost);
+        gConfig.serverPort        = document.GetDefault<std::uint32_t>("server_port", gConfig.serverPort);
+        gConfig.nickname          = document.GetDefault<std::string>("nickname", gConfig.nickname);
 
         logger->info("Display: {} {}x{}", gConfig.displayBorderless ? "borderless" : "windowed", gConfig.displayWidth, gConfig.displayHeight);
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 namespace VantaMP::Core {
@@ -30,6 +31,15 @@ namespace VantaMP::Core {
         // Set false for a conventional window with a title bar, which is what
         // running two clients side by side wants.
         bool displayBorderless = true;
+
+        // Where to connect, and as whom.
+        //
+        // A fixed address for now: the connect menu that would ask for one does
+        // not exist yet, and hardcoding it in the client would mean a rebuild to
+        // point at a different server.
+        std::string serverHost = "127.0.0.1";
+        std::uint32_t serverPort = 27015;
+        std::string nickname = "Player";
     };
 
     // Loads the config, creating it if it is absent.

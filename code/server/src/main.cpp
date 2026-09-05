@@ -13,9 +13,9 @@ int main(int argc, char **argv) {
     opts.webBindPort   = 27016;
     opts.maxPlayers    = 32;
     opts.modName       = "VantaMP";
-    opts.modSlug       = "vantamp_server";
+    opts.modSlug       = VantaMP::Shared::kModSlug;
     opts.gameName      = VantaMP::Shared::kGameName;
-    opts.gameVersion   = "1.0.0";
+    opts.gameVersion   = VantaMP::Shared::kGameVersion;
     opts.modVersion    = VantaMP::Version::rel;
     opts.bindPassword  = "";
     opts.enableSignals = true;

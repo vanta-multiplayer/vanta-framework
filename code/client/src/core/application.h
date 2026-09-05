@@ -16,6 +16,12 @@ namespace VantaMP::Core {
         void PreShutdown() override;
 
         void ModuleRegister(Framework::Scripting::Engine *engine) override;
+
+        void OnConnectionFinalized(float serverTickRate) override;
+        void OnConnectionClosed() override;
+
+      private:
+        bool _connectAttempted = false;
     };
 
     extern std::unique_ptr<Application> gApplication;
