@@ -4,7 +4,7 @@
 
 #include <cfloat>
 
-#include "game/player_slots.h"
+#include "game/entities/player_slots.h"
 #include "sdk/game.h"
 #include "sdk/patterns.h"
 

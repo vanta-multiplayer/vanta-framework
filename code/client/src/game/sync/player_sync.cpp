@@ -1,7 +1,7 @@
-#include "player_sync.h"
+#include "game/sync/player_sync.h"
 
-#include "player_slots.h"
-#include "remote_players.h"
+#include "game/entities/player_slots.h"
+#include "game/entities/remote_players.h"
 #include "sdk/game.h"
 #include "shared/player_entity.h"
 #include "shared/sync_rates.h"

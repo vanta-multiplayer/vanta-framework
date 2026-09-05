@@ -8,7 +8,7 @@
 
 #include "core/application.h"
 #include "core/ui/window_input.h"
-#include "game/display.h"
+#include "game/patches/display.h"
 
 namespace {
     constexpr size_t kCreateDeviceSlot = 16;

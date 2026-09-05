@@ -1,6 +1,6 @@
-#include "boot.h"
+#include "game/patches/boot.h"
 
-#include "input.h"
+#include "game/patches/input.h"
 #include "sdk/patterns.h"
 
 #include <utils/safe_win32.h>

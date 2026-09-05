@@ -1,4 +1,4 @@
-#include "player_slots.h"
+#include "game/entities/player_slots.h"
 
 #include "sdk/patterns.h"
 

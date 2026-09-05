@@ -1,4 +1,4 @@
-#include "gameplay.h"
+#include "game/patches/gameplay.h"
 
 #include "sdk/patterns.h"
 

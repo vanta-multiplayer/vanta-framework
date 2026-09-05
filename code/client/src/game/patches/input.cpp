@@ -1,4 +1,4 @@
-#include "input.h"
+#include "game/patches/input.h"
 
 #include "sdk/patterns.h"
 

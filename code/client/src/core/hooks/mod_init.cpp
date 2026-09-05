@@ -4,7 +4,7 @@
 #include <utils/hooking/hook_function.h>
 
 #include "core/globals.h"
-#include "game/player_slots.h"
+#include "game/entities/player_slots.h"
 #include "sdk/patterns.h"
 #include "shared/version.h"
 

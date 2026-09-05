@@ -1,7 +1,7 @@
 #include "game.h"
 
-#include "game/player_slots.h"
-#include "game/remote_players.h"
+#include "game/entities/player_slots.h"
+#include "game/entities/remote_players.h"
 #include "game_sdk.h"
 #include "patterns.h"
 

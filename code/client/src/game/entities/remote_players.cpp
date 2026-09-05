@@ -1,6 +1,6 @@
-#include "remote_players.h"
+#include "game/entities/remote_players.h"
 
-#include "player_slots.h"
+#include "game/entities/player_slots.h"
 #include "sdk/patterns.h"
 
 #include <utils/safe_win32.h>
