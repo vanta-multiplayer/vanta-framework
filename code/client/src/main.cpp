@@ -12,6 +12,7 @@
 #include "core/globals.h"
 #include "game/boot.h"
 #include "game/display.h"
+#include "game/gameplay.h"
 #include "game/input.h"
 #include "game/population.h"
 #include "game/world.h"
@@ -64,6 +65,8 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     // Has to land before the game acquires the mouse, which it does during its
     // own startup - from a frame callback this would already be too late.
     VantaMP::Game::ReleaseMouseCapture();
+
+    VantaMP::Game::ApplyGameplayPatches();
 
     InitFunction::RunAll();
     MH_EnableHook(MH_ALL_HOOKS);

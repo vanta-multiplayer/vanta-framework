@@ -103,6 +103,37 @@ namespace VantaMP::SDK {
 
         gPatterns.IsForegroundApp = OperandAt(hook::get_pattern("A1 1C 62 8D 00 85 C0 0F"), 1); // site 0x00746060 -> 0x008D621C
 
+        // --- Gameplay the server owns instead ---------------------------------
+
+        gPatterns.CStats__MessageDisplay1    = Resolve("51 56 6A 00 E8 E7"); // 0x0055B980
+        gPatterns.CStats__MessageDisplay2    = Resolve("6A 00 E8 09 64 FE"); // 0x00559760
+        gPatterns.CStats__Increment          = Resolve("51 D9 44 24 0C D8 1D"); // 0x0055C180
+        gPatterns.CStats__Decrement1         = Resolve("D9 14 8D 80 93 B7 00 DF"); // 0x00559FD5
+        gPatterns.CStats__Decrement2         = Resolve("D9 1C 8D 80 93 B7 00 EB"); // 0x00559FEB
+        gPatterns.CHud__VitalStatsBranch     = Resolve("75 0E C6 05 DE B1"); // 0x0058FC3C
+        gPatterns.CPed__HungerMessage        = Resolve("E8 ? ? ? ? 83 C4 10 C6 05 F0"); // 0x0056E740
+        gPatterns.SurfaceInfos__CantSprintOn = Resolve("8B 44 24 04 8D 04 40 8B 84 81 94 00 00 00 C1 E8 1C"); // 0x0055E870
+        gPatterns.Weapon__ThrowableAccuracy  = Resolve("0F 84 86 00 00 00 8B 47"); // 0x00742685
+        gPatterns.CTask__CarJackSelect       = Resolve("74 3A E8 23 B0 FD"); // 0x0063F576
+        gPatterns.CPostEffects__SpeedBlur    = Resolve("E8 ? ? ? ? 83 C4 04 8A 0D"); // 0x00704E8A
+        gPatterns.CPedStats__HeadingRate     = Resolve("C7 44 28 20 00 00"); // 0x005BFA1D
+        gPatterns.CTimer__FrameDelayJump     = Resolve("E8 ? ? ? ? E8 13 31"); // 0x0053E923
+        gPatterns.CTimer__FrameDelayStackFix = Resolve("14 83 C4 04 85 C0 5E"); // 0x0053E99F
+        gPatterns.CTimer__FrameDelayPopFix   = Resolve("5E 0F 84 5D 02 00"); // 0x0053E9A5
+        gPatterns.Weapon__StrafeDelta        = Resolve("D9 05 5C CB B7 00 8B 54 24 04"); // 0x0061E0C0
+        gPatterns.Weapon__StrafeMultiply     = Resolve("D8 0D A8 8C 85 00 D9 42"); // 0x0061E0CA
+        gPatterns.CCamera__DeathFade         = Resolve("55 68 00 00 00 40 B9 28 F0 B6 00 E8 29"); // 0x00442DE7
+        gPatterns.CGarages__Update           = Resolve("E8 ? ? ? ? E8 4F 4C"); // 0x0053C0B7
+        gPatterns.CCamera__IdleProcess       = Resolve("51 56 8B F1 E8 77"); // 0x00522C80
+        gPatterns.CMenuManager__SaveSettings = Resolve("83 EC 0C 56 57 8B F9 E8"); // 0x0057C660
+        gPatterns.CGameLogic__Update         = Resolve("83 EC 4C 53 55 56 57 33"); // 0x00442AD0
+        gPatterns.CTrain__ForbiddenCross     = Resolve("83 EC 18 53 56 68"); // 0x004418E0
+        gPatterns.CSamSite__Behaviour        = Resolve("83 EC 34 53 56 57 8B F9 8B 87 40"); // 0x005A07D0
+        gPatterns.CReplay__FinishPlayback    = Resolve("A0 88 30 A4 00 83 EC 0C 3C"); // 0x0045F050
+        gPatterns.CReplay__TriggerPlayback   = Resolve("E9 ? ? ? ? 62 64"); // 0x004600F0
+        gPatterns.CReplay__Update            = Resolve("A0 52 F8 B5 00 84 C0 0F 85 18"); // 0x00460500
+        gPatterns.CReplay__PlayFromHD        = Resolve("55 E8 ? ? ? ? 68 6C 9C 85 00 68 60"); // 0x00460390
+
         // --- Population ------------------------------------------------------
 
         gPatterns.CPopulation__Add               = Resolve("6A FF 68 8E EF 83"); // 0x00614720

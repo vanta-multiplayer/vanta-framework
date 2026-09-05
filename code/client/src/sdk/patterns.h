@@ -125,6 +125,40 @@ namespace VantaMP::SDK {
         // which window the user is looking at.
         uintptr_t IsForegroundApp = 0;
 
+        // --- Gameplay the server owns instead ---------------------------------
+        //
+        // Single-player systems that would otherwise change state the server is
+        // authoritative over, announce things about a game nobody is playing,
+        // or make the client behave differently to everyone else's.
+        uintptr_t CStats__MessageDisplay1    = 0;
+        uintptr_t CStats__MessageDisplay2    = 0;
+        uintptr_t CStats__Increment          = 0;
+        uintptr_t CStats__Decrement1         = 0;
+        uintptr_t CStats__Decrement2         = 0;
+        uintptr_t CHud__VitalStatsBranch     = 0;
+        uintptr_t CPed__HungerMessage        = 0;
+        uintptr_t SurfaceInfos__CantSprintOn = 0;
+        uintptr_t Weapon__ThrowableAccuracy  = 0;
+        uintptr_t CTask__CarJackSelect       = 0;
+        uintptr_t CPostEffects__SpeedBlur    = 0;
+        uintptr_t CPedStats__HeadingRate     = 0;
+        uintptr_t CTimer__FrameDelayJump     = 0;
+        uintptr_t CTimer__FrameDelayStackFix = 0;
+        uintptr_t CTimer__FrameDelayPopFix   = 0;
+        uintptr_t Weapon__StrafeDelta        = 0;
+        uintptr_t Weapon__StrafeMultiply     = 0;
+        uintptr_t CCamera__DeathFade         = 0;
+        uintptr_t CGarages__Update           = 0;
+        uintptr_t CCamera__IdleProcess       = 0;
+        uintptr_t CMenuManager__SaveSettings = 0;
+        uintptr_t CGameLogic__Update         = 0;
+        uintptr_t CTrain__ForbiddenCross     = 0;
+        uintptr_t CSamSite__Behaviour        = 0;
+        uintptr_t CReplay__FinishPlayback    = 0;
+        uintptr_t CReplay__TriggerPlayback   = 0;
+        uintptr_t CReplay__Update            = 0;
+        uintptr_t CReplay__PlayFromHD        = 0;
+
         // --- Population ------------------------------------------------------
         //
         // GTA's autonomous population is off in multiplayer: the server decides
