@@ -1,5 +1,6 @@
 #include "boot.h"
 
+#include "input.h"
 #include "sdk/patterns.h"
 
 #include <utils/safe_win32.h>
@@ -80,6 +81,11 @@ namespace VantaMP::Game {
                 hook::put<std::uint8_t>(p.CTimer__UserPause, 0);
                 hook::put<std::uint8_t>(p.CMenuManager__Pause, 0);
                 hook::put<int>(p.gGameState, kGameStatePlaying);
+
+                // The window exists by now, which makes this the earliest safe
+                // point to say the game has focus. Without it the mouse does
+                // nothing until the player alt-tabs away and back.
+                MarkGameForeground(true);
 
                 Framework::Logging::GetLogger("Boot")->info("Frontend bypassed; the game is playing");
             }

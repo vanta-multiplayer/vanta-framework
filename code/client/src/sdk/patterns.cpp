@@ -92,6 +92,17 @@ namespace VantaMP::SDK {
         gPatterns.CWorld__PlayerInFocus = OperandAt(hook::get_pattern("3B F8 75 19 0F B6 0D"), 7); // site 0x004B5C58 -> 0x00B7CD74
         gPatterns.TheCamera             = OperandAt(hook::get_pattern("50 56 B9 ? ? ? ? C6"), 3); // site 0x00520D82 -> 0x00B6F028
 
+        // --- Input -----------------------------------------------------------
+
+        gPatterns.DirectInput__MouseExclusiveMode = Resolve("8A 44 24 04 8B 0D"); // 0x007469A0
+        gPatterns.DirectInput__MouseReinit1       = Resolve("74 0F E8 9D 02 1D"); // 0x00576CCC
+        gPatterns.DirectInput__MouseReinit2       = Resolve("74 0E E8 AF 00 1D"); // 0x00576EBA
+        gPatterns.DirectInput__MouseReinit3       = Resolve("74 0E E8 DF FF 1C"); // 0x00576F8A
+        gPatterns.Cursor__Recentre                = Resolve("83 EC 10 56 8B 74 24 18 D9"); // 0x007453F0
+        gPatterns.Cursor__Hiding                  = Resolve("6A 00 FF 15 EC 82 85 00 6A"); // 0x007481CD
+
+        gPatterns.IsForegroundApp = OperandAt(hook::get_pattern("A1 1C 62 8D 00 85 C0 0F"), 1); // site 0x00746060 -> 0x008D621C
+
         // --- Population ------------------------------------------------------
 
         gPatterns.CPopulation__Add               = Resolve("6A FF 68 8E EF 83"); // 0x00614720

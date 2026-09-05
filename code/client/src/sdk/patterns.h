@@ -106,6 +106,25 @@ namespace VantaMP::SDK {
         uintptr_t CCamera__SetFadeColour = 0;
         uintptr_t TheCamera              = 0;
 
+        // --- Input -----------------------------------------------------------
+        //
+        // GTA takes the mouse through DirectInput in EXCLUSIVE mode and
+        // re-centres the pointer every frame for mouse-look. That is right for
+        // a single-player game with no interface of its own, and wrong for a
+        // client that has to show a menu: the pointer belongs to the game, so
+        // the system cursor is dragged to the window centre and pinned there.
+        uintptr_t DirectInput__MouseExclusiveMode = 0;
+        uintptr_t DirectInput__MouseReinit1       = 0;
+        uintptr_t DirectInput__MouseReinit2       = 0;
+        uintptr_t DirectInput__MouseReinit3       = 0;
+        uintptr_t Cursor__Recentre                = 0;
+        uintptr_t Cursor__Hiding                  = 0;
+
+        // The flag the game sets when it has focus. Gates the MOUSE only -
+        // keyboard and movement arrive through DirectInput, which does not care
+        // which window the user is looking at.
+        uintptr_t IsForegroundApp = 0;
+
         // --- Population ------------------------------------------------------
         //
         // GTA's autonomous population is off in multiplayer: the server decides

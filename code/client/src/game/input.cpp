@@ -1,0 +1,69 @@
+#include "input.h"
+
+#include "sdk/patterns.h"
+
+#include <utils/safe_win32.h>
+
+#include <logging/logger.h>
+#include <utils/hooking/hooking.h>
+
+namespace VantaMP::Game {
+    namespace {
+        // What the exclusive-mode decision is overwritten with:
+        //
+        //   B0 00   mov al, 0    ; "not exclusive"
+        //   90 90   nop nop
+        //
+        // Written as one dword, little-endian, hence the reversed look.
+        constexpr std::uint32_t kNonExclusive = 0x909000B0u;
+
+        // Two PUSH/CALL pairs - ShowCursor(0) and SetCursor(0) - and nothing
+        // else, so filling them with NOPs removes the behaviour cleanly.
+        constexpr std::size_t kCursorHidingSize = 16u;
+    } // namespace
+
+    void ReleaseMouseCapture() {
+        const auto &p = SDK::gPatterns;
+
+        // Non-exclusive acquisition: the game still reads deltas, but the
+        // pointer stops being its property.
+        hook::put<std::uint32_t>(p.DirectInput__MouseExclusiveMode, kNonExclusive);
+
+        // AND STOP IT REACQUIRING. Without these the game re-initialises the
+        // device - on alt-tab, on losing focus - and takes the cursor back in
+        // exclusive mode, which is why the problem used to return the moment
+        // you switched windows.
+        hook::put<std::uint8_t>(p.DirectInput__MouseReinit1, 0xEB);
+        hook::put<std::uint8_t>(p.DirectInput__MouseReinit2, 0xEB);
+        hook::put<std::uint8_t>(p.DirectInput__MouseReinit3, 0xEB);
+
+        // Non-exclusive stops the game OWNING the cursor; this routine still
+        // calls SetCursorPos to snap it back to the window centre every frame.
+        //
+        // Safe to neutralise: __cdecl with a caller-cleaned argument, so an
+        // early RET leaves the stack balanced.
+        hook::return_function(p.Cursor__Recentre);
+
+        // And stop it hiding the cursor. The client shows a menu before it
+        // shows a world, and the game would otherwise undo every attempt to
+        // make a pointer visible.
+        hook::nop(p.Cursor__Hiding, kCursorHidingSize);
+
+        Framework::Logging::GetLogger("Input")->info("Mouse released: non-exclusive, no re-centring, no cursor hiding");
+    }
+
+    void MarkGameForeground(bool foreground) {
+        // A plain global rather than code, so no protection change is needed.
+        *reinterpret_cast<std::int32_t *>(SDK::gPatterns.IsForegroundApp) = foreground ? 1 : 0;
+    }
+
+    bool HasWindowFocus(HWND window) {
+        if (!window) {
+            // Before the window exists there is nothing to be unfocused from,
+            // and answering "no" here would suppress input during startup.
+            return true;
+        }
+
+        return GetForegroundWindow() == window;
+    }
+} // namespace VantaMP::Game

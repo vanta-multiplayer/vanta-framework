@@ -11,6 +11,7 @@ set(VANTAMP_CLIENT_FILES
 
     src/game/boot.cpp
     src/game/display.cpp
+    src/game/input.cpp
     src/game/population.cpp
     src/game/world.cpp
 
