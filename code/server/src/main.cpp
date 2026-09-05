@@ -1,6 +1,7 @@
 #include "core/server.h"
 
 #include "shared/constants.h"
+#include "shared/sync_rates.h"
 #include "shared/version.h"
 
 #include <logging/logger.h>
@@ -19,6 +20,22 @@ int main(int argc, char **argv) {
     opts.modVersion    = VantaMP::Version::rel;
     opts.bindPassword  = "";
     opts.enableSignals = true;
+
+    // HOW OFTEN THE WORLD IS SENT, which is not how often it is drawn.
+    //
+    // The client interpolates between updates and the game animates from the
+    // input that came with them, so sending a player's pose sixty times a
+    // second costs bandwidth for movement nobody can see. MTA settled on 100ms
+    // for players over twenty years of running real servers.
+    //
+    // It is also what the client sets its own auto-serialize interval from -
+    // left at zero, entities never serialize at all and nothing ever moves.
+    opts.worldConfig.tickInterval = static_cast<float>(VantaMP::Shared::SyncRate::kPlayerMs) / 1000.0f;
+
+    // The interest grid's extent. San Andreas spans roughly -3000..3000, so the
+    // default bounds are ample; the cell size is what decides how many
+    // candidates a query walks.
+    opts.worldConfig.streamCellSize = 100.0f;
 
     opts.argc = argc;
     opts.argv = argv;

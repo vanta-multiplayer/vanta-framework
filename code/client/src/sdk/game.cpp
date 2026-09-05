@@ -347,6 +347,54 @@ namespace VantaMP::SDK {
         pad->OldState = state;
     }
 
+    Position GetRemotePedPosition(int slot) {
+        Position position;
+
+        auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
+
+        if (!info || !info->m_pPed) {
+            return position;
+        }
+
+        const auto &current = info->m_pPed->GetPosition();
+
+        position.x = current.x;
+        position.y = current.y;
+        position.z = current.z;
+
+        return position;
+    }
+
+    void SetRemotePedPosition(int slot, float x, float y, float z) {
+        auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
+
+        if (!info || !info->m_pPed) {
+            return;
+        }
+
+        SetPedPosition(info->m_pPed, x, y, z);
+    }
+
+    glm::quat GetRemotePedRotation(int slot) {
+        auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
+
+        if (!info || !info->m_pPed) {
+            return glm::identity<glm::quat>();
+        }
+
+        return glm::quat(glm::vec3(0.0f, 0.0f, HeadingOf(info->m_pPed)));
+    }
+
+    void SetRemotePedHeading(int slot, float heading) {
+        auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
+
+        if (!info || !info->m_pPed) {
+            return;
+        }
+
+        SetPedRotation(info->m_pPed, heading);
+    }
+
     void SetRemotePedHealth(int slot, float health, float armour) {
         auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
 

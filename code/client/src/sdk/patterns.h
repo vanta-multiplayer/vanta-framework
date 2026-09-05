@@ -64,7 +64,13 @@ namespace VantaMP::SDK {
         uintptr_t CMenuManager__SetRenderStates   = 0;
         uintptr_t CMenuManager__EscapeHandler1    = 0;
         uintptr_t CMenuManager__EscapeHandler2    = 0;
-        uintptr_t CMenuManager__PauseCheck        = 0;
+        // Two candidate sites for the pause-on-focus-loss branch: which one
+        // applies depends on the build, so the bytes at the first are inspected
+        // at runtime. Getting this wrong NOPs code that was not the check, and
+        // the game freezes whenever it loses focus - which alt-tabbing between
+        // two clients does constantly.
+        uintptr_t CMenuManager__PauseCheckProbe = 0;
+        uintptr_t CMenuManager__PauseCheckAlt   = 0;
         uintptr_t CMenuManager__OnFocusLoss       = 0;
         uintptr_t CMenuManager__AfterAltTabFlag   = 0;
 

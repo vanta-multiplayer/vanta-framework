@@ -1,6 +1,7 @@
 set(VANTAMP_SERVER_FILES
     src/main.cpp
     src/core/server.cpp
+    src/game/player_manager.cpp
 
     ../shared/player_entity.cpp
 

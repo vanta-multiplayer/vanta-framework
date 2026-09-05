@@ -16,6 +16,14 @@ namespace VantaMP::Game {
     // on the game thread and can touch the world directly.
     void UpdatePlayerSync();
 
+    // Moves every remote ped a step towards where its owner says it is.
+    //
+    // SEPARATE FROM UpdatePlayerSync, AND RUN EVERY FRAME. State arrives ten
+    // times a second; the game draws sixty. Applying a position only when one
+    // arrives makes remote players jump between six-frame-apart poses, which is
+    // the difference between "networked" and "playable".
+    void InterpolateRemotePlayers();
+
     // Drops every remote ped, without touching the entities.
     //
     // For a disconnect: the peds belong to this client and have to go, while the

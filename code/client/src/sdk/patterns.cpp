@@ -62,7 +62,8 @@ namespace VantaMP::SDK {
         gPatterns.CMenuManager__SetRenderStates   = Resolve("A1 24 7B C9 00 6A 00 6A 06 FF 50 20 8B 0D 24 7B C9 00 6A 00 6A 08 FF 51 20 8B 15 24"); // 0x00573A60
         gPatterns.CMenuManager__EscapeHandler1    = Resolve("75 38 0F B6 86 EA"); // 0x00576B8D
         gPatterns.CMenuManager__EscapeHandler2    = Resolve("75 16 80 3D 88 30 A4 00 01 74 0D 38"); // 0x00576BAF
-        gPatterns.CMenuManager__PauseCheck        = Resolve("FF 53 E8 2C 74 E4"); // 0x00748ADD
+        gPatterns.CMenuManager__PauseCheckProbe   = Resolve("FF 53 E8 2C 74 E4"); // 0x00748ADD
+        gPatterns.CMenuManager__PauseCheckAlt     = Resolve("0F 84 20 03 00 00"); // 0x00748A8D
         gPatterns.CMenuManager__OnFocusLoss       = Resolve("A0 31 68 BA 00 84 C0 75 10"); // 0x0053BC60
         gPatterns.CMenuManager__AfterAltTabFlag   = Resolve("01 C3 90 90 90 90 90 90 56"); // 0x0053BC78
         gPatterns.Print__AspectRatio              = Resolve("E8 ? ? ? ? D9 44 24 14 D8 1D 34"); // 0x00745997

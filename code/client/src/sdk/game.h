@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#include <glm/gtc/quaternion.hpp>
+
 namespace VantaMP::SDK {
     // Plain on purpose: plugin-sdk defines RW and drags RenderWare in, so it stays behind this.
     struct LocalPedState {
@@ -48,6 +50,25 @@ namespace VantaMP::SDK {
     void SetRemotePedTransform(int slot, float x, float y, float z, float heading);
 
     void SetRemotePedHealth(int slot, float health, float armour);
+
+    struct Position {
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+    };
+
+    // Where a ped currently is, which is not where it was last told to be: the
+    // game moves it too, from its own physics and the input it was given. The
+    // difference between the two is what the interpolation corrects.
+    [[nodiscard]] Position GetRemotePedPosition(int slot);
+
+    void SetRemotePedPosition(int slot, float x, float y, float z);
+    void SetRemotePedHeading(int slot, float heading);
+
+    // The ped's facing, as a quaternion so it interpolates as a rotation rather
+    // than as an angle - lerping two headings the short way round is what makes
+    // a player spin the wrong way past due north.
+    [[nodiscard]] glm::quat GetRemotePedRotation(int slot);
 
     // --- Controller state ----------------------------------------------------
     //

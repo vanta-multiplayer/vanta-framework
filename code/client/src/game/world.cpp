@@ -127,6 +127,11 @@ namespace VantaMP::Game {
             // the only thread allowed to touch peds.
             UpdatePlayerSync();
 
+            // And a step of correction towards where everyone should be. State
+            // arrives ten times a second and the game draws sixty, so this is
+            // what turns six-frame-apart positions into movement.
+            InterpolateRemotePlayers();
+
             // Guarded, because a throwing callback must not unwind into the
             // game's own frame processing, where nothing would catch it.
             if (gFrameCallback) {

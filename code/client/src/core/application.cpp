@@ -42,7 +42,10 @@ namespace VantaMP::Core {
     }
 
     void Application::OnConnectionFinalized(float serverTickRate) {
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Connected; the server ticks at {:.0f} Hz", serverTickRate);
+        // AN INTERVAL IN SECONDS, NOT A FREQUENCY. Printing it as Hz read "0 Hz"
+        // for a perfectly good 0.1s tick, which looked exactly like a server
+        // that had never configured one.
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Connected; the server ticks every {:.0f}ms", serverTickRate * 1000.0f);
 
         // THE PAGE CLOSES ITS OWN MENU, and keeps its console and netgraph.
         // Hiding the view would take all three, which is not what a player who

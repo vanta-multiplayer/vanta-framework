@@ -4,17 +4,21 @@
 #include "remote_players.h"
 #include "sdk/game.h"
 #include "shared/player_entity.h"
+#include "shared/sync_rates.h"
 
 #include <utils/safe_win32.h>
 
 #include <core_modules.h>
 #include <logging/logger.h>
 #include <networking/replication/replication_manager.h>
+#include <utils/interpolator.h>
 
 #include <glm/gtc/quaternion.hpp>
 
 #include <unordered_map>
 #include <unordered_set>
+
+#include <algorithm>
 
 namespace VantaMP::Game {
     namespace {
@@ -24,6 +28,20 @@ namespace VantaMP::Game {
         // rather than by pointer: an entity can be destroyed and its memory
         // reused, and a stale pointer would silently match the wrong player.
         std::unordered_map<std::uint64_t, int> gSlotByNetworkId;
+
+        // One per remote ped.
+        //
+        // THE FRAMEWORK'S, NOT ONE OF OUR OWN. It implements the same error
+        // compensation MTA does - correct the DIFFERENCE between where the game
+        // has put an entity and where its owner says it is, a share at a time,
+        // rather than lerping the position and fighting the game's own physics.
+        // It also carries rotation as a quaternion slerp and scales the
+        // compensation by how late an update was, neither of which a
+        // reimplementation here would have had.
+        //
+        // Vehicles will want exactly this too, which is the other reason not to
+        // grow a private copy in the player path.
+        std::unordered_map<int, Framework::Utils::Interpolator> gInterpolationBySlot;
 
         // The default player model. CJ, which is what the local player wears
         // until a server says otherwise.
@@ -122,14 +140,25 @@ namespace VantaMP::Game {
 
             const int slot = found->second;
 
-            // POSITION IS WRITTEN, MOVEMENT IS NOT.
+            // AIMED AT, NOT SNAPPED TO.
             //
-            // The ped is moved to where the owner says it is, and the game's own
-            // processing does the walking - driven by the input in the entity,
-            // which the remote-player hooks feed to it. Writing an animation
-            // state here instead would mean every client agreeing about a pose
-            // none of them computed.
-            SDK::SetRemotePedTransform(slot, entity->position.x, entity->position.y, entity->position.z, HeadingFrom(entity->rotation));
+            // The ped is given a target and a deadline, and moved towards it a
+            // frame at a time by InterpolateRemotePlayers. Writing the position
+            // here instead puts the ped in a new place ten times a second and
+            // leaves it still in between - which is what makes a remote player
+            // read as teleporting rather than walking.
+            //
+            // The game's own processing does the walking, driven by the input in
+            // the entity; this only corrects where that walking has drifted from
+            // what the owner reports.
+            const auto current = SDK::GetRemotePedPosition(slot);
+
+            auto &interpolator = gInterpolationBySlot[slot];
+
+            interpolator.GetPosition()->SetTargetValue(glm::vec3(current.x, current.y, current.z), entity->position, static_cast<float>(Shared::SyncRate::kPlayerMs));
+
+            interpolator.GetRotation()->SetTargetValue(SDK::GetRemotePedRotation(slot), entity->rotation, static_cast<float>(Shared::SyncRate::kPlayerMs));
+
 
             SDK::SetRemotePedHealth(slot, entity->health, entity->armour);
 
@@ -183,8 +212,28 @@ namespace VantaMP::Game {
 
             Framework::Logging::GetLogger("Sync")->info("Player {} left slot {}", it->first, it->second);
 
+            gInterpolationBySlot.erase(it->second);
+
             SDK::DestroyRemotePed(it->second);
             it = gSlotByNetworkId.erase(it);
+        }
+    }
+
+    void InterpolateRemotePlayers() {
+        for (auto &[slot, interpolator] : gInterpolationBySlot) {
+            const auto current = SDK::GetRemotePedPosition(slot);
+            const glm::vec3 here(current.x, current.y, current.z);
+
+            const auto next = interpolator.GetPosition()->UpdateTargetValue(here);
+
+            SDK::SetRemotePedPosition(slot, next.x, next.y, next.z);
+
+            // Rotation follows the same correction. Written through the game's
+            // own rotation fields rather than the matrix, so a ped on the
+            // ground and one in the air both end up facing the right way.
+            const auto rotation = interpolator.GetRotation()->UpdateTargetValue(SDK::GetRemotePedRotation(slot));
+
+            SDK::SetRemotePedHeading(slot, glm::yaw(rotation));
         }
     }
 
@@ -194,5 +243,6 @@ namespace VantaMP::Game {
         }
 
         gSlotByNetworkId.clear();
+        gInterpolationBySlot.clear();
     }
 } // namespace VantaMP::Game

@@ -158,7 +158,17 @@ namespace VantaMP::Game {
         // pause a game other people are still playing.
         hook::put<std::uint8_t>(p.CMenuManager__EscapeHandler1, 0xEB);
         hook::put<std::uint8_t>(p.CMenuManager__EscapeHandler2, 0xEB);
-        hook::nop(p.CMenuManager__PauseCheck, 6);
+        // WHICH SITE, DECIDED BY READING THE BYTES. The pause-on-focus-loss
+        // branch moved between builds. If the probe begins FF 53 it is not the
+        // check at all and the other site is - NOPping the probe then removes
+        // six bytes of something else, and the game freezes every time it loses
+        // focus. Alt-tabbing between two clients is most of testing, so that
+        // shows up immediately and looks like a hang rather than a bad patch.
+        const auto *probe = reinterpret_cast<const std::uint8_t *>(p.CMenuManager__PauseCheckProbe);
+
+        const auto pauseCheck = (probe[0] == 0xFF && probe[1] == 0x53) ? p.CMenuManager__PauseCheckAlt : p.CMenuManager__PauseCheckProbe;
+
+        hook::nop(pauseCheck, 6);
         hook::return_function(p.CMenuManager__OnFocusLoss);
         hook::put<std::uint8_t>(p.CMenuManager__AfterAltTabFlag, 0x00);
 
