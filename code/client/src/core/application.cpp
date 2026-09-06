@@ -6,7 +6,11 @@
 #include <networking/replication/entity_registry.h>
 
 #include "shared/player_entity.h"
+#include "shared/vehicle_entity.h"
 #include "shared/rpc/local_player_spawn.h"
+#include "shared/rpc/player_enter_vehicle.h"
+#include "shared/rpc/player_exit_vehicle.h"
+#include "shared/rpc/vehicle_damage_report.h"
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
 
@@ -22,6 +26,7 @@
 #include <graphics/backend/d3d9.h>
 #include "game/sync/player_sync.h"
 #include "game/sync/shots.h"
+#include "game/sync/vehicle_sync.h"
 #include "game/camera.h"
 #include "game/entities/local_player.h"
 #include "game/patches/script.h"
@@ -37,6 +42,7 @@ namespace VantaMP::Core {
         // mismatch here does not fail loudly - the entity simply never
         // constructs, and remote players are invisible for no stated reason.
         Framework::Networking::Replication::EntityRegistry::Get().Register<Shared::PlayerEntity>(Shared::PlayerEntity::kTypeName);
+        Framework::Networking::Replication::EntityRegistry::Get().Register<Shared::VehicleEntity>(Shared::VehicleEntity::kTypeName);
 
         // The server placing this player in the world. Until it arrives the
         // local ped is at a placeholder behind a black screen, because where a
@@ -54,6 +60,19 @@ namespace VantaMP::Core {
 
             net->RegisterRPC<Shared::RPC::PlayerReload>([](const Shared::RPC::PlayerReload &reload, MafiaNet::Packet *) {
                 Game::ApplyRemoteReload(reload.networkId);
+            });
+
+            net->RegisterRPC<Shared::RPC::PlayerEnterVehicle>([](const Shared::RPC::PlayerEnterVehicle &enter, MafiaNet::Packet *) {
+                Game::ApplyRemoteEnterVehicle(enter.networkId, enter.vehicleId, enter.seat, enter.warp, enter.door);
+            });
+
+            net->RegisterRPC<Shared::RPC::PlayerExitVehicle>([](const Shared::RPC::PlayerExitVehicle &exit, MafiaNet::Packet *) {
+                Game::ApplyRemoteExitVehicle(exit.networkId, exit.warp, exit.door);
+            });
+
+            net->RegisterRPC<Shared::RPC::VehicleDamageReport>([](const Shared::RPC::VehicleDamageReport &report, MafiaNet::Packet *) {
+                Game::ApplyRemoteVehicleDamage(report.vehicleId, report.damageEngine, report.doorsPacked, report.wheelsPacked, report.panels, report.lights,
+                                               report.doorRatiosPacked, report.applyRatios);
             });
         }
 
@@ -86,6 +105,7 @@ namespace VantaMP::Core {
         // their peds belong to this client, while the entities were the
         // network's.
         Game::ClearRemotePlayers();
+        Game::ClearRemoteVehicles();
 
         // Back behind the fade: the menu belongs over a black screen, not over
         // a world the player is no longer in.

@@ -14,6 +14,8 @@ set(VANTAMP_CLIENT_SDK_FILES
     src/sdk/ped/remote_ped.cpp
     src/sdk/ped/weapon.cpp
     src/sdk/ped/shot.cpp
+    src/sdk/vehicle.cpp
+    src/sdk/vehicle_occupancy.cpp
 )
 
 set(VANTAMP_CLIENT_FILES
@@ -49,6 +51,7 @@ set(VANTAMP_CLIENT_FILES
     src/game/sync/player_sync.cpp
     src/game/sync/shots.cpp
     src/game/sync/death.cpp
+    src/game/sync/vehicle_sync.cpp
 
     src/game/ui/nametags.cpp
 
@@ -63,6 +66,7 @@ set(VANTAMP_CLIENT_FILES
     ${VANTAMP_CLIENT_SDK_FILES}
 
     ../shared/player_entity.cpp
+    ../shared/vehicle_entity.cpp
 
     ${CMAKE_BINARY_DIR}/vantamp_version.cpp
 )

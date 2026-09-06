@@ -1,6 +1,7 @@
 #include "game/sync/player_sync.h"
 
 #include "game/sync/death.h"
+#include "game/sync/vehicle_sync.h"
 #include "game/entities/player_slots.h"
 #include "game/entities/remote_players.h"
 #include "sdk/game.h"
@@ -20,6 +21,7 @@
 #include <unordered_set>
 
 #include <algorithm>
+#include <cmath>
 
 namespace VantaMP::Game {
     namespace {
@@ -93,6 +95,24 @@ namespace VantaMP::Game {
 
             std::uint32_t viewBeginMs = 0;
             std::uint32_t viewEndMs   = 0;
+
+            // Analog pad, lerped across the send interval. Snapping the
+            // stick is what makes a remote car stutter when it turns:
+            // ProcessControl rebuilds steer from this every frame, so a
+            // jump from 0 to full lock every 100ms yaws the whole cabin.
+            // Buttons stay snapped - those need a rising edge.
+            float stickXFrom = 0.0f;
+            float stickXTo   = 0.0f;
+            float stickYFrom = 0.0f;
+            float stickYTo   = 0.0f;
+            float accelFrom  = 0.0f;
+            float accelTo    = 0.0f;
+            float brakeFrom  = 0.0f;
+            float brakeTo    = 0.0f;
+
+            std::uint32_t analogBeginMs = 0;
+            std::uint32_t analogEndMs   = 0;
+            bool          analogAimed   = false;
 
             // A gun is up, so the heading lerp must not write the upper-body
             // target - that field is the IK's while aiming.
@@ -234,6 +254,56 @@ namespace VantaMP::Game {
             return from + OffsetRadians(from, to) * (progress / span);
         }
 
+        float LerpAmount(float from, float to, std::uint32_t beginMs, std::uint32_t endMs, std::uint32_t now) {
+            if (endMs == 0 || now >= endMs || endMs <= beginMs) {
+                return to;
+            }
+
+            const float span     = static_cast<float>(endMs - beginMs);
+            const float progress = static_cast<float>(now - beginMs);
+
+            return from + (to - from) * (progress / span);
+        }
+
+        void WriteLerpedRemotePad(int slot, AimedAt &aimed, const Shared::PlayerEntity *entity) {
+            const std::uint32_t now = GetTickCount();
+
+            const bool analogChanged = !aimed.analogAimed || aimed.stickXTo != static_cast<float>(entity->leftStickX) ||
+                aimed.stickYTo != static_cast<float>(entity->leftStickY) || aimed.accelTo != static_cast<float>(entity->accelerator) ||
+                aimed.brakeTo != static_cast<float>(entity->brake);
+
+            if (!aimed.analogAimed) {
+                aimed.stickXFrom = aimed.stickXTo = static_cast<float>(entity->leftStickX);
+                aimed.stickYFrom = aimed.stickYTo = static_cast<float>(entity->leftStickY);
+                aimed.accelFrom = aimed.accelTo = static_cast<float>(entity->accelerator);
+                aimed.brakeFrom = aimed.brakeTo = static_cast<float>(entity->brake);
+                aimed.analogBeginMs             = now;
+                aimed.analogEndMs               = now;
+                aimed.analogAimed               = true;
+            }
+            else if (analogChanged) {
+                aimed.stickXFrom = LerpAmount(aimed.stickXFrom, aimed.stickXTo, aimed.analogBeginMs, aimed.analogEndMs, now);
+                aimed.stickYFrom = LerpAmount(aimed.stickYFrom, aimed.stickYTo, aimed.analogBeginMs, aimed.analogEndMs, now);
+                aimed.accelFrom  = LerpAmount(aimed.accelFrom, aimed.accelTo, aimed.analogBeginMs, aimed.analogEndMs, now);
+                aimed.brakeFrom  = LerpAmount(aimed.brakeFrom, aimed.brakeTo, aimed.analogBeginMs, aimed.analogEndMs, now);
+                aimed.stickXTo   = static_cast<float>(entity->leftStickX);
+                aimed.stickYTo   = static_cast<float>(entity->leftStickY);
+                aimed.accelTo    = static_cast<float>(entity->accelerator);
+                aimed.brakeTo    = static_cast<float>(entity->brake);
+                aimed.analogBeginMs = now;
+                aimed.analogEndMs   = now + Shared::SyncRate::kPlayerMs;
+            }
+
+            SDK::ControllerInput input;
+            input.leftStickX  = static_cast<std::int16_t>(std::lround(LerpAmount(aimed.stickXFrom, aimed.stickXTo, aimed.analogBeginMs, aimed.analogEndMs, now)));
+            input.leftStickY  = static_cast<std::int16_t>(std::lround(LerpAmount(aimed.stickYFrom, aimed.stickYTo, aimed.analogBeginMs, aimed.analogEndMs, now)));
+            input.accelerator = static_cast<std::uint8_t>(std::lround(LerpAmount(aimed.accelFrom, aimed.accelTo, aimed.analogBeginMs, aimed.analogEndMs, now)));
+            input.brake       = static_cast<std::uint8_t>(std::lround(LerpAmount(aimed.brakeFrom, aimed.brakeTo, aimed.analogBeginMs, aimed.analogEndMs, now)));
+            input.buttons     = entity->buttons;
+
+            SDK::WriteRemoteInput(slot, input);
+        }
+
         // Copies the local player into the entity the server sees.
         void PushLocalState(Shared::PlayerEntity *entity) {
             const auto local = SDK::QueryLocalPed();
@@ -295,6 +365,21 @@ namespace VantaMP::Game {
             entity->isInAir   = local.inAir;
             entity->isInWater = local.inWater;
 
+            const auto occupancy = SDK::QueryPedOccupancy(0);
+
+            // Keep the id while they climb out. Clearing it the moment the
+            // leave task starts is what made remotes warp-exit from the
+            // snapshot and skip the door animation. MTA keeps OccupiedVehicle
+            // until NOTIFY_OUT.
+            if (occupancy.seated || occupancy.entering || occupancy.leaving) {
+                entity->vehicleNetworkId = VehicleNetworkIdOf(occupancy.vehicle);
+                entity->vehicleSeat      = occupancy.seat;
+            }
+            else {
+                entity->vehicleNetworkId = 0;
+                entity->vehicleSeat      = 0;
+            }
+
             // TEMPORARY TELEMETRY - remove once the desync is closed.
             static std::uint32_t lastSendReportMs = 0;
 
@@ -312,6 +397,8 @@ namespace VantaMP::Game {
 
             auto found = gSlotByNetworkId.find(networkId);
 
+            bool justCreated = false;
+
             if (found == gSlotByNetworkId.end()) {
                 const int slot = ClaimSlot();
 
@@ -327,12 +414,54 @@ namespace VantaMP::Game {
                     return;
                 }
 
-                found = gSlotByNetworkId.emplace(networkId, slot).first;
+                found       = gSlotByNetworkId.emplace(networkId, slot).first;
+                justCreated = true;
 
                 Framework::Logging::GetLogger("Sync")->info("Player {} ('{}') appeared in slot {}", networkId, entity->nickname, slot);
             }
 
             const int slot = found->second;
+
+            if (entity->vehicleNetworkId != 0 || SDK::IsPedOccupyingVehicle(slot)) {
+                const auto occupancy = SDK::QueryPedOccupancy(slot);
+
+                // Only a seated ped loses collision. Doing it while they
+                // walk to the door freezes the enter task in place.
+                SDK::SetRemotePedCollision(slot, !occupancy.seated);
+                SDK::SetRemotePedHealth(slot, entity->health, entity->armour);
+                SDK::SetRemotePedWeapon(slot, entity->weaponType, entity->ammoClip, entity->ammoTotal);
+
+                if (entity->vehicleNetworkId != 0) {
+                    // MTA: stream-in / late join warps. A ped that already
+                    // existed on foot is walked in by PlayerEnterVehicle.
+                    SeatRemoteInVehicle(slot, entity->vehicleNetworkId, entity->vehicleSeat, justCreated);
+                }
+                else if (occupancy.leaving || occupancy.entering) {
+                    // The RPC owns the animation. Warping here is why the
+                    // leave door did not always play: server Vacate clears
+                    // the id immediately, and this snapshot arrived mid-task.
+                }
+                else if (occupancy.seated) {
+                    // BEING JACKED. GTA is dragging them out through the
+                    // jacker's EnterCarAsDriver. LeaveCar here fights that
+                    // and leaves them stuck on the back of the car.
+                    if (!SDK::IsAnyoneEnteringVehicleAsDriver(occupancy.vehicle)) {
+                        SDK::ExitVehicle(slot, false);
+                        SDK::SetRemotePedCollision(slot, true);
+                    }
+                }
+
+                // THE PAD, EVEN IN A SEAT. Vehicle ProcessControl reads
+                // GetPad(0), which we swap to this slot's pad. Without this
+                // write the remote driver holds nothing and the wheels stay
+                // straight - writing m_fSteerAngle does not survive that
+                // recompute. Analog is lerped across the send interval so
+                // a turn is a ramp, not a 100ms snap of the cabin.
+                WriteLerpedRemotePad(slot, gAimedBySlot[slot], entity);
+                return;
+            }
+
+            SDK::SetRemotePedCollision(slot, true);
 
             // AIMED AT, NOT SNAPPED TO.
             //
@@ -486,14 +615,8 @@ namespace VantaMP::Game {
 
             // 4. Input, AFTER the transform, so the game walks the ped from
             //    where it now is rather than from where it was last frame.
-            SDK::ControllerInput input;
-            input.leftStickX  = entity->leftStickX;
-            input.leftStickY  = entity->leftStickY;
-            input.accelerator = entity->accelerator;
-            input.brake       = entity->brake;
-            input.buttons     = entity->buttons;
-
-            SDK::WriteRemoteInput(slot, input);
+            //    Analog is lerped; discrete buttons still snap for edges.
+            WriteLerpedRemotePad(slot, aimed, entity);
 
             // 5. The view, LERPED, not snapped. Camera rotation decides which
             //    way "forward" is, and the two aim angles decide where the
@@ -573,12 +696,17 @@ namespace VantaMP::Game {
             gInterpolationBySlot.erase(it->second);
             gAimedBySlot.erase(it->second);
 
+            ClearRemoteOccupancy(it->second);
             SDK::DestroyRemotePed(it->second);
             it = gSlotByNetworkId.erase(it);
         }
     }
 
     void CorrectRemotePlayer(int slot) {
+        if (SDK::IsPedOccupyingVehicle(slot)) {
+            return;
+        }
+
         const auto found = gInterpolationBySlot.find(slot);
 
         if (found == gInterpolationBySlot.end()) {
@@ -693,6 +821,7 @@ namespace VantaMP::Game {
 
     void ClearRemotePlayers() {
         for (const auto &[networkId, slot] : gSlotByNetworkId) {
+            ClearRemoteOccupancy(slot);
             SDK::DestroyRemotePed(slot);
         }
 

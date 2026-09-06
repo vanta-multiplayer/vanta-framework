@@ -4,6 +4,7 @@
 #include "game/patches/input.h"
 #include "game/sync/player_sync.h"
 #include "game/sync/shots.h"
+#include "game/sync/vehicle_sync.h"
 #include "sdk/patterns.h"
 #include "sdk/ped/aim.h"
 #include "sdk/ped/weapon.h"
@@ -47,6 +48,7 @@ namespace VantaMP::Game {
 
             // The network, once per frame and on the game thread - which is the
             // only thread allowed to touch peds.
+            UpdateVehicleSync();
             UpdatePlayerSync();
 
             // GTA has no reload key. R is the SA-MP/MTA bind, edge-detected so
@@ -59,6 +61,19 @@ namespace VantaMP::Game {
 
             if (reloadPress && !IsGameInputSuppressed()) {
                 SDK::ReloadLocalPedWeapon();
+            }
+
+            // GTA has no passenger-enter key. G is MTA's enter_passenger:
+            // nearest free passenger seat, or get out if already in one.
+            // Edge-detected so holding it does not restart the walk.
+            static bool passengerHeld = false;
+            const bool passengerDown  = (GetAsyncKeyState('G') & 0x8000) != 0;
+            const bool passengerPress = passengerDown && !passengerHeld;
+
+            passengerHeld = passengerDown;
+
+            if (passengerPress && !IsGameInputSuppressed()) {
+                TryLocalPassengerKey();
             }
 
             // Reports the rising edge, whether R started it or the clip ran out.
