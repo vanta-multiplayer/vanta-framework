@@ -11,12 +11,23 @@ from the DLL. No files are copied next to the binary.
 from __future__ import annotations
 
 import argparse
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 UI = REPO / "ui"
+
+
+def npm() -> str:
+    # CreateProcess does not apply PATHEXT. A shell finds npm.cmd; this does not.
+    for name in ("npm.cmd", "npm"):
+        found = shutil.which(name)
+        if found:
+            return found
+
+    raise FileNotFoundError("npm is not on PATH")
 
 
 def run(args: list[str], cwd: Path) -> None:
@@ -34,10 +45,12 @@ def main() -> int:
         print(f"error: {UI} is missing", file=sys.stderr)
         return 2
 
-    if not args.skip_install and not (UI / "node_modules").exists():
-        run(["npm", "install"], UI)
+    npm_exe = npm()
 
-    run(["npm", "run", "build"], UI)
+    if not args.skip_install and not (UI / "node_modules").exists():
+        run([npm_exe, "install"], UI)
+
+    run([npm_exe, "run", "build"], UI)
 
     built = UI / "dist" / "index.html"
     fallback = REPO / "data" / "ui" / "index.html"
