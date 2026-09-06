@@ -46,7 +46,7 @@ namespace VantaMP::Game {
             }
 
             const auto head   = SDK::GetRemotePedBonePosition(slot, SDK::kBoneHead);
-            const auto screen = SDK::WorldToScreen(head.x, head.y, head.z + 0.35f);
+            const auto screen = SDK::WorldToScreen(head.x, head.y, head.z + 0.40f);
 
             if (!screen.visible) {
                 return;

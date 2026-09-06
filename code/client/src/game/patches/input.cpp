@@ -22,6 +22,8 @@ namespace VantaMP::Game {
         // Two PUSH/CALL pairs - ShowCursor(0) and SetCursor(0) - and nothing
         // else, so filling them with NOPs removes the behaviour cleanly.
         constexpr std::size_t kCursorHidingSize = 16u;
+
+        bool gSuppressingInput = false;
     } // namespace
 
     void ReleaseMouseCapture() {
@@ -74,8 +76,6 @@ namespace VantaMP::Game {
     }
 
     void SuppressGameInput(bool suppress) {
-        static bool suppressing = false;
-
         if (suppress) {
             // CLEARED EVERY FRAME, NOT ONCE. The game repopulates the pad from
             // DirectInput on each update, so a single clear is overwritten
@@ -89,12 +89,16 @@ namespace VantaMP::Game {
             // not treated as newly pressed when it closes.
             SDK::ClearLocalInput(false);
         }
-        else if (suppressing) {
+        else if (gSuppressingInput) {
             // Once more on release, so input accumulated while suppressed does
             // not all arrive the moment control comes back.
             SDK::ClearLocalInput(true);
         }
 
-        suppressing = suppress;
+        gSuppressingInput = suppress;
+    }
+
+    bool IsGameInputSuppressed() {
+        return gSuppressingInput;
     }
 } // namespace VantaMP::Game

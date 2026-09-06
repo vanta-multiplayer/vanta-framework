@@ -56,4 +56,9 @@ namespace VantaMP::Game {
     // Consuming window messages does not help - DirectInput never reaches the
     // window procedure. Clearing the pad is where both paths meet.
     void SuppressGameInput(bool suppress);
+
+    // True while the pad is being cleared every frame - menu open, or this
+    // window is not the one the user is looking at. Reload and anything else
+    // that reads the real keyboard has to ask, or R in the chat box reloads.
+    [[nodiscard]] bool IsGameInputSuppressed();
 } // namespace VantaMP::Game

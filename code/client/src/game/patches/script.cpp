@@ -1,9 +1,12 @@
 #include "script.h"
 
 #include "game/entities/local_player.h"
+#include "game/patches/input.h"
 #include "game/sync/player_sync.h"
+#include "game/sync/shots.h"
 #include "sdk/patterns.h"
 #include "sdk/ped/aim.h"
+#include "sdk/ped/weapon.h"
 
 #include <utils/safe_win32.h>
 
@@ -35,11 +38,31 @@ namespace VantaMP::Game {
                 // where to point a gun. Installed here rather than with the
                 // startup patches because it only matters once there are peds.
                 SDK::InstallAimSync();
+
+                // Shots and reloads are their own packets, installed here for
+                // the same reason as aim: they only matter once there are peds,
+                // and MinHook has already enabled the startup hooks by then.
+                InstallShotPackets();
             }
 
             // The network, once per frame and on the game thread - which is the
             // only thread allowed to touch peds.
             UpdatePlayerSync();
+
+            // GTA has no reload key. R is the SA-MP/MTA bind, edge-detected so
+            // holding it does not restart the animation every frame.
+            static bool reloadHeld = false;
+            const bool reloadDown  = (GetAsyncKeyState('R') & 0x8000) != 0;
+            const bool reloadPress = reloadDown && !reloadHeld;
+
+            reloadHeld = reloadDown;
+
+            if (reloadPress && !IsGameInputSuppressed()) {
+                SDK::ReloadLocalPedWeapon();
+            }
+
+            // Reports the rising edge, whether R started it or the clip ran out.
+            CheckLocalReload();
 
             if (gFrameCallback) {
                 gFrameCallback();

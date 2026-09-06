@@ -1,5 +1,6 @@
 #include "game/sync/player_sync.h"
 
+#include "game/sync/death.h"
 #include "game/entities/player_slots.h"
 #include "game/entities/remote_players.h"
 #include "sdk/game.h"
@@ -28,6 +29,7 @@ namespace VantaMP::Game {
         // rather than by pointer: an entity can be destroyed and its memory
         // reused, and a stale pointer would silently match the wrong player.
         std::unordered_map<std::uint64_t, int> gSlotByNetworkId;
+        std::uint64_t gLocalNetworkId = 0;
 
         // One per remote ped.
         //
@@ -244,12 +246,14 @@ namespace VantaMP::Game {
             entity->rotation = HeadingTo(local.heading);
 
             entity->health = local.health;
+            entity->armour = local.armour;
 
             const auto weapon = SDK::QueryLocalPedWeapon();
 
-            entity->weaponType = weapon.type;
-            entity->ammoClip   = weapon.ammoClip;
-            entity->ammoTotal  = weapon.ammoTotal;
+            entity->weaponType  = weapon.type;
+            entity->ammoClip    = weapon.ammoClip;
+            entity->ammoTotal   = weapon.ammoTotal;
+            entity->isReloading = weapon.reloading;
 
             const auto aim = SDK::ReadLocalPedAim();
 
@@ -422,6 +426,10 @@ namespace VantaMP::Game {
                 // times per update and there is nothing here that needs it.
                 SDK::SetRemotePedWeapon(slot, entity->weaponType, entity->ammoClip, entity->ammoTotal);
 
+                if (entity->isReloading) {
+                    SDK::ReloadRemotePedWeapon(slot);
+                }
+
                 // 3. The transform.
 
                 const auto current = SDK::GetRemotePedPosition(slot);
@@ -542,7 +550,9 @@ namespace VantaMP::Game {
             }
 
             if (player->IsOwner()) {
+                gLocalNetworkId = static_cast<std::uint64_t>(player->GetNetworkID());
                 PushLocalState(player);
+                CheckLocalDeath();
                 return;
             }
 
@@ -695,5 +705,19 @@ namespace VantaMP::Game {
         const auto found = gSlotByNetworkId.find(networkId);
 
         return found != gSlotByNetworkId.end() ? found->second : -1;
+    }
+
+    std::uint64_t NetworkIdOfSlot(int slot) {
+        for (const auto &[networkId, occupied] : gSlotByNetworkId) {
+            if (occupied == slot) {
+                return networkId;
+            }
+        }
+
+        return 0;
+    }
+
+    std::uint64_t LocalNetworkId() {
+        return gLocalNetworkId;
     }
 } // namespace VantaMP::Game

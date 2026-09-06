@@ -13,6 +13,7 @@ set(VANTAMP_CLIENT_SDK_FILES
     src/sdk/ped/local_ped.cpp
     src/sdk/ped/remote_ped.cpp
     src/sdk/ped/weapon.cpp
+    src/sdk/ped/shot.cpp
 )
 
 set(VANTAMP_CLIENT_FILES
@@ -30,6 +31,7 @@ set(VANTAMP_CLIENT_FILES
     src/core/ui/window_input.cpp
 
     # Changes to the game itself, applied once at startup.
+    src/game/startup.cpp
     src/game/patches/boot.cpp
     src/game/patches/display.cpp
     src/game/patches/gameplay.cpp
@@ -45,6 +47,8 @@ set(VANTAMP_CLIENT_FILES
 
     # Keeping those things in step with the server.
     src/game/sync/player_sync.cpp
+    src/game/sync/shots.cpp
+    src/game/sync/death.cpp
 
     src/game/ui/nametags.cpp
 

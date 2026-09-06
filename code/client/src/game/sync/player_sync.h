@@ -40,4 +40,10 @@ namespace VantaMP::Game {
 
     // Which slot a remote player's ped occupies, or -1 if they have none yet.
     [[nodiscard]] int SlotOfNetworkId(std::uint64_t networkId);
+
+    // The entity id sitting in that slot, or 0 if the slot is empty.
+    [[nodiscard]] std::uint64_t NetworkIdOfSlot(int slot);
+
+    // This client's own replicated entity, or 0 before the first sync tick.
+    [[nodiscard]] std::uint64_t LocalNetworkId();
 } // namespace VantaMP::Game

@@ -7,6 +7,8 @@
 
 #include "shared/player_entity.h"
 #include "shared/rpc/local_player_spawn.h"
+#include "shared/rpc/player_reload.h"
+#include "shared/rpc/player_shot.h"
 
 #include "core/client_config.h"
 #include "core/diagnostics/breadcrumbs.h"
@@ -19,6 +21,7 @@
 
 #include <graphics/backend/d3d9.h>
 #include "game/sync/player_sync.h"
+#include "game/sync/shots.h"
 #include "game/camera.h"
 #include "game/entities/local_player.h"
 #include "game/patches/script.h"
@@ -41,6 +44,16 @@ namespace VantaMP::Core {
         if (auto *net = Framework::CoreModules::GetNetworkPeer()) {
             net->RegisterRPC<Shared::RPC::LocalPlayerSpawn>([](const Shared::RPC::LocalPlayerSpawn &spawn, MafiaNet::Packet *) {
                 Game::ApplyLocalSpawn(spawn.x, spawn.y, spawn.z, spawn.heading, spawn.health, spawn.armour);
+            });
+
+            // Combat events, not snapshot fields. The server stamps the shooter
+            // and fans the packet out; we only apply what arrives.
+            net->RegisterRPC<Shared::RPC::PlayerShot>([](const Shared::RPC::PlayerShot &shot, MafiaNet::Packet *) {
+                Game::ApplyRemoteShot(shot.networkId, shot.weaponType, shot.originX, shot.originY, shot.originZ, shot.targetX, shot.targetY, shot.targetZ, shot.order, shot.damagedNetworkId, shot.damage);
+            });
+
+            net->RegisterRPC<Shared::RPC::PlayerReload>([](const Shared::RPC::PlayerReload &reload, MafiaNet::Packet *) {
+                Game::ApplyRemoteReload(reload.networkId);
             });
         }
 

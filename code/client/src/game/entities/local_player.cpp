@@ -4,6 +4,8 @@
 #include "game/entities/remote_players.h"
 #include "core/diagnostics/breadcrumbs.h"
 #include "sdk/patterns.h"
+#include "game/sync/death.h"
+#include "sdk/ped/local_ped.h"
 #include "sdk/ped/weapon.h"
 #include "shared/spawn_points.h"
 
@@ -117,32 +119,35 @@ namespace VantaMP::Game {
             return;
         }
 
-        reinterpret_cast<SetPosnFn>(p.CPlaceable__SetPosn)(player, x, y, z);
+        // Health and heading used to be ignored, so a respawn left the ped
+        // dead on the ground at the new coordinates. Revive first, then
+        // stream the area, then arm them - SetInitialState strips weapons.
+        SDK::ReviveLocalPed(x, y, z, heading, health, armour);
+        ClearLocalDeathReport();
 
         const float position[3] = {x, y, z};
         reinterpret_cast<LoadSceneFn>(p.CStreaming__LoadScene)(position);
+
+        // A TESTING LOADOUT, not a design decision - the same kind of thing
+        // as the waterfront spawn point. Weapon sync cannot be looked at
+        // with two empty-handed players and there is nothing to pick up
+        // where they spawn. Goes when a resource decides what a player
+        // spawns holding.
+        //
+        // HERE AND NOT IN CreateLocalPlayer, which is the earlier and more
+        // obvious home for it. The ped is built before the engine reads
+        // GTA.DAT, so at that point there is no streamer to ask for the
+        // weapon's model - the ped exists, the world does not. By the time
+        // the server has said where to spawn, both do.
+        SDK::GiveLocalPedWeapon(kTestWeaponType, kTestWeaponAmmo);
 
         static bool revealed = false;
 
         if (!revealed) {
             revealed = true;
-
-            // A TESTING LOADOUT, not a design decision - the same kind of thing
-            // as the waterfront spawn point. Weapon sync cannot be looked at
-            // with two empty-handed players and there is nothing to pick up
-            // where they spawn. Goes when a resource decides what a player
-            // spawns holding.
-            //
-            // HERE AND NOT IN CreateLocalPlayer, which is the earlier and more
-            // obvious home for it. The ped is built before the engine reads
-            // GTA.DAT, so at that point there is no streamer to ask for the
-            // weapon's model - the ped exists, the world does not. By the time
-            // the server has said where to spawn, both do.
-            SDK::GiveLocalPedWeapon(kTestWeaponType, kTestWeaponAmmo);
-
-            Framework::Logging::GetLogger("Player")->info("Spawned by the server at {:.1f}, {:.1f}, {:.1f}", x, y, z);
-
             FadeIn();
         }
+
+        Framework::Logging::GetLogger("Player")->info("Spawned by the server at {:.1f}, {:.1f}, {:.1f}", x, y, z);
     }
 } // namespace VantaMP::Game
