@@ -38,7 +38,7 @@ Compiled in, it cannot.
 From this repo:
 
 ```
-python scripts/build_ui.py
+scripts\build.bat ui
 ```
 
 Or from the framework root, after CMake has seen the target:

@@ -10,6 +10,7 @@ still the source of truth for *why a line exists*; this folder is the map.
 | [Player sync](player-sync.md) | Change how remotes walk, aim, shoot, duck or swim |
 | [Vehicles](vehicles.md) | Change enter / exit, jacking, doors, steering or car motion |
 | [SDK and patterns](sdk-and-patterns.md) | Call into GTA, or add a signature |
+| [Setup](setup.md) | Clone or fork this repo on a new machine |
 | [Building](building.md) | Build, run two clients, and not lock the DLL |
 | [Interface](ui.md) | Solid UI, embed into the DLL, `http://vanta/ui.html` |
 | [Events](events.md) | Core <-> UI (`vanta.emit` / `vanta.on`) |

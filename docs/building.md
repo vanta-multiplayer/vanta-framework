@@ -1,23 +1,27 @@
 # Building and running
 
-The game is a 32-bit binary, so the client and launcher live in the 32-bit
-tree and the server in the 64-bit one. From the **framework** root
-(`new/`), not from this project:
+A first-time clone starts at [Setup](setup.md). After that, build from
+**this** repo — `scripts\build.bat` finds the framework and forwards:
 
 ```bat
-builds\build.bat VantaMPClient 32
-builds\build.bat VantaMPLauncher 32
-builds\build.bat VantaMPServer 64
+scripts\build.bat
+scripts\build.bat client
+scripts\build.bat launcher
+scripts\build.bat server
+scripts\build.bat ui
 ```
+
+The game is a 32-bit binary, so the client and launcher live in the 32-bit
+tree and the server in the 64-bit one. Those trees are still the framework's:
 
 | Binary | Path |
 |--------|------|
-| Server | `new/builds/build-64/bin/VantaMPServer.exe` |
-| Client | `new/builds/build/bin/VantaMPLauncher.exe` |
+| Server | `<Framework>/builds/build-64/bin/VantaMPServer.exe` |
+| Client | `<Framework>/builds/build/bin/VantaMPLauncher.exe` |
 
 The launcher PE-loads `gta_sa.exe` and hands control to `VantaMPClient.dll`.
 Two copies of the launcher on one machine is the normal way to test
-anything. Each instance writes `new/builds/build/bin/logs/VantaMP-<pid>.log`.
+anything. Each instance writes `<Framework>/builds/build/bin/logs/VantaMP-<pid>.log`.
 
 ## The DLL is locked while a client runs
 
@@ -65,8 +69,8 @@ The page is compiled into the client. There is no `ui/` folder next to the
 DLL and nothing to copy after a link. CEF opens `http://vanta/ui.html`.
 
 ```
-python scripts/build_ui.py          # from this repo; needs node
-builds\build.bat VantaMPClient 32   # embeds data/ui/index.html (or ui/dist)
+scripts\build.bat ui                # from this repo; needs node
+scripts\build.bat client            # embeds data/ui/index.html (or ui/dist)
 ```
 
 Details: [Interface](ui.md).

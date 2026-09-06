@@ -8,8 +8,25 @@ players are input replay — GTA walks them from the owner's pad. Cars are occup
 owner motion plus a pad swap for steering. **F** is driver / jack; **G** is passenger.
 
 How that is put together, and the rules that keep it from fighting itself, live in
-[`docs/`](docs/README.md). Agents read [`AGENTS.md`](AGENTS.md) (Claude:
-[`CLAUDE.md`](CLAUDE.md); Cursor rules in [`.cursor/rules/`](.cursor/rules)).
+[`docs/`](docs/README.md). New clone: [`docs/setup.md`](docs/setup.md). Agents
+read [`AGENTS.md`](AGENTS.md) (Claude: [`CLAUDE.md`](CLAUDE.md); Cursor rules in
+[`.cursor/rules/`](.cursor/rules)).
+
+## Get started
+
+Windows, Visual Studio with the C++ workload, Python 3, Node.js, Git. A legal
+GTA: San Andreas install is only needed to *run* a client.
+
+```bat
+git clone --recurse-submodules https://github.com/vanta-multiplayer/vanta-framework.git
+cd vanta-framework
+scripts\setup.bat
+scripts\build.bat
+```
+
+`setup.bat` inits `vendors/plugin-sdk`, finds or clones the MafiaHub Framework,
+and `npm install`s the interface. `build.bat` compiles the client, launcher and
+server. Full notes: [`docs/setup.md`](docs/setup.md).
 
 ## Layout
 
@@ -26,18 +43,19 @@ How that is put together, and the rules that keep it from fighting itself, live 
 | `vendors/plugin-sdk` | — | — | DK22Pac's plugin-sdk, for San Andreas **structure layouts** |
 
 The game is a 32-bit binary, so the client and launcher build only in the 32-bit tree
-(`builds\build`) while the server builds in the 64-bit one (`builds\build-64`). From the
-framework root (`new/`):
+while the server builds in the 64-bit one. From **this** repo:
 
 ```bat
-builds\build.bat VantaMPClient 32
-builds\build.bat VantaMPLauncher 32
-builds\build.bat VantaMPServer 64
+scripts\build.bat
+scripts\build.bat client
+scripts\build.bat server
+scripts\build.bat ui
 ```
 
-Run `VantaMPServer.exe` from `builds\build-64\bin`, then `VantaMPLauncher.exe` twice from
-`builds\build\bin`. Kill the launchers (and `gta_sa`) before a client rebuild — the DLL is
-locked. Full steps: [`docs/building.md`](docs/building.md).
+Run `VantaMPServer.exe` from the framework `builds\build-64\bin`, then
+`VantaMPLauncher.exe` twice from `builds\build\bin`. Kill the launchers (and
+`gta_sa`) before a client rebuild — the DLL is locked. Full steps:
+[`docs/building.md`](docs/building.md).
 
 ## How the game is launched
 
