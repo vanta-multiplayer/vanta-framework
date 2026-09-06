@@ -20,7 +20,8 @@ How that is put together, and the rules that keep it from fighting itself, live 
 | `code/server` | `VantaMPServer` | 64-bit | Replicas, reliable RPCs, scripting |
 | `code/shared` | — | — | Entities, RPCs and rates compiled into both sides |
 | `code/client/src/sdk` | — | — | The only place game types exist. Signatures, not addresses |
-| `docs/` | — | — | Architecture, player sync, vehicles, SDK, building |
+| `docs/` | — | — | Architecture, player sync, vehicles, SDK, building, interface |
+| `ui/` | — | — | Solid connect menu. Built into one HTML file and compiled into the client |
 | `data/resources/freeroam` | — | — | Waterfront spawn and the dock Sultan |
 | `vendors/plugin-sdk` | — | — | DK22Pac's plugin-sdk, for San Andreas **structure layouts** |
 

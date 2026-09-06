@@ -19,8 +19,10 @@ data/resources/freeroam            —        spawn + the dock Sultan
 game/patches     one-shot changes to the running game (keys, population, boot)
 game/entities    player slots, local player, remote player lifecycle
 game/sync        the per-tick loop: read local, apply remote
+core/ui          CEF view. Page lives in the DLL at http://vanta/ui.html
 sdk/             GTA pointers, tasks, pads, vehicles
 shared/          the same structs the server serializes
+ui/              Solid source for that page (not shipped as files)
 ```
 
 `code/client/CMakeLists.txt` is the wall. `VANTAMP_CLIENT_SDK_FILES` is the

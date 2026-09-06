@@ -59,6 +59,18 @@ python scripts/verify_patterns.py <gta_sa.exe>
 
 See [SDK and patterns](sdk-and-patterns.md).
 
+## Interface
+
+The page is compiled into the client. There is no `ui/` folder next to the
+DLL and nothing to copy after a link. CEF opens `http://vanta/ui.html`.
+
+```
+python scripts/build_ui.py          # from this repo; needs node
+builds\build.bat VantaMPClient 32   # embeds data/ui/index.html (or ui/dist)
+```
+
+Details: [Interface](ui.md).
+
 ## What a two-client smoke test should show
 
 1. Both players spawn at the waterfront and see nametags.
