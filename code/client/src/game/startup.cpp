@@ -10,9 +10,12 @@
 #include "game/patches/input.h"
 #include "game/patches/population.h"
 #include "game/patches/script.h"
+#include "game/sync/death.h"
 #include "game/ui/nametags.h"
 #include "sdk/game_build.h"
 #include "sdk/patterns.h"
+#include "sdk/vehicle.h"
+#include "sdk/vehicle_occupancy.h"
 
 namespace VantaMP::Game {
     namespace {
@@ -75,7 +78,16 @@ namespace VantaMP::Game {
         // Has to land before the game acquires the mouse, which it does during
         // its own startup - from a frame callback this would already be too late.
         Apply("input", ReleaseMouseCapture);
+        Apply("pad suppress", InstallPadSuppressHook);
+        Apply("vehicle explode", SDK::InstallVehicleExplosionHooks);
         Apply("gameplay", ApplyGameplayPatches);
+
+        // WEAPONTYPE_EXPLOSION. Occupancy marks the ped dead; this is
+        // what the death packet names so a resource sees the tank, not
+        // "unknown".
+        SDK::SetVehicleExplosionDeathHandler([] {
+            RememberLocalDamager(0, 51);
+        });
 
         // Unlocks the wider modes. The projection itself is corrected later,
         // once there is a window whose shape can be measured.

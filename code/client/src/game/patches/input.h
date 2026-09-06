@@ -21,6 +21,11 @@ namespace VantaMP::Game {
     // before the game acquires the device, and afterwards is too late.
     void ReleaseMouseCapture();
 
+    // After CPad::UpdatePads fills the pad, wipe it while the menu or an
+    // unfocused window owns the keyboard. EndScene is too late: the walk
+    // has already consumed this frame's input.
+    void InstallPadSuppressHook();
+
     // Tells the game it has focus, so the mouse works on the first frame.
     //
     // The game sets this itself when Windows tells it the window came to the

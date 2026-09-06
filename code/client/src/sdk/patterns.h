@@ -98,8 +98,8 @@ namespace VantaMP::SDK {
         // not loaded and its interpreter is stubbed out.
         //
         // Its per-frame call is reused: the point where scripts would have
-        // begun running is exactly the point at which the world is ready and a
-        // player can be created.
+        // begun running is exactly the point at which the world is ready and
+        // the local GTA ped must exist (the camera registers a reference to it).
         uintptr_t CRunningScript__ProcessOneCommand = 0;
         uintptr_t CRunningScript__OpcodeTable       = 0;
         uintptr_t CRunningScript__ProcessCall       = 0;
@@ -215,6 +215,12 @@ namespace VantaMP::SDK {
         // with two clients open, one keypress would otherwise move both.
         uintptr_t CPad__Clear             = 0;
         uintptr_t CPad__ClearMouseHistory = 0;
+
+        // The CALL to CPad::UpdatePads inside CGame::Process. After that
+        // call the pad is full; we clear it there when the menu owns the
+        // keyboard, because EndScene runs after ProcessControl and a clear
+        // there is overwritten before the next walk.
+        uintptr_t CPad__UpdatePadsCall = 0;
 
         // The mouse deltas the camera reads directly, which CPad::Clear does
         // not touch. NewMouseControllerState; the old state follows it.
@@ -436,6 +442,14 @@ namespace VantaMP::SDK {
         // Door position for passenger reach. Asking this on a vehicle with
         // no RenderWare object is a null deref inside GTA.
         uintptr_t CCarEnterExit__GetNearestCarPassengerDoor          = 0;
+
+        // CVehicle::KillPedsInVehicle / KillPedsGettingInVehicle. A petrol
+        // tank shot ends here: CEventVehicleDied and CEventDamage assume a
+        // single-player player or an NPC, and a Vanta CPlayerPed in a seat
+        // is the crash.
+        uintptr_t CVehicle__KillPedsInVehicle        = 0;
+        uintptr_t CVehicle__KillPedsGettingInVehicle = 0;
+
         uintptr_t CStreaming__StreamPedsAndCars  = 0;
         uintptr_t CStreaming__AmbientModelsJump  = 0;
         uintptr_t CGangWars__Update              = 0;

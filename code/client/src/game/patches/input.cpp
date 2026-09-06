@@ -11,6 +11,22 @@
 
 namespace VantaMP::Game {
     namespace {
+        using UpdatePadsFn = void (*)();
+
+        UpdatePadsFn gOriginalUpdatePads = nullptr;
+        bool         gSuppressingInput   = false;
+
+        void UpdatePads_Hook() {
+            gOriginalUpdatePads();
+
+            // AFTER THE FILL. DirectInput has just written this frame's
+            // keys; ProcessControl has not read them yet. Clearing here
+            // is what actually stops WASD while Esc is up.
+            if (gSuppressingInput) {
+                SDK::ClearLocalInput(false);
+            }
+        }
+
         // What the exclusive-mode decision is overwritten with:
         //
         //   B0 00   mov al, 0    ; "not exclusive"
@@ -22,8 +38,6 @@ namespace VantaMP::Game {
         // Two PUSH/CALL pairs - ShowCursor(0) and SetCursor(0) - and nothing
         // else, so filling them with NOPs removes the behaviour cleanly.
         constexpr std::size_t kCursorHidingSize = 16u;
-
-        bool gSuppressingInput = false;
     } // namespace
 
     void ReleaseMouseCapture() {
@@ -54,6 +68,19 @@ namespace VantaMP::Game {
         hook::nop(p.Cursor__Hiding, kCursorHidingSize);
 
         Framework::Logging::GetLogger("Input")->info("Mouse released: non-exclusive, no re-centring, no cursor hiding");
+    }
+
+    void InstallPadSuppressHook() {
+        if (gOriginalUpdatePads) {
+            return;
+        }
+
+        const auto site = SDK::gPatterns.CPad__UpdatePadsCall;
+
+        gOriginalUpdatePads = reinterpret_cast<UpdatePadsFn>(hook::get_call(site));
+        hook::call(site, &UpdatePads_Hook);
+
+        Framework::Logging::GetLogger("Input")->info("Pad suppress hooked after UpdatePads");
     }
 
     void MarkGameForeground(bool foreground) {

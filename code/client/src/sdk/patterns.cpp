@@ -169,6 +169,9 @@ namespace VantaMP::SDK {
         gPatterns.CPad__Clear                      = Resolve("56 8B F1 E8 08 D5"); // 0x00541A70
         gPatterns.CPad__ClearMouseHistory          = Resolve("32 C0 A2 04 34 B7"); // 0x00541BD0
 
+        // CGame::Process: sub esp,0xC / push ebx,esi,edi / call UpdatePads
+        gPatterns.CPad__UpdatePadsCall = Resolve("83 EC 0C 53 56 57 E8") + 6; // call at 0x0053BEE6 -> 0x00541DD0
+
         gPatterns.CPad__NewMouseState = OperandAt(hook::get_pattern("FF A0 ? ? ? ? 83 C4 0C 3A"), 2); // site 0x0057E51E -> 0x00B73418
 
         // Tasks allocate from their own pool, not the ped one - the signature
@@ -294,6 +297,14 @@ namespace VantaMP::SDK {
         gPatterns.CCarEnterExit__ComputeTargetDoorToExit             = Resolve("8B 4C 24 04 8B 91 60"); // 0x0064F110
         gPatterns.CCarEnterExit__ComputePassengerIndexFromCarDoor    = Resolve("8B 44 24 04 83 B8"); // 0x0064F1E0
         gPatterns.CCarEnterExit__GetNearestCarPassengerDoor          = Resolve("83 EC 48 53 56 8B 74"); // 0x00650BB0
+
+        // SEH prologue + m_pDriver at +0x460. The unwind address is build-
+        // specific and is masked.
+        gPatterns.CVehicle__KillPedsInVehicle = Resolve(
+            "64 A1 00 00 00 00 6A FF 68 ? ? ? ? 50 64 89 25 00 00 00 00 83 EC 28 53 56 8B F1 8B 86 60 04 00 00"); // 0x006D1C80
+        gPatterns.CVehicle__KillPedsGettingInVehicle = Resolve(
+            "6A FF 68 ? ? ? ? 64 A1 00 00 00 00 50 64 89 25 00 00 00 00 83 EC 64 53 89 4C 24 0C 8B 0D"); // 0x006D82F0
+
         gPatterns.CStreaming__StreamPedsAndCars  = Resolve("6A 00 6A FF E8 77 2A"); // 0x0040B650
         gPatterns.CStreaming__AmbientModelsJump  = Resolve("75 1A E8 1A CF FF"); // 0x0040E7DF
         gPatterns.CGangWars__Update              = Resolve("83 EC 34 53 E8 37"); // 0x00446610
