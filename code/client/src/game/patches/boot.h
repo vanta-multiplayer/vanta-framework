@@ -20,6 +20,14 @@ namespace VantaMP::Game {
     // it. Only the loading artwork after it goes.
     void ApplyBootPatches();
 
+    // The frame cap to apply once the frontend has been bypassed.
+    //
+    // NOT AT STARTUP, AND NOT EVERY FRAME. The game loads its own settings
+    // during startup and would overwrite a value set before that; writing it
+    // every frame is a global write on the render thread for a field that only
+    // changes when the game touches its settings, which it no longer does.
+    void SetFrameLimitOnStart(int fps);
+
     // True once CGame::Init3 has returned, i.e. the world exists.
     [[nodiscard]] bool IsEngineInitialised();
 

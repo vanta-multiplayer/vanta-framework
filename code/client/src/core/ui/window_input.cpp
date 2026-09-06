@@ -28,9 +28,26 @@ namespace VantaMP::UI {
                     manager->ProcessKeyboardEvent(window, message, wParam, lParam);
                 }
                 else if (message == WM_SIZE) {
-                    // The view paints at a fixed size; a resized window would
-                    // otherwise stretch it.
-                    manager->Resize(LOWORD(lParam), HIWORD(lParam));
+                    // ONLY ON A REAL CHANGE.
+                    //
+                    // Resizing CEF makes it rebuild its texture, and this
+                    // message arrives from our own SetWindowPos as well as from
+                    // the user - so acting on every one is a loop: style the
+                    // window, get WM_SIZE, rebuild the browser surface, style
+                    // the window again. That killed the client the moment the
+                    // interface existed.
+                    static int lastWidth  = 0;
+                    static int lastHeight = 0;
+
+                    const int width  = LOWORD(lParam);
+                    const int height = HIWORD(lParam);
+
+                    if (width != lastWidth || height != lastHeight) {
+                        lastWidth  = width;
+                        lastHeight = height;
+
+                        manager->Resize(width, height);
+                    }
                 }
             }
 

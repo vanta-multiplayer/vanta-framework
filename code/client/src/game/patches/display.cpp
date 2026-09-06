@@ -16,6 +16,9 @@ namespace VantaMP::Game {
     namespace {
         DisplaySettings gSettings;
 
+        // What the device ended up being created at.
+        SIZE gResolved {0, 0};
+
         // The monitor the window is on, so a size is centred where the player
         // actually is. Window coordinates span the whole virtual desktop, so a
         // monitor left of the primary one has a negative origin and anything
@@ -45,8 +48,27 @@ namespace VantaMP::Game {
                 return SIZE {screenWidth, screenHeight};
             }
 
-            size.cx = std::min(size.cx, screenWidth);
-            size.cy = std::min(size.cy, screenHeight);
+            // FIT THE OUTER WINDOW, NOT THE CLIENT AREA.
+            //
+            // A windowed client asking for a client area the size of the screen
+            // needs an OUTER window bigger than the screen - a title bar and
+            // borders taller than the display it has to live on. Windows then
+            // hands back a smaller client area than was asked for, and the
+            // device is created at one size while everything measuring the
+            // window sees another. The interface is sized from the window and
+            // D3D presents at the device's size, and the two disagreeing is
+            // fatal.
+            //
+            // So the request is capped by what a window can actually contain.
+            RECT frame {0, 0, 0, 0};
+            AdjustWindowRect(&frame, static_cast<DWORD>(GetWindowLongW(window, GWL_STYLE)), FALSE);
+
+            const LONG chromeWidth  = (frame.right - frame.left);
+            const LONG chromeHeight = (frame.bottom - frame.top);
+
+            size.cx = std::min(size.cx, screenWidth - chromeWidth);
+            size.cy = std::min(size.cy, screenHeight - chromeHeight);
+
             return size;
         }
     } // namespace
@@ -64,7 +86,20 @@ namespace VantaMP::Game {
             return;
         }
 
-        const auto size = ResolveSize(window);
+        // WHAT THE PLAYER PICKED IN THE GAME'S OWN DIALOG WINS.
+        //
+        // GTA asks for a device and a video mode at startup, and whatever is
+        // chosen there is already in these parameters. Overwriting it with a
+        // configured size means the dialog does nothing: a player selects
+        // 1280x720, gets whatever the file said, and has no way to tell why.
+        //
+        // The config is a fallback for when nothing was chosen - a first run,
+        // or a borderless client that covers the monitor regardless.
+        const bool chosen = parameters->BackBufferWidth > 0 && parameters->BackBufferHeight > 0;
+
+        const auto size = (chosen && !gSettings.borderless) ? SIZE {static_cast<LONG>(parameters->BackBufferWidth), static_cast<LONG>(parameters->BackBufferHeight)} : ResolveSize(window);
+
+        gResolved = size;
 
         parameters->Windowed         = TRUE;
         parameters->BackBufferWidth  = static_cast<UINT>(size.cx);
@@ -100,7 +135,11 @@ namespace VantaMP::Game {
         }
 
         const auto monitor = MonitorRectFor(window);
-        const auto size    = ResolveSize(window);
+
+        // The size the device was actually created at, so the window's client
+        // area matches the back buffer. Anything else stretches the image or
+        // leaves the interface laid out for a size nothing is rendering at.
+        const auto size = gResolved.cx > 0 ? gResolved : ResolveSize(window);
 
         auto style = GetWindowLongW(window, GWL_STYLE);
 
@@ -167,6 +206,19 @@ namespace VantaMP::Game {
         // means the game re-styled its window behind us, which is worth seeing.
         Framework::Logging::GetLogger("Display")->info("Window {} at {}x{}, origin {},{}", gSettings.borderless ? "borderless" : "windowed", size.cx, size.cy, x, y);
     }
+    void SetFrameLimit(int fps) {
+        const auto rsGlobal = SDK::gPatterns.RsGlobal;
+
+        if (!rsGlobal) {
+            return;
+        }
+
+        // maxFPS at +12, after appName, maximumWidth and maximumHeight. A plain
+        // field the game's own limiter reads each frame, so writing it is the
+        // whole of the work.
+        hook::put<std::int32_t>(rsGlobal + 12, fps);
+    }
+
     void ApplyWidescreenPatches() {
         const auto &p = SDK::gPatterns;
 

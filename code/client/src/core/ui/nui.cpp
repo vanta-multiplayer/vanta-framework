@@ -200,7 +200,22 @@ namespace VantaMP::UI {
 
         view->AddEventListener("vanta:netgraph:enable", [](const std::string &) {});
         view->AddEventListener("vanta:console:focus", [](const std::string &) {});
-        view->AddEventListener("vanta:menu:display", [](const std::string &) {});
+        view->AddEventListener("vanta:menu:display", [](const std::string &payload) {
+            try {
+                const auto parsed  = nlohmann::json::parse(payload);
+                const auto &fields = parsed.contains("payload") ? parsed["payload"] : parsed;
+
+                // Saved, not applied. The device was created at the old size and
+                // recreating it means tearing down every texture the game and
+                // CEF hold - which is a device reset in the middle of a frame.
+                // The player gets the new size on the next start, which is what
+                // the game's own video options do too.
+                Core::SaveDisplaySettings(fields.value("windowWidth", 0u), fields.value("windowHeight", 0u), fields.value("fullscreen", false));
+            }
+            catch (const std::exception &error) {
+                Framework::Logging::GetLogger("NUI")->error("Malformed display settings: {}", error.what());
+            }
+        });
 
         Framework::Logging::GetLogger("NUI")->info("Interface up at {}x{}", width, height);
     }

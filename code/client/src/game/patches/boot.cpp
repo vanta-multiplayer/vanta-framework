@@ -1,5 +1,6 @@
 #include "game/patches/boot.h"
 
+#include "game/patches/display.h"
 #include "game/patches/input.h"
 #include "sdk/patterns.h"
 
@@ -24,6 +25,10 @@ namespace VantaMP::Game {
 
         std::atomic_bool gEngineInitialised {false};
         std::atomic_bool gFrontendBypassed {false};
+
+        // Applied once the frontend is bypassed. Held here because that is the
+        // moment it can be applied, and the caller knows the value long before.
+        int gFrameLimit = 60;
 
         using VoidFn = void(__cdecl *)();
 
@@ -89,6 +94,12 @@ namespace VantaMP::Game {
                 // nothing until the player alt-tabs away and back.
                 MarkGameForeground(true);
 
+                // AFTER THE GAME HAS LOADED ITS OWN SETTINGS, which is what
+                // this moment is. Applied at startup instead, the game's own
+                // settings load overwrites it; applied every frame it is a
+                // write into a global before anything guarantees it resolved.
+                SetFrameLimit(gFrameLimit);
+
                 Framework::Logging::GetLogger("Boot")->info("Frontend bypassed; the game is playing");
             }
 
@@ -97,6 +108,10 @@ namespace VantaMP::Game {
             }
         }
     } // namespace
+
+    void SetFrameLimitOnStart(int fps) {
+        gFrameLimit = fps;
+    }
 
     void ApplyBootPatches() {
         const auto &p = SDK::gPatterns;

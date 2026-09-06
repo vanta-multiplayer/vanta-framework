@@ -15,6 +15,9 @@ namespace VantaMP::Core {
     namespace {
         ClientConfig gConfig;
 
+        // Remembered so a later save writes back to the same file.
+        std::string gConfigPath;
+
         constexpr const char *kFileName = "VantaMP.json";
 
         std::string ReadTextFile(const std::filesystem::path &path) {
@@ -39,6 +42,7 @@ namespace VantaMP::Core {
             document["display_width"]      = config.displayWidth;
             document["display_height"]     = config.displayHeight;
             document["display_borderless"] = config.displayBorderless;
+            document["frame_limit"]        = config.frameLimit;
             document["server_host"]        = config.serverHost;
             document["server_port"]        = config.serverPort;
             document["nickname"]           = config.nickname;
@@ -55,6 +59,8 @@ namespace VantaMP::Core {
     } // namespace
 
     const ClientConfig &LoadClientConfig(const std::string &projectPath) {
+        gConfigPath = projectPath;
+
         const auto path = std::filesystem::path(projectPath) / kFileName;
         const auto logger = Framework::Logging::GetLogger("Config");
 
@@ -66,30 +72,53 @@ namespace VantaMP::Core {
             return gConfig;
         }
 
-        Framework::Utils::Config document;
+        Framework::Utils::Config parsed;
 
-        if (!document.Parse(contents) || !document.IsParsed()) {
+        if (!parsed.Parse(contents) || !parsed.IsParsed()) {
             // NOT FATAL. A player who mistypes a brace gets a working game and a
             // warning; refusing to start over a settings file would be a far
             // worse outcome than ignoring it.
-            logger->warn("{} could not be parsed ({}); using defaults", kFileName, document.GetLastError());
+            logger->warn("{} could not be parsed ({}); using defaults", kFileName, parsed.GetLastError());
             return gConfig;
         }
 
-        gConfig.displayWidth      = document.GetDefault<std::uint32_t>("display_width", gConfig.displayWidth);
-        gConfig.displayHeight     = document.GetDefault<std::uint32_t>("display_height", gConfig.displayHeight);
-        gConfig.displayBorderless = document.GetDefault<bool>("display_borderless", gConfig.displayBorderless);
-        gConfig.serverHost        = document.GetDefault<std::string>("server_host", gConfig.serverHost);
-        gConfig.serverPort        = document.GetDefault<std::uint32_t>("server_port", gConfig.serverPort);
-        gConfig.nickname          = document.GetDefault<std::string>("nickname", gConfig.nickname);
+        gConfig.displayWidth      = parsed.GetDefault<std::uint32_t>("display_width", gConfig.displayWidth);
+        gConfig.displayHeight     = parsed.GetDefault<std::uint32_t>("display_height", gConfig.displayHeight);
+        gConfig.displayBorderless = parsed.GetDefault<bool>("display_borderless", gConfig.displayBorderless);
+        gConfig.frameLimit        = parsed.GetDefault<std::uint32_t>("frame_limit", gConfig.frameLimit);
+        gConfig.serverHost        = parsed.GetDefault<std::string>("server_host", gConfig.serverHost);
+        gConfig.serverPort        = parsed.GetDefault<std::uint32_t>("server_port", gConfig.serverPort);
+        gConfig.nickname          = parsed.GetDefault<std::string>("nickname", gConfig.nickname);
 
         logger->info("Display: {} {}x{}", gConfig.displayBorderless ? "borderless" : "windowed", gConfig.displayWidth, gConfig.displayHeight);
 
-        // Rewritten so a file that predates a new setting gains it rather than
-        // silently keeping a default the player cannot see.
-        WriteConfig(path, gConfig);
+        // ONLY REWRITTEN WHEN SOMETHING WAS MISSING.
+        //
+        // The point is to add keys a file predating them does not have, so the
+        // player can see every option. Writing unconditionally does something
+        // much worse: an edit made while the client is running is overwritten
+        // on the next start, so changing the resolution appears to do nothing
+        // and the window comes back the size it was.
+        auto *document = parsed.GetDocument();
+
+        const bool complete = document && document->contains("display_width") && document->contains("display_height") && document->contains("display_borderless") && document->contains("frame_limit") && document->contains("server_host") && document->contains("server_port") && document->contains("nickname");
+
+        if (!complete) {
+            logger->info("{} was missing settings; filling them in", kFileName);
+            WriteConfig(path, gConfig);
+        }
 
         return gConfig;
+    }
+
+    void SaveDisplaySettings(std::uint32_t width, std::uint32_t height, bool borderless) {
+        gConfig.displayWidth      = width;
+        gConfig.displayHeight     = height;
+        gConfig.displayBorderless = borderless;
+
+        WriteConfig(std::filesystem::path(gConfigPath) / kFileName, gConfig);
+
+        Framework::Logging::GetLogger("Config")->info("Display saved: {} {}x{}", borderless ? "borderless" : "windowed", width, height);
     }
 
     const ClientConfig &GetClientConfig() {

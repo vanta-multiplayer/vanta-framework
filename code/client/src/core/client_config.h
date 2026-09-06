@@ -32,6 +32,14 @@ namespace VantaMP::Core {
         // running two clients side by side wants.
         bool displayBorderless = true;
 
+        // Frames per second, or 0 for no cap.
+        //
+        // Capped by default. GTA's physics are frame-time dependent, so an
+        // uncapped client on a modern machine runs the game in territory it was
+        // never tested in - and in multiplayer that means two players doing the
+        // same thing getting different results.
+        std::uint32_t frameLimit = 60;
+
         // Where to connect, and as whom.
         //
         // A fixed address for now: the connect menu that would ask for one does
@@ -51,4 +59,11 @@ namespace VantaMP::Core {
     const ClientConfig &LoadClientConfig(const std::string &projectPath);
 
     const ClientConfig &GetClientConfig();
+
+    // Changes a setting and writes it back.
+    //
+    // The player picked it in the menu, so it has to outlive the session -
+    // otherwise choosing a resolution appears to work and is forgotten on the
+    // next start.
+    void SaveDisplaySettings(std::uint32_t width, std::uint32_t height, bool borderless);
 } // namespace VantaMP::Core

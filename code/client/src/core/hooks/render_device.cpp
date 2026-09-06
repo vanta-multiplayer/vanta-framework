@@ -38,8 +38,20 @@ namespace {
     HRESULT STDMETHODCALLTYPE EndScene_Hook(IDirect3DDevice9 *device) {
         // The game sets its own window style during device setup, after
         // CreateDevice has returned, so styling it there alone is undone before
-        // anyone sees it. This re-asserts and is a no-op once it matches.
-        VantaMP::Game::ApplyWindowStyle(gGameWindow);
+        // anyone sees it.
+        //
+        // RE-ASSERTED FOR A WHILE, NOT FOR EVER. ApplyWindowStyle calls
+        // SetWindowPos, which sends WM_SIZE to the window procedure - and the
+        // interface listens to that. Left running every frame the two feed each
+        // other: style the window, resize the browser, style it again. A few
+        // hundred frames is long past the game's own settings load and well
+        // short of anything the player can see.
+        static int framesLeft = 300;
+
+        if (framesLeft > 0) {
+            --framesLeft;
+            VantaMP::Game::ApplyWindowStyle(gGameWindow);
+        }
 
         // Keeps the pointer inside the window, and lets it go on alt-tab.
         VantaMP::UI::UpdateCursorClip(gGameWindow);

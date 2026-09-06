@@ -69,6 +69,8 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     // Everything above runs before the game has drawn a frame, which is what
     // makes bypassing its frontend possible at all: these rewrite call sites
     // the game has not reached yet.
+    VantaMP::Game::SetFrameLimitOnStart(static_cast<int>(config.frameLimit));
+
     VantaMP::Game::ApplyBootPatches();
 
     // Last of the startup patches: this one disables the mission script and

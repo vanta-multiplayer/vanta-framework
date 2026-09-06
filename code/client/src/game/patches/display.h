@@ -68,4 +68,18 @@ namespace VantaMP::Game {
     // the ratio depends on the window, which does not exist when they are
     // applied.
     void ApplyAspectRatio(HWND window);
+
+    // Caps the frame rate, or removes the cap when `fps` is 0.
+    //
+    // The game ships with its limiter OFF and the frontend option that turns it
+    // on is one Vanta's startup skips, so an unpatched client renders as fast
+    // as the hardware allows. On a modern machine that is several hundred
+    // frames a second of a 2004 game - which heats the GPU for nothing and,
+    // worse, drives GTA's frame-time-dependent physics into territory it was
+    // never tested in.
+    //
+    // RE-APPLIED, NOT SET ONCE. The game writes this field itself when it loads
+    // settings and when the frontend is touched, so a value set at startup does
+    // not necessarily survive.
+    void SetFrameLimit(int fps);
 } // namespace VantaMP::Game
