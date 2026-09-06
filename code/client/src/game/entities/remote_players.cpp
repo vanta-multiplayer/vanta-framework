@@ -165,18 +165,25 @@ namespace VantaMP::Game {
 
             gOriginalProcessControl(ped);
 
-            // CORRECTED HERE, IMMEDIATELY AFTER THE GAME MOVED THIS PED.
-            //
-            // The interpolator adds a share of the error to wherever the ped
-            // currently is, so it has to run once the walk has already been
-            // applied - it nudges the result rather than replacing it. Run
-            // before the game processes peds, as this used to be, every frame
-            // would overwrite the position the walk produced with one derived
-            // from a stale read, and the ped would slide instead of walking.
-            CorrectRemotePed(slot);
-
             SwitchToLocal(slot);
             gSwitched = false;
+
+            // CORRECTED AFTER THE GAME MOVED THIS PED, AND AFTER THE CONTEXT IS
+            // BACK.
+            //
+            // The interpolator adds a share of the error to wherever the ped
+            // currently is, so it has to run once the walk has been applied - it
+            // nudges the result rather than replacing it. Run before the game
+            // processes peds, every frame would overwrite the position the walk
+            // produced with one derived from a stale read, and the ped would
+            // slide instead of walking.
+            //
+            // OUTSIDE THE SWAP, though. Correcting while the context is still
+            // displaced calls into the world with PlayerInFocus pointing at a
+            // remote slot and the local pad replaced, and the game re-enters ped
+            // processing from there - which takes the process down with no
+            // exception to report.
+            CorrectRemotePed(slot);
         }
 
         // Replaces CPlayerPed::GetPlayerInfoForThisPlayerPed.
