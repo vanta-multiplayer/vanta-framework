@@ -31,6 +31,10 @@ namespace VantaMP::Core {
             _connectRequested = true;
         }
 
+        void RequestDisconnect() {
+            _disconnectRequested = true;
+        }
+
       private:
         // Where the player asked to go, once they have asked. Empty until then:
         // the client no longer connects on its own.
@@ -38,6 +42,7 @@ namespace VantaMP::Core {
         std::uint32_t _pendingPort = 0;
         std::string _pendingNickname;
         bool _connectRequested     = false;
+        bool _disconnectRequested  = false;
 
         // The menu is held back until the game's own startup screens are done.
         bool _menuShown = false;
@@ -50,6 +55,7 @@ namespace VantaMP::Core {
     // immediately, because this arrives on a CEF thread and connecting touches
     // state the game thread owns.
     void RequestConnect(const std::string &address, const std::string &nickname);
+    void RequestDisconnect();
 
     extern std::unique_ptr<Application> gApplication;
 

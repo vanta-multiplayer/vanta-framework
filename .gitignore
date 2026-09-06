@@ -1,5 +1,11 @@
+/reference/
+
 /build/
 __pycache__/
+
+# Generated next to the source if embed_ui.py is run without -o.
+# CMake writes the real header into the build tree.
+/code/client/src/core/ui/generated/
 
 # Launcher runtime artifacts
 *_launcher.json

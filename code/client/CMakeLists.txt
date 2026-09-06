@@ -28,7 +28,9 @@ set(VANTAMP_CLIENT_FILES
     src/core/diagnostics/crash_report.cpp
     src/core/hooks/mod_init.cpp
     src/core/hooks/render_device.cpp
-    src/core/ui/nui.cpp
+    src/core/nui/nui.cpp
+    src/core/nui/embedded_ui.cpp
+    src/core/nui/page_events.cpp
     src/core/ui/ped_debug_ui.cpp
     src/core/ui/window_input.cpp
 
@@ -71,8 +73,25 @@ set(VANTAMP_CLIENT_FILES
     ${CMAKE_BINARY_DIR}/vantamp_version.cpp
 )
 
+# The interface is compiled into the DLL. ui/dist if someone just built it,
+# otherwise the last checked-in data/ui/index.html. Never copied next to the
+# binary — CEF loads http://vanta/ui.html from the byte array.
+set(VANTA_UI_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/ui_content.hpp")
+set(VANTA_UI_EMBED "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/embed_ui.py")
+set(VANTA_UI_FALLBACK "${CMAKE_CURRENT_SOURCE_DIR}/../../data/ui/index.html")
+
+add_custom_command(
+    OUTPUT "${VANTA_UI_HEADER}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    COMMAND python "${VANTA_UI_EMBED}" -o "${VANTA_UI_HEADER}"
+    DEPENDS "${VANTA_UI_EMBED}" "${VANTA_UI_FALLBACK}"
+    COMMENT "Embedding the VantaMP interface"
+    VERBATIM)
+
+list(APPEND VANTAMP_CLIENT_FILES "${VANTA_UI_HEADER}")
+
 add_library(VantaMPClient SHARED ${VANTAMP_CLIENT_FILES})
-target_include_directories(VantaMPClient PRIVATE src ${CMAKE_CURRENT_SOURCE_DIR}/../)
+target_include_directories(VantaMPClient PRIVATE src ${CMAKE_CURRENT_SOURCE_DIR}/../ ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(VantaMPClient Framework FrameworkClient)
 target_link_options(VantaMPClient PRIVATE /MANIFEST:NO)
 
@@ -84,12 +103,10 @@ set_source_files_properties(${VANTAMP_CLIENT_SDK_FILES} PROPERTIES
     INCLUDE_DIRECTORIES "${PLUGIN_SDK_SA_INCLUDE_DIRS}"
     COMPILE_DEFINITIONS "${PLUGIN_SDK_SA_DEFINITIONS}")
 
-# The interface, beside the client where it looks for it.
-#
-# One self-contained HTML with every script, style and font inlined - CEF loads
-# it over file://, where there is no origin and nothing to resolve.
-add_custom_command(TARGET VantaMPClient POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../data/ui/index.html"
-        "$<TARGET_FILE_DIR:VantaMPClient>/ui/index.html"
-    COMMENT "Copying the VantaMP interface")
+# Rebuild the Solid page and refresh data/ui/index.html so the embed above
+# picks it up on the next compile. Not part of the default client build —
+# node is not required to link a client that already has a fallback HTML.
+add_custom_target(VantaMPUi
+    COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/build_ui.py"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+    COMMENT "Building and embedding the VantaMP interface")

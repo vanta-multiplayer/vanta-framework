@@ -17,7 +17,7 @@
 #include "core/client_config.h"
 #include "core/diagnostics/breadcrumbs.h"
 #include "core/globals.h"
-#include "core/ui/nui.h"
+#include "core/nui/nui.h"
 #include "core/ui/window_input.h"
 #include "core/ui/ped_debug_ui.h"
 #include "game/patches/boot.h"
@@ -90,8 +90,8 @@ namespace VantaMP::Core {
         // just joined a server wants.
         Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::InGame);
 
-        VantaMP::UI::ReportConnected(GetClientConfig().serverHost);
-        VantaMP::UI::ReportConnectionState("connected", "");
+        Nui::ReportConnected(GetClientConfig().serverHost);
+        Nui::ReportConnectionState("connected", "");
 
         // The screen is NOT revealed here. Being accepted is not being placed:
         // the server decides where this player belongs, and says so with a
@@ -111,7 +111,15 @@ namespace VantaMP::Core {
         // a world the player is no longer in.
         Game::FadeOut();
 
-        VantaMP::UI::ReportConnectionState("disconnected", "");
+        Nui::ReportConnectionState("disconnected", "");
+    }
+
+    void RequestDisconnect() {
+        if (!gApplication) {
+            return;
+        }
+
+        gApplication->RequestDisconnect();
     }
 
     void RequestConnect(const std::string &address, const std::string &nickname) {
@@ -150,8 +158,10 @@ namespace VantaMP::Core {
         // which the menu is the only thing worth looking at.
         if (!_menuShown && Game::IsFrontendBypassed()) {
             _menuShown = true;
-            VantaMP::UI::SetInterfaceVisible(true);
+            Nui::SetInterfaceVisible(true);
         }
+
+        Nui::TickNetgraph();
 
         // THE CURSOR BELONGS TO WHOEVER HAS FOCUS, EVERY FRAME.
         //
@@ -160,7 +170,7 @@ namespace VantaMP::Core {
         // look. It follows the menu instead: up while the menu is, gone the
         // moment the page closes it.
         if (auto *imgui = GetImGUI(); imgui && imgui->IsInitialized()) {
-            const bool wantsPointer = VantaMP::UI::IsMenuOpen();
+            const bool wantsPointer = Nui::IsMenuOpen();
 
             if (wantsPointer != _cursorShown) {
                 _cursorShown = wantsPointer;
@@ -182,6 +192,19 @@ namespace VantaMP::Core {
                     webManager->SubmitImGuiDraws();
                 }
             });
+        }
+
+        if (_disconnectRequested) {
+            _disconnectRequested = false;
+            _connectRequested    = false;
+            _pendingHost.clear();
+            _pendingNickname.clear();
+
+            if (auto *engine = GetNetworkingEngine()) {
+                if (auto *client = engine->GetNetworkClient()) {
+                    (void)client->Disconnect();
+                }
+            }
         }
 
         // The menu asked to connect, on a CEF thread. Acted on here instead,
@@ -216,16 +239,17 @@ namespace VantaMP::Core {
 
             if (!result) {
                 Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->error("Could not reach {}:{} - {}", host, port, result.GetError().message);
-                VantaMP::UI::ReportConnectionState("failed", result.GetError().message);
+                Nui::ReportConnectionState("failed", result.GetError().message);
             }
             else {
                 Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Connecting to {}:{}", host, port);
-                VantaMP::UI::ReportConnectionState("connecting", host + ":" + std::to_string(port));
+                Nui::ReportConnectionState("connecting", host + ":" + std::to_string(port));
             }
         }
 
-        // Instance::Update drains the queue before this runs, so the panel lands a frame later
-        if (GetImGUI() && GetImGUI()->IsInitialized()) {
+        // Ped debug is in-world only. Drawing it on the connect screen puts an
+        // ImGui window over the menu before there is a ped worth inspecting.
+        if (Nui::IsInWorld() && GetImGUI() && GetImGUI()->IsInitialized()) {
             GetImGUI()->PushWidget([]() {
                 UI::DrawPedDebugPanel();
             });
@@ -233,6 +257,7 @@ namespace VantaMP::Core {
     }
 
     void Application::PreShutdown() {
+        Nui::ShutdownInterface();
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client shutting down");
     }
 
@@ -302,7 +327,7 @@ namespace VantaMP::Core {
                 Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->error("CEF did not start: {}", result.GetError().message);
             }
             else {
-                VantaMP::UI::BringUpInterface(width, height);
+                Nui::BringUpInterface(width, height);
 
                 // The interface is useless without a pointer and a keyboard.
                 // CEF has no window of its own, so the messages have to be

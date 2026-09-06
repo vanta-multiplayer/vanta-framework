@@ -7,7 +7,7 @@
 #include <utils/hooking/hook_function.h>
 
 #include "core/application.h"
-#include "core/ui/nui.h"
+#include "core/nui/nui.h"
 #include "core/ui/window_input.h"
 #include "game/patches/display.h"
 #include "game/patches/input.h"
@@ -72,7 +72,7 @@ namespace {
         const bool focused = VantaMP::Game::HasWindowFocus(gGameWindow);
 
         VantaMP::Game::UpdateForegroundFocus(gGameWindow);
-        VantaMP::Game::SuppressGameInput(!focused || VantaMP::UI::IsMenuOpen());
+        VantaMP::Game::SuppressGameInput(!focused || VantaMP::Nui::IsCapturingInput());
 
         VantaMP::Core::TickApplication();
         return gEndScene(device);

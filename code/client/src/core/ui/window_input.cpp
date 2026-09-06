@@ -1,5 +1,7 @@
 #include "window_input.h"
 
+#include "core/nui/nui.h"
+
 #include <utils/safe_win32.h>
 
 #include <core_modules.h>
@@ -19,7 +21,35 @@ namespace VantaMP::UI {
             return (message >= WM_KEYFIRST && message <= WM_KEYLAST);
         }
 
+        bool IsRepeat(LPARAM lParam) {
+            return (lParam & (1 << 30)) != 0;
+        }
+
+        // CEF only receives keys while the view has focus. Closing the menu
+        // unfocuses it, so F1 / Esc / F8 / ~ have to be taken here.
+        bool HandleHotkey(WPARAM wParam) {
+            switch (wParam) {
+            case VK_F1:
+                VantaMP::Nui::ToggleMenu();
+                return true;
+            case VK_ESCAPE:
+                VantaMP::Nui::HandleEscape();
+                return true;
+            case VK_F8:
+            case VK_OEM_3:
+            case VK_OEM_8:
+                VantaMP::Nui::ToggleConsole();
+                return true;
+            default:
+                return false;
+            }
+        }
+
         LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
+            if ((message == WM_KEYDOWN || message == WM_SYSKEYDOWN) && !IsRepeat(lParam) && HandleHotkey(wParam)) {
+                return 0;
+            }
+
             if (auto *manager = Framework::CoreModules::GetWebManager(); manager && manager->IsInitialized()) {
                 if (IsMouseMessage(message)) {
                     manager->ProcessMouseEvent(window, message, wParam, lParam);
