@@ -216,6 +216,17 @@ namespace VantaMP::SDK {
 
         gPatterns.CWeaponInfo__GetWeaponInfo = Resolve("8A 4C 24 08 84 C9 E9"); // 0x00743C60
 
+        // --- Where a ped points its gun -----------------------------------------
+
+        gPatterns.CPedIK__PointGunInDirection = Resolve("83 EC 10 53 55 8B E9 8B"); // 0x005FDC00
+
+        // The three places the game calls it from. Each signature is the call
+        // itself plus the code that follows, the call bytes alone being the same
+        // five bytes everywhere.
+        gPatterns.CPedIK__PointGunInDirectionCallA = Resolve("E8 ? ? ? ? 5F 5E 83 C4 1C C2 08"); // 0x005FDF7A
+        gPatterns.CPedIK__PointGunInDirectionCallB = Resolve("E8 ? ? ? ? 8B 4F 30 8B 51 18 C1 EA 0B F6 C2 01 74 2F"); // 0x0061F351
+        gPatterns.CPedIK__PointGunInDirectionCallC = Resolve("E8 ? ? ? ? 5F 5E 5D 5B 83 C4 34 C2 04"); // 0x0062876D
+
         // --- Running more than one client --------------------------------------
 
         gPatterns.MultiInstanceCheckCall = Resolve("E8 ? ? ? ? 85 C0 75 0F 53"); // 0x0074872D

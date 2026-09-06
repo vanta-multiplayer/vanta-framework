@@ -298,6 +298,24 @@ namespace VantaMP::SDK {
         // one repeated here, since it also depends on skill level.
         uintptr_t CWeaponInfo__GetWeaponInfo = 0;
 
+        // --- Where a ped points its gun -----------------------------------------
+        //
+        // WHICH WAY A PED AIMS IS COMPUTED FROM THE LOCAL CAMERA, for every ped,
+        // because the game only ever had one player. The horizontal part follows
+        // the camera rotation we already swap per remote ped, but the PITCH does
+        // not - so without this a remote player aims level whatever their owner
+        // is looking at, and their shots leave along the wrong line.
+        //
+        // Reached through its three call sites rather than by overwriting its
+        // prologue. MTA rewrites the first instructions and jumps back in past
+        // them, which it has to because it hooks a lot of these; with three
+        // sites there is no reason to take the function apart.
+        uintptr_t CPedIK__PointGunInDirection = 0;
+
+        uintptr_t CPedIK__PointGunInDirectionCallA = 0;
+        uintptr_t CPedIK__PointGunInDirectionCallB = 0;
+        uintptr_t CPedIK__PointGunInDirectionCallC = 0;
+
         // --- Running more than one client --------------------------------------
         //
         // GTA refuses to start twice, and testing a multiplayer platform means
