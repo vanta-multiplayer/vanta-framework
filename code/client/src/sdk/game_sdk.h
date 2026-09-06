@@ -13,5 +13,6 @@
 #include <CPlayerPed.h>
 #include <CPedClothesDesc.h>
 #include <CTaskSimpleDuck.h>
+#include <CTaskSimpleUseGun.h>
 #include <CWorld.h>
 #pragma warning(pop)

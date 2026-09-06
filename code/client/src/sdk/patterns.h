@@ -234,6 +234,16 @@ namespace VantaMP::SDK {
         uintptr_t CTaskManager__SetTaskSecondary = 0;
         uintptr_t CTaskManager__GetTaskSecondary = 0;
 
+        // Reload is the same story as duck: WEAPONSTATE_RELOADING is an
+        // OUTPUT of CTaskSimpleUseGun (command 1). Writing the state alone
+        // leaves a remote ped idle with an empty clip. MTA sets the state
+        // and lets the existing UseGun task consume it; we also create the
+        // task when they are not already aiming, so an empty-clip reload
+        // after hip-fire still plays.
+        uintptr_t CTaskSimpleUseGun__Constructor = 0;
+        uintptr_t CTaskSimpleUseGun__ControlGun  = 0;
+        uintptr_t CPedIntelligence__GetTaskUseGun = 0;
+
         // Swimming is the same story as ducking, one level up. Being in water
         // is an OUTPUT too - the flags come from the task, not the other way
         // round - so a remote player who is swimming has to be handed the task
@@ -261,6 +271,11 @@ namespace VantaMP::SDK {
         uintptr_t CPed__SetModelIndex      = 0;
         uintptr_t CPlaceable__SetOrientation = 0;
         uintptr_t CPedIntelligence__FlushImmediately = 0;
+
+        // CPlayerPed::SetInitialState. MTA's spawnPlayer calls this to take a
+        // dead ped back to standing: death tasks, the DIE/DEAD state and the
+        // die-anim flag all go. Writing health alone leaves them on the ground.
+        uintptr_t CPlayerPed__SetInitialState = 0;
         uintptr_t CPedClothesDesc__Constructor = 0;
         uintptr_t CPedClothesDesc__Initialise  = 0;
         uintptr_t CWorld__Add    = 0;
@@ -315,6 +330,48 @@ namespace VantaMP::SDK {
         uintptr_t CPedIK__PointGunInDirectionCallA = 0;
         uintptr_t CPedIK__PointGunInDirectionCallB = 0;
         uintptr_t CPedIK__PointGunInDirectionCallC = 0;
+
+        // A shot leaving the gun. Hooked so the local player's Fire is reported
+        // as its own packet - origin and target are an event, not a field on
+        // the 10 Hz snapshot - and a remote player's Fire from input replay is
+        // swallowed, because that shot aims with the local camera.
+        uintptr_t CWeapon__Fire = 0;
+
+        // The hitscan itself. CWeapon::Fire is the dispatcher; this is what
+        // actually draws the tracer. Remotes call it with the owner's line so
+        // the shot does not pick up this client's camera.
+        uintptr_t CWeapon__FireInstantHit = 0;
+
+        // MTA's two FireInstantHit call-site hooks. The LOS call is where the
+        // real start/end live (and where a remote replay overwrites them). The
+        // IsPlayer call is what would otherwise send a remote CPlayerPed down
+        // the local-camera path.
+        uintptr_t CWeapon__FireInstantHit_LosCall     = 0;
+        uintptr_t CWeapon__FireInstantHit_IsPlayerCall = 0;
+        uintptr_t CWorld__ProcessLineOfSight           = 0;
+        uintptr_t CPed__IsPlayer                       = 0;
+
+        // The crosshair ray. Camera.m_vecFront from the muzzle is the follow
+        // cam looking down at the ped, which is why remotes saw shots into
+        // the dirt. This is what FireInstantHit itself uses when aiming.
+        uintptr_t CCamera__Find3rdPersonCamTargetVector = 0;
+
+        // CWorld::pIgnoreEntity. FireBullet sets the shooter here so the
+        // hitscan cannot hit the ped that just fired.
+        uintptr_t CWorld__pIgnoreEntity = 0;
+
+        // Remote muzzle presentation. Forcing IsPlayer false (so a remote
+        // CPlayerPed does not steal this client's camera) also skips the
+        // player-only branch that calls DoGunFlash. MTA then does the flash
+        // itself: the weapon-mesh flash, the particle, a shell, a point
+        // light, and the fire audio event.
+        uintptr_t CPed__DoGunFlash                      = 0;
+        uintptr_t CPed__GetTransformedBonePosition      = 0;
+        uintptr_t Fx_c__TriggerGunshot                  = 0;
+        uintptr_t CWeapon__AddGunshell                  = 0;
+        uintptr_t CAEPedWeaponAudioEntity__AddAudioEvent = 0;
+        uintptr_t CPointLights__AddLight                = 0;
+        uintptr_t g_fx                                  = 0;
 
         // A bone in the world, and that point on the screen. Nametags sit on
         // the head bone, so both have to exist before anything is drawn there.

@@ -178,6 +178,10 @@ namespace VantaMP::SDK {
         gPatterns.CTaskManager__SetTaskSecondary = Resolve("53 8B 5C 24 08 56 57 8B 7C 24 14 8B F1 8B"); // 0x00681B60
         gPatterns.CTaskManager__GetTaskSecondary = Resolve("8B 44 24 04 8B 44 81 14"); // 0x00681810
 
+        gPatterns.CTaskSimpleUseGun__Constructor  = Resolve("6A FF 68 D8 F3 83"); // 0x0061DE60
+        gPatterns.CTaskSimpleUseGun__ControlGun   = Resolve("55 8B 6C 24 0C 56 8B F1 8B 4E"); // 0x0061E040
+        gPatterns.CPedIntelligence__GetTaskUseGun = Resolve("56 8D 71 04 6A 00 8B CE E8 93"); // 0x00600F70
+
         // Near-identical prologues, so both carry the call that follows: the
         // duck constructor above starts with the same four bytes and is told
         // apart only by its relative offset.
@@ -199,6 +203,7 @@ namespace VantaMP::SDK {
         gPatterns.CPed__SetModelIndex                = Resolve("56 8B F1 81 4E 1C"); // 0x005E4880
         gPatterns.CPlaceable__SetOrientation         = Resolve("83 EC 0C 56 8B F1 8B 4E 14"); // 0x00439A80
         gPatterns.CPedIntelligence__FlushImmediately = Resolve("6A FF 68 26 E8 83"); // 0x00601640
+        gPatterns.CPlayerPed__SetInitialState        = Resolve("64 A1 00 00 00 00 6A FF 68 41 ED"); // 0x0060CD20
         gPatterns.CPedClothesDesc__Constructor       = Resolve("8B D1 57 33 C0 B9 0A 00 00 00 8B FA F3 AB 8D 7A 28 B9 12 00 00 00 F3 AB 89 42 70 89 42 74 8B"); // 0x005A8020
         gPatterns.CPedClothesDesc__Initialise        = Resolve("8B D1 57 33 C0 B9 0A 00 00 00 8B FA F3 AB 8D 7A 28 B9 12 00 00 00 F3 AB 89 42 70 89 42 74 5F"); // 0x005A78F0
         gPatterns.CWorld__Add                        = Resolve("56 8B 74 24 08 8B 46 18 85 C0 74"); // 0x00563220
@@ -226,6 +231,31 @@ namespace VantaMP::SDK {
         gPatterns.CPedIK__PointGunInDirectionCallA = Resolve("E8 ? ? ? ? 5F 5E 83 C4 1C C2 08"); // 0x005FDF7A
         gPatterns.CPedIK__PointGunInDirectionCallB = Resolve("E8 ? ? ? ? 8B 4F 30 8B 51 18 C1 EA 0B F6 C2 01 74 2F"); // 0x0061F351
         gPatterns.CPedIK__PointGunInDirectionCallC = Resolve("E8 ? ? ? ? 5F 5E 5D 5B 83 C4 34 C2 04"); // 0x0062876D
+
+        // sub esp, 3Ch; push ebx; push esi; push edi; mov esi, ecx; mov eax, [esi]
+        gPatterns.CWeapon__Fire = Resolve("83 EC 3C 53 56 57 8B F1 8B 06 6A 01"); // 0x00742300
+
+        gPatterns.CWeapon__FireInstantHit = Resolve("6A FF 68 BB 8E 84"); // 0x0073FB10
+
+        // The CALL to ProcessLineOfSight inside FireInstantHit, and the CALL to
+        // CPed::IsPlayer that would send a remote CPlayerPed down the camera path.
+        gPatterns.CWeapon__FireInstantHit_LosCall      = Resolve("E8 ? ? ? ? 83 C4 40 8B 4C"); // 0x00740B69
+        gPatterns.CWeapon__FireInstantHit_IsPlayerCall = Resolve("E8 ? ? ? ? 84 C0 0F 84 68 04"); // 0x0074034C
+
+        gPatterns.CWorld__ProcessLineOfSight = Resolve("83 EC 60 66 81 3D"); // 0x0056BA00
+        gPatterns.CPed__IsPlayer             = Resolve("8B 81 98 05 00 00 85 C0 74 08"); // 0x005DF8F0
+
+        gPatterns.CCamera__Find3rdPersonCamTargetVector = Resolve("83 EC 10 0F B6 41"); // 0x00514970
+
+        gPatterns.CWorld__pIgnoreEntity = OperandAt(hook::get_pattern("39 35 ? ? ? ? 0F 84 C8"), 2); // site 0x004153B4 -> 0x00B7CD68
+
+        gPatterns.CPed__DoGunFlash                       = Resolve("56 8B F1 8B 86 F4 04"); // 0x005DF340
+        gPatterns.CPed__GetTransformedBonePosition       = Resolve("8A 44 24 0C 83 EC 0C 56 8B F1 84 C0 8B 86 74 04 00 00 57 74 50"); // 0x005E01C0
+        gPatterns.Fx_c__TriggerGunshot                   = Resolve("A1 3C F0 B6 00 83 EC 24 85 C0 56"); // 0x004A0DE0
+        gPatterns.CWeapon__AddGunshell                   = Resolve("83 EC 28 56 8B 74 24 30"); // 0x0073A3E0
+        gPatterns.CAEPedWeaponAudioEntity__AddAudioEvent = Resolve("8A 81 A0 00 00 00"); // 0x004E69F0
+        gPatterns.CPointLights__AddLight                 = Resolve("8B 0D 3C F0 B6 00 83 EC 10"); // 0x007000E0
+        gPatterns.g_fx                                   = OperandAt(hook::get_pattern("52 B9 ? ? ? ? E8 D4 92"), 2); // site 0x00475D61 -> 0x00A9AE00
 
         gPatterns.CPed__GetBonePosition    = Resolve("8A 44 24 0C 83 EC 0C 56 8B F1 84 C0 8B 86 74 04 00 00 57 74 51"); // 0x005E4280
         gPatterns.CSprite__CalcScreenCoors = Resolve("83 EC 14 A1 A0 EF"); // 0x0070CE30
