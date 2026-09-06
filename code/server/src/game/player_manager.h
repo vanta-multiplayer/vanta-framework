@@ -48,6 +48,15 @@ namespace VantaMP::Game {
 
         [[nodiscard]] Shared::PlayerEntity *Find(MafiaNet::PeerGuid guid) const;
 
+        template <typename Fn>
+        void ForEach(Fn &&fn) const {
+            for (const auto &[guid, player] : _players) {
+                if (player) {
+                    fn(player);
+                }
+            }
+        }
+
         [[nodiscard]] std::size_t Count() const {
             return _players.size();
         }

@@ -2,9 +2,11 @@ set(VANTAMP_SERVER_FILES
     src/main.cpp
     src/core/server.cpp
     src/game/player_manager.cpp
+    src/game/vehicle_manager.cpp
     src/scripting/bindings.cpp
 
     ../shared/player_entity.cpp
+    ../shared/vehicle_entity.cpp
 
     ${CMAKE_BINARY_DIR}/vantamp_version.cpp
 )

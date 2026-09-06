@@ -1,6 +1,7 @@
 #include "bindings.h"
 
 #include "game/player_manager.h"
+#include "game/vehicle_manager.h"
 #include "shared/player_entity.h"
 
 #include <core_modules.h>
@@ -13,7 +14,8 @@
 
 namespace VantaMP::Scripting {
     namespace {
-        Game::PlayerManager *gPlayers = nullptr;
+        Game::PlayerManager  *gPlayers  = nullptr;
+        Game::VehicleManager *gVehicles = nullptr;
 
         Shared::PlayerEntity *EntityOf(Framework::Scripting::Builtins::Player &self) {
             return dynamic_cast<Shared::PlayerEntity *>(self.GetHandle());
@@ -40,14 +42,44 @@ namespace VantaMP::Scripting {
 
             return player ? player->nickname : "";
         }
+
+        void CreateVehicle(const v8::FunctionCallbackInfo<v8::Value> &info) {
+            auto *isolate = info.GetIsolate();
+
+            if (!gVehicles || info.Length() < 4) {
+                info.GetReturnValue().Set(v8::Integer::New(isolate, 0));
+                return;
+            }
+
+            const auto model   = v8pp::from_v8<std::uint32_t>(isolate, info[0]);
+            const auto x       = v8pp::from_v8<float>(isolate, info[1]);
+            const auto y       = v8pp::from_v8<float>(isolate, info[2]);
+            const auto z       = v8pp::from_v8<float>(isolate, info[3]);
+            const auto heading = info.Length() > 4 ? v8pp::from_v8<float>(isolate, info[4]) : 0.0f;
+            const auto primary = info.Length() > 5 ? v8pp::from_v8<std::uint8_t>(isolate, info[5]) : std::uint8_t {0};
+            const auto secondary = info.Length() > 6 ? v8pp::from_v8<std::uint8_t>(isolate, info[6]) : std::uint8_t {0};
+
+            const auto id = gVehicles->Create(model, x, y, z, heading, primary, secondary);
+
+            info.GetReturnValue().Set(v8::Number::New(isolate, static_cast<double>(id)));
+        }
+
+        void DestroyVehicle(const v8::FunctionCallbackInfo<v8::Value> &info) {
+            if (!gVehicles || info.Length() < 1) {
+                return;
+            }
+
+            gVehicles->Destroy(v8pp::from_v8<std::uint64_t>(info.GetIsolate(), info[0]));
+        }
     } // namespace
 
-    void Register(Framework::Scripting::Engine *engine, Game::PlayerManager &players) {
+    void Register(Framework::Scripting::Engine *engine, Game::PlayerManager &players, Game::VehicleManager &vehicles) {
         if (!engine) {
             return;
         }
 
-        gPlayers = &players;
+        gPlayers  = &players;
+        gVehicles = &vehicles;
 
         // InitFrameworkSDK calls this with no V8 scopes of its own. Creating
         // or extending a v8pp class without a locker and a handle scope is
@@ -66,6 +98,13 @@ namespace VantaMP::Scripting {
 
         cls.function("spawn", &Spawn);
         cls.property("nickname", &Nickname);
+
+        v8::Local<v8::Context> context = engine->GetContext();
+        v8::Local<v8::Object> vehiclesObj = v8::Object::New(isolate);
+
+        vehiclesObj->Set(context, v8pp::to_v8(isolate, "create"), v8::FunctionTemplate::New(isolate, &CreateVehicle)->GetFunction(context).ToLocalChecked()).Check();
+        vehiclesObj->Set(context, v8pp::to_v8(isolate, "destroy"), v8::FunctionTemplate::New(isolate, &DestroyVehicle)->GetFunction(context).ToLocalChecked()).Check();
+        context->Global()->Set(context, v8pp::to_v8(isolate, "Vehicles"), vehiclesObj).Check();
     }
 
     bool EmitPlayerReady(std::uint64_t networkId) {

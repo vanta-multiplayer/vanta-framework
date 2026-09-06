@@ -2,7 +2,11 @@
 
 #include "scripting/bindings.h"
 #include "shared/player_entity.h"
+#include "shared/vehicle_entity.h"
 #include "shared/rpc/player_death.h"
+#include "shared/rpc/player_enter_vehicle.h"
+#include "shared/rpc/player_exit_vehicle.h"
+#include "shared/rpc/vehicle_damage_report.h"
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
 #include "shared/spawn_points.h"
@@ -21,6 +25,7 @@ namespace VantaMP {
         // registers the same name, so both sides agree without either shipping
         // a number.
         Replication::EntityRegistry::Get().Register<Shared::PlayerEntity>(Shared::PlayerEntity::kTypeName);
+        Replication::EntityRegistry::Get().Register<Shared::VehicleEntity>(Shared::VehicleEntity::kTypeName);
 
         // Combat events: the client that fired cannot name itself. The GUID
         // on the packet is the connection; the entity id is what remotes
@@ -72,6 +77,35 @@ namespace VantaMP {
 
                 _players.Spawn(MafiaNet::ToPeerGuid(packet->guid), Shared::Spawn::kDefaultX, Shared::Spawn::kDefaultY, Shared::Spawn::kDefaultZ);
             });
+
+            net->RegisterRPC<Shared::RPC::PlayerEnterVehicle>([this](const Shared::RPC::PlayerEnterVehicle &incoming, MafiaNet::Packet *packet) {
+                auto *player = _players.Find(MafiaNet::ToPeerGuid(packet->guid));
+
+                if (!player) {
+                    return;
+                }
+
+                _vehicles.HandleEnter(*player, incoming.vehicleId, incoming.seat, incoming.warp, incoming.door);
+            });
+
+            net->RegisterRPC<Shared::RPC::PlayerExitVehicle>([this](const Shared::RPC::PlayerExitVehicle &incoming, MafiaNet::Packet *packet) {
+                auto *player = _players.Find(MafiaNet::ToPeerGuid(packet->guid));
+
+                if (!player) {
+                    return;
+                }
+
+                _vehicles.HandleExit(*player, incoming.warp, incoming.door);
+            });
+
+            net->RegisterRPC<Shared::RPC::VehicleDamageReport>([this](const Shared::RPC::VehicleDamageReport &incoming, MafiaNet::Packet *packet) {
+                if (!_players.Find(MafiaNet::ToPeerGuid(packet->guid))) {
+                    return;
+                }
+
+                _vehicles.HandleDamage(incoming.vehicleId, incoming.damageEngine, incoming.doorsPacked, incoming.wheelsPacked, incoming.panels, incoming.lights,
+                                       incoming.doorRatiosPacked, incoming.applyRatios);
+            });
         }
 
         Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("VantaMP server ready");
@@ -84,7 +118,7 @@ namespace VantaMP {
     }
 
     void Server::ModuleRegister(Framework::Scripting::Engine *engine) {
-        Scripting::Register(engine, _players);
+        Scripting::Register(engine, _players, _vehicles);
     }
 
     void Server::OnPlayerConnect(const Framework::Integrations::Server::PlayerConnectionData &data) {
@@ -106,6 +140,7 @@ namespace VantaMP {
     }
 
     void Server::OnPlayerDisconnect(MafiaNet::PeerGuid guid) {
+        _vehicles.HandleDisconnect(guid);
         _players.Remove(guid);
     }
 } // namespace VantaMP

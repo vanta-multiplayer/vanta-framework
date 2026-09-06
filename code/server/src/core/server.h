@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/player_manager.h"
+#include "game/vehicle_manager.h"
 
 #include <integrations/server/instance.h>
 
@@ -13,6 +14,8 @@ namespace VantaMP {
     // what stops this becoming the file every feature has to be added to.
     class Server: public Framework::Integrations::Server::Instance {
       public:
+        Server() : _vehicles(_players) {}
+
         void PostInit() override;
         void PostUpdate() override;
         void PreShutdown() override;
@@ -26,7 +29,12 @@ namespace VantaMP {
             return _players;
         }
 
+        [[nodiscard]] Game::VehicleManager &Vehicles() {
+            return _vehicles;
+        }
+
       private:
-        Game::PlayerManager _players;
+        Game::PlayerManager  _players;
+        Game::VehicleManager _vehicles;
     };
 } // namespace VantaMP
