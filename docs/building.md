@@ -1,0 +1,73 @@
+# Building and running
+
+The game is a 32-bit binary, so the client and launcher live in the 32-bit
+tree and the server in the 64-bit one. From the **framework** root
+(`new/`), not from this project:
+
+```bat
+builds\build.bat VantaMPClient 32
+builds\build.bat VantaMPLauncher 32
+builds\build.bat VantaMPServer 64
+```
+
+| Binary | Path |
+|--------|------|
+| Server | `new/builds/build-64/bin/VantaMPServer.exe` |
+| Client | `new/builds/build/bin/VantaMPLauncher.exe` |
+
+The launcher PE-loads `gta_sa.exe` and hands control to `VantaMPClient.dll`.
+Two copies of the launcher on one machine is the normal way to test
+anything. Each instance writes `new/builds/build/bin/logs/VantaMP-<pid>.log`.
+
+## The DLL is locked while a client runs
+
+Kill these before a client rebuild, or the link fails with LNK1168:
+
+- `VantaMPLauncher`
+- `gta_sa`
+- `cef_subprocess`
+
+Restart the **server** as well whenever a `PlayerEntity` or `VehicleEntity`
+field changed. The wire is positional. A mismatched pair deserializes
+garbage and does not tell you.
+
+## Finding the game
+
+The title is `ProjectPlatform::ROCKSTAR`. The launcher reads
+`HKLM\SOFTWARE\Rockstar Games\GTA: San Andreas` / `InstallFolder`, so the
+Rockstar Games Launcher does not have to be running just to find the
+install. A player who owns the game elsewhere can still point at their own
+`gta_sa.exe`.
+
+RGL's build is wrapped by `MTLX.dll`: `.text` is encrypted on disk and only
+decrypts for a process the Rockstar Games Launcher itself started.
+`useRockstarImageSnapshot` handles that — the first run for a given build
+lets the launcher start the game once, captures the decrypted code, and
+caches it in `cache/VantaMP_image_snapshot.bin`. Later runs map the image
+and lay that code back over it. Details:
+`code/framework/src/launcher/README.md` in the parent tree.
+
+## Patterns
+
+Signatures are derived and verified against a clean 1.0 US exe, then
+resolved at startup against whichever build was mapped:
+
+```
+python scripts/derive_pattern.py <gta_sa.exe> 0xADDR
+python scripts/verify_patterns.py <gta_sa.exe>
+```
+
+See [SDK and patterns](sdk-and-patterns.md).
+
+## What a two-client smoke test should show
+
+1. Both players spawn at the waterfront and see nametags.
+2. Walk, jump, crouch, swim — remotes stay on their feet and do not sit 90°
+   off.
+3. F into the dock Sultan (560 at `2865.93, -1665.88, 10.88`). The other
+   client sees the walk-in and the drive.
+4. G into a free passenger seat. The door they used swings on the other
+   client.
+5. F on an occupied driver seat jacks. G does not.
+6. The driver can close a door. It stays shut, and it does not slam on a
+   beat.

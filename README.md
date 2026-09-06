@@ -3,24 +3,39 @@
 A MafiaHub Framework multiplayer modification for **Grand Theft Auto: San Andreas**, targeting the
 build distributed by the Rockstar Games Launcher.
 
+Two clients connect, see each other, walk, jump, crouch, swim, shoot, and share cars. Remote
+players are input replay — GTA walks them from the owner's pad. Cars are occupancy RPCs plus
+owner motion plus a pad swap for steering. **F** is driver / jack; **G** is passenger.
+
+How that is put together, and the rules that keep it from fighting itself, live in
+[`docs/`](docs/README.md).
+
 ## Layout
 
 | Path | Target | Arch | What it is |
 |------|--------|------|------------|
 | `code/launcher` | `VantaMPLauncher` | 32-bit | PE-loads `gta_sa.exe` into its own process and hands control to the client |
-| `code/client` | `VantaMPClient` | 32-bit | The in-process mod DLL, loaded by the launcher as the mapped game starts |
-| `code/server` | `VantaMPServer` | 64-bit | The dedicated server |
-| `code/shared` | — | — | Constants and version data shared by all three |
-| `vendors/plugin-sdk` | — | — | DK22Pac's plugin-sdk, for the San Andreas game structures |
+| `code/client` | `VantaMPClient` | 32-bit | The in-process mod DLL: sync, patches, UI |
+| `code/server` | `VantaMPServer` | 64-bit | Replicas, reliable RPCs, scripting |
+| `code/shared` | — | — | Entities, RPCs and rates compiled into both sides |
+| `code/client/src/sdk` | — | — | The only place game types exist. Signatures, not addresses |
+| `docs/` | — | — | Architecture, player sync, vehicles, SDK, building |
+| `data/resources/freeroam` | — | — | Waterfront spawn and the dock Sultan |
+| `vendors/plugin-sdk` | — | — | DK22Pac's plugin-sdk, for San Andreas **structure layouts** |
 
 The game is a 32-bit binary, so the client and launcher build only in the 32-bit tree
-(`builds\build`) while the server builds in the 64-bit one (`builds\build-64`):
+(`builds\build`) while the server builds in the 64-bit one (`builds\build-64`). From the
+framework root (`new/`):
 
 ```bat
 builds\build.bat VantaMPClient 32
 builds\build.bat VantaMPLauncher 32
 builds\build.bat VantaMPServer 64
 ```
+
+Run `VantaMPServer.exe` from `builds\build-64\bin`, then `VantaMPLauncher.exe` twice from
+`builds\build\bin`. Kill the launchers (and `gta_sa`) before a client rebuild — the DLL is
+locked. Full steps: [`docs/building.md`](docs/building.md).
 
 ## How the game is launched
 
@@ -37,23 +52,29 @@ and lays that code back over it. See `code/framework/src/launcher/README.md` for
 
 ## Status
 
-The launcher maps the game, the client attaches inside it, and San Andreas runs under PE loading.
-A D3D9 device hook drives `Core::Application` - the framework's renderer, ImGui and the client tick
-all hang off the game's own `EndScene` - and the first feature on top of it is a live debug panel
-showing the local ped's position, heading, model, ped type, health and vehicle.
+The launcher maps the game, the client attaches inside it, and two players can share a session.
 
-**plugin-sdk** is vendored as a submodule for its San Andreas structure definitions. Its event and
-address tables are for GTA:SA 1.0 US and bind to none of this build (0 of 19 of its GTASA hook sites
-are call sites here), so:
+- **On foot.** Input replay, interpolated heading (the +0x558 field, not the matrix), gated
+  velocity, duck as a task, swim as the in-water task, nametags, weapons, shots, reloads, deaths.
+- **In cars.** Script-spawned vehicles, F / G enter and exit, jacking the driver (including
+  through the passenger door), door open ratios, damage from bystanders, steering from a pad
+  swap rather than a written `m_fSteerAngle`.
+- **Freeroam.** Waterfront spawn at `2899.41, -1672.64, 12.89` and a Sultan on the dock at
+  `2865.93, -1665.88, 10.88`. Grove Street is commented beside the numbers for when the
+  waterfront has been watched long enough.
 
-- structures come from plugin-sdk (`CPed`, `CEntity`, `CPlaceable`, ... - layouts are the same
-  across builds, which is why plugin-sdk itself only varies addresses between versions);
-- addresses come from our own signature scans in `code/client/src/sdk/patterns.cpp`, validated at
-  startup the way the rest of the MafiaHub projects do it;
-- anything plugin-sdk only *declares* (its methods live at 1.0 US addresses) has to be reimplemented
-  locally - `CPlaceable::GetHeading` is the first example.
+A D3D9 device hook still drives `Core::Application` — renderer, ImGui and the client tick hang
+off the game's own `EndScene`. The ped debug panel is still there.
 
-plugin-sdk is confined to a single translation unit (`src/sdk/game.cpp`) which hands the rest of the
-client a plain `LocalPedState`. It has to be: the SDK ships its own DirectX SDK headers that lose a
-fight with the Windows SDK's dxgi, and it needs `RW` defined, which collides with a function of the
-same name in the framework's `jitasm.h`.
+**plugin-sdk** is vendored as a submodule for structure definitions. Its event and address tables
+are for GTA:SA 1.0 US and bind to none of this build, so:
+
+- structures come from plugin-sdk (`CPed`, `CVehicle`, … — layouts are the same across builds);
+- addresses come from signature scans in `code/client/src/sdk/patterns.cpp`, derived with
+  `scripts/derive_pattern.py` and verified at startup;
+- anything plugin-sdk only *declares* is reimplemented locally behind an SDK function.
+
+plugin-sdk is confined to the files named in `VANTAMP_CLIENT_SDK_FILES`. It ships its own
+DirectX SDK headers that lose a fight with the Windows SDK's dxgi, and it needs `RW` defined,
+which collides with a function of the same name in the framework's `jitasm.h`. The full rule
+set is [`docs/sdk-and-patterns.md`](docs/sdk-and-patterns.md).
