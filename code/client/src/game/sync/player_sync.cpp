@@ -391,18 +391,19 @@ namespace VantaMP::Game {
 
             // 6. Pose, LAST, and through the game's own tasks.
             //
-            // ONLY THE CROUCH IS APPLIED. isInAir and isInWater are sent and
-            // are worth having - MTA carries the same two - but neither can be
-            // applied by writing the flag, because both are outputs the game
-            // recomputes every frame from its own physics.
+            // NONE OF THESE ARE APPLIED BY WRITING THE FLAG, because all three
+            // are outputs the game recomputes every frame from its own physics.
+            // Each is either handed the task that produces it, or left alone.
             //
-            // In the air needs nothing: the ped is falling because the game
-            // walked it off something, and saying so again changes nothing.
-            // Swimming does need a task, CTaskComplexInWater, which plugin-sdk
-            // does not describe - so it stays unapplied rather than pretending
-            // through a flag that reverts. Until then a remote player in water
-            // is drawn on foot.
+            // isInAir is left alone on purpose, and is not a gap. The ped is
+            // falling because the game walked it off something; saying so again
+            // changes nothing. Its real job is deciding whether velocity gets
+            // applied above, which is what MTA uses its own copy for too.
             SDK::SetRemotePedDucked(slot, entity->isDucked);
+
+            if (entity->isInWater) {
+                SDK::StartRemotePedSwimming(slot);
+            }
         }
     } // namespace
 

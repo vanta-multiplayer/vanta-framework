@@ -69,4 +69,17 @@ namespace VantaMP::SDK {
     // Idempotent: asking for a crouch that is already running does nothing, so
     // this can be called on every frame without restarting the animation.
     void SetRemotePedDucked(int slot, bool ducked);
+
+    // Puts a remote ped in the water.
+    //
+    // Call this when the owner reports being in water; it does nothing if the
+    // ped is already swimming, so it can be called on every frame.
+    //
+    // THERE IS NO MATCHING WAY OUT, DELIBERATELY. Getting out of water is a
+    // decision the receiving client's own game is perfectly able to make, and
+    // does: the task ends itself when the ped is no longer in water. Only
+    // getting IN needs help, because a remote ped is walked by replayed input
+    // and can be somewhere its own physics has not caught up with yet. MTA
+    // starts this task on the same edge and likewise never ends it.
+    void StartRemotePedSwimming(int slot);
 } // namespace VantaMP::SDK

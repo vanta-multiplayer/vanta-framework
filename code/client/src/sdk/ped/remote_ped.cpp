@@ -27,6 +27,25 @@ namespace VantaMP::SDK {
         using GetTaskSecondaryFn = void *(__thiscall *)(void *, int);
         using SetTaskSecondaryFn = void(__thiscall *)(void *, void *, int);
 
+        using InWaterCtorFn = void(__thiscall *)(void *);
+        using SetTaskFn     = void(__thiscall *)(void *, void *, int, bool);
+
+        // Where the in-water task sits. plugin-sdk names the array but not the
+        // priorities that index it; this is MTA's
+        // TASK_PRIORITY_EVENT_RESPONSE_NONTEMP, which is where it puts the same
+        // task.
+        constexpr int kTaskPriorityEventResponseNonTemp = 2;
+
+        // Twelve bytes of task, and twelve of slack.
+        //
+        // CTaskComplexInWater adds no fields of its own: it is a vtable, a
+        // parent and a subtask pointer, so twelve bytes covers what is known of
+        // it. The slack is MTA's, and its reasoning is worth keeping - GTA is
+        // seen allocating more than the documented layout for some tasks, and
+        // the cost of guessing low is a heap the game writes past the end of.
+        // Twelve wasted bytes against that is not a trade worth agonising over.
+        constexpr unsigned int kInWaterTaskBytes = 12 + 12;
+
         // CTask's virtuals, reached through the vtable rather than by name.
         //
         // plugin-sdk DECLARES them but their bodies are at 1.0 US addresses in
@@ -300,5 +319,46 @@ namespace VantaMP::SDK {
         // when bullets pass, which is a decision the owner's game already made.
         reinterpret_cast<DuckCtorFn>(gPatterns.CTaskSimpleDuck__Constructor)(storage, DUCK_TASK_CONTROLLED, 0, -1);
         reinterpret_cast<SetTaskSecondaryFn>(gPatterns.CTaskManager__SetTaskSecondary)(tasks, storage, TASK_SECONDARY_DUCK);
+    }
+
+    void StartRemotePedSwimming(int slot) {
+        auto *ped = PedAt(slot);
+
+        if (!ped || !ped->m_pIntelligence) {
+            return;
+        }
+
+        auto *tasks = &ped->m_pIntelligence->m_TaskMgr;
+
+        // ASKED OF THE PED, NOT REMEMBERED HERE. Whether this ped is swimming is
+        // something the game knows and can change without being told - the task
+        // ends itself on leaving the water - so a cached "was in water" flag
+        // would go stale the moment that happened. Reading the task back is what
+        // makes calling this every frame safe.
+        if (auto *running = tasks->m_aPrimaryTasks[kTaskPriorityEventResponseNonTemp]) {
+            if (TaskIdOf(running) == TASK_COMPLEX_IN_WATER) {
+                return;
+            }
+        }
+
+        auto *storage = reinterpret_cast<OperatorNewFn>(gPatterns.CTask__operator_new)(kInWaterTaskBytes);
+
+        if (!storage) {
+            return;
+        }
+
+        reinterpret_cast<InWaterCtorFn>(gPatterns.CTaskComplexInWater__Constructor)(storage);
+
+        // THE FLAGS AS WELL AS THE TASK, and this is not the contradiction it
+        // looks like. They are outputs while the task runs, which is why setting
+        // them alone achieves nothing - but the task reads them on its first
+        // frame to decide what it is dealing with, and a ped the game does not
+        // yet believe is in water gets a task that finishes immediately. MTA
+        // seeds both for the same reason.
+        ped->bTouchingWater     = true;
+        ped->bSubmergedInWater  = true;
+
+        // Forced, so it replaces whatever the ped was doing on dry land.
+        reinterpret_cast<SetTaskFn>(gPatterns.CTaskManager__SetTask)(tasks, storage, kTaskPriorityEventResponseNonTemp, true);
     }
 } // namespace VantaMP::SDK
