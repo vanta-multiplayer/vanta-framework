@@ -204,6 +204,18 @@ namespace VantaMP::SDK {
         gPatterns.CWorld__Add                        = Resolve("56 8B 74 24 08 8B 46 18 85 C0 74"); // 0x00563220
         gPatterns.CWorld__Remove                     = Resolve("56 8B 74 24 08 8B 06 8B CE FF 50 0C"); // 0x00563280
 
+        gPatterns.CPed__GiveWeapon       = Resolve("51 53 8B 5C 24 0C 55 56 57"); // 0x005E6080
+        gPatterns.CPed__SetCurrentWeapon = Resolve("53 8B 5C 24 08 83 FB FF 56 8B"); // 0x005E61F0
+        gPatterns.CPed__ClearWeapon      = Resolve("56 57 8B 7C 24 0C 6A 01 57 8B F1 E8 A0"); // 0x005E62B0
+
+        // --- Streaming ----------------------------------------------------------
+
+        gPatterns.CStreaming__RequestModel           = Resolve("53 8B 5C 24 0C 55 8B 6C 24 0C 56 57 8D"); // 0x004087E0
+        gPatterns.CStreaming__LoadAllRequestedModels = Resolve("E9 ? ? ? ? 56 33 F6 84 C0 0F"); // 0x0040EA10
+        gPatterns.CStreaming__HasModelLoaded         = Resolve("8B 44 24 04 8D 04 80 8A 14 85 D0"); // 0x004044C0
+
+        gPatterns.CWeaponInfo__GetWeaponInfo = Resolve("8A 4C 24 08 84 C9 E9"); // 0x00743C60
+
         // --- Running more than one client --------------------------------------
 
         gPatterns.MultiInstanceCheckCall = Resolve("E8 ? ? ? ? 85 C0 75 0F 53"); // 0x0074872D

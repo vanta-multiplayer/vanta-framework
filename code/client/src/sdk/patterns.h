@@ -266,6 +266,38 @@ namespace VantaMP::SDK {
         uintptr_t CWorld__Add    = 0;
         uintptr_t CWorld__Remove = 0;
 
+        // A HELD WEAPON IS A MODEL, NOT A NUMBER. Writing the type into
+        // m_aWeapons would describe an armed ped without arming one: the game
+        // loads the weapon model, attaches it to the hand bone and picks the
+        // animation group from it, none of which a field write does. So the
+        // game's own GiveWeapon runs, and SetCurrentWeapon draws it.
+        //
+        // ClearWeapon is what detaches the model again, which matters because a
+        // remote player switching weapons would otherwise accumulate them in
+        // both hands.
+        uintptr_t CPed__GiveWeapon       = 0;
+        uintptr_t CPed__SetCurrentWeapon = 0;
+        uintptr_t CPed__ClearWeapon      = 0;
+
+        // --- Streaming ----------------------------------------------------------
+        //
+        // MODELS HAVE TO BE IN MEMORY BEFORE ANYTHING IS TOLD TO WEAR ONE.
+        // Arming a ped with a model the streamer has not loaded does not fail
+        // where it was asked: the weapon is recorded, and the game faults a
+        // second later when it goes to draw an object that is not there.
+        //
+        // RequestModel queues, LoadAllRequestedModels blocks until the queue is
+        // empty, and HasModelLoaded is how to avoid doing either when the model
+        // is already resident - which is the common case, and the one that must
+        // not stall the frame.
+        uintptr_t CStreaming__RequestModel          = 0;
+        uintptr_t CStreaming__LoadAllRequestedModels = 0;
+        uintptr_t CStreaming__HasModelLoaded        = 0;
+
+        // Which model a weapon is worn as. A table lookup in the exe rather than
+        // one repeated here, since it also depends on skill level.
+        uintptr_t CWeaponInfo__GetWeaponInfo = 0;
+
         // --- Running more than one client --------------------------------------
         //
         // GTA refuses to start twice, and testing a multiplayer platform means
