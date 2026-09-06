@@ -38,5 +38,11 @@ namespace VantaMP::Shared {
 
         fields.Field(aimVertical);
         fields.Field(aimHorizontal);
+
+        // On the snapshot as well as construction: construction is once, and
+        // a client that missed the name (or joined before it was set) has no
+        // other way to learn it. Cheap enough that re-sending it every tick
+        // is fine against a string that almost never changes.
+        fields.Field(nickname);
     }
 } // namespace VantaMP::Shared

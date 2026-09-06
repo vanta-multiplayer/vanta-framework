@@ -28,8 +28,11 @@ namespace VantaMP::Shared {
         // id on the wire, so it has to match on both sides exactly.
         static constexpr const char *kTypeName = "VantaMPPlayer";
 
-        // --- Spawn state, sent once when the entity is constructed -------------
+        // --- Spawn state -------------------------------------------------------
 
+        // On construction and on every snapshot. Construction alone is not
+        // enough: a peer that already has the entity never sees it again, and
+        // the owning client can only announce the name after assets finish.
         std::string nickname;
 
         // The GTA model this player wears. 0 means "the default", which is what
