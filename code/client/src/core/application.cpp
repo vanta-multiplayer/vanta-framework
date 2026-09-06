@@ -109,7 +109,7 @@ namespace VantaMP::Core {
 
         // Back behind the fade: the menu belongs over a black screen, not over
         // a world the player is no longer in.
-        Game::FadeOut();
+        Game::ConcealWorld();
 
         Nui::ReportConnectionState("disconnected", "");
     }

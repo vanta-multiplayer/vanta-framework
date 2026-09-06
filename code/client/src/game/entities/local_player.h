@@ -26,7 +26,11 @@ namespace VantaMP::Game {
     // that means anything, which is why it is also what lifts the fade.
     //
     // Safe to call again on a player already in the world: it moves them, which
-    // is what a respawn is. The screen is only revealed the first time - later
-    // ones would read as a flash.
+    // is what a respawn is. The fade only lifts when the world is currently
+    // hidden (first join, or after a disconnect) - an in-session respawn must
+    // not flash the screen.
     void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour);
+
+    // Black screen for the connect menu. The next ApplyLocalSpawn fades back in.
+    void ConcealWorld();
 } // namespace VantaMP::Game

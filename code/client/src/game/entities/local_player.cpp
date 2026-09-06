@@ -27,6 +27,10 @@ namespace VantaMP::Game {
         constexpr unsigned int kTestWeaponAmmo = 300;
 
         std::atomic_bool gPlayerSpawned {false};
+
+        // CreateLocalPlayer starts faded out. Disconnect sets this again so a
+        // later spawn can FadeIn; an in-session respawn leaves it false.
+        bool gWorldConcealed = true;
         // The placeholder the ped is created at, before a server has an
         // opinion. Shared with the server so the two agree - the interest grid
         // measures from the server's copy, and a client streaming around the
@@ -141,13 +145,16 @@ namespace VantaMP::Game {
         // the server has said where to spawn, both do.
         SDK::GiveLocalPedWeapon(kTestWeaponType, kTestWeaponAmmo);
 
-        static bool revealed = false;
-
-        if (!revealed) {
-            revealed = true;
+        if (gWorldConcealed) {
+            gWorldConcealed = false;
             FadeIn();
         }
 
         Framework::Logging::GetLogger("Player")->info("Spawned by the server at {:.1f}, {:.1f}, {:.1f}", x, y, z);
+    }
+
+    void ConcealWorld() {
+        gWorldConcealed = true;
+        FadeOut();
     }
 } // namespace VantaMP::Game
