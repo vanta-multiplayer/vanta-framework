@@ -36,7 +36,8 @@ Resource views still use `Web.emit` / `Web.on` on their own CEF views.
 | `connection:connected` | `serverId?` | Accepted |
 | `connection:failed` | `message, allowReconnect?` | Could not reach |
 | `connection:disconnected` | `message` | Dropped |
-| `console:push` | `color, data` | A log line |
+| `connection:progress` | `{ phase, downloading, progress, filesDownloaded, filesTotal, bytesDownloaded, bytesTotal, currentFile }` | Handshake / resource download |
+| `console:push` | `{ level, category, message, timestamp }` | A log line (launcher/client backlog, then live) |
 | `console:open` | `state` | Echo of `console:setState` |
 | `netgraph:update` | `sample` | Extra HUD sample |
 
@@ -87,6 +88,7 @@ Core emit ui:ready                    (game finished starting)
 UI  emit connection:connect  "127.0.0.1", 22005, "", "", "", "", "Player", false
 Core emit connection:setServer        "127.0.0.1"
 Core emit connection:connecting       "127.0.0.1:22005"
+Core emit connection:progress         { phase: "downloading", progress: 0.4, ... }
 Core emit connection:connected        "127.0.0.1"
 Core emit ui:toggle                   false
 ```

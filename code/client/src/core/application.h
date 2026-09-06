@@ -21,6 +21,8 @@ namespace VantaMP::Core {
 
         void OnConnectionFinalized(float serverTickRate) override;
         void OnConnectionClosed() override;
+        void OnAssetsDownloadProgress(const Framework::Integrations::Client::AssetDownloadStatus &status) override;
+        void OnConnectionPhaseChanged(Framework::Integrations::Client::ConnectionPhase phase) override;
 
         // Queued rather than acted on: this is called from a CEF thread, and
         // connecting touches state the game thread owns.

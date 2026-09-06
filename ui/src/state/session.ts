@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import { emit, inGame, on, type ServerEntry, type Settings } from "./bridge";
+import { emit, inGame, on, type ConnectionProgress, type ServerEntry, type Settings } from "./bridge";
 import { claimFocus } from "./focus";
 import { routes, type RoutePath } from "../routes";
 
@@ -13,11 +13,15 @@ const [recent, setRecent] = createSignal<ServerEntry[]>([]);
 const [favorites, setFavorites] = createSignal<ServerEntry[]>([]);
 const [status, setStatus] = createSignal("");
 const [connecting, setConnecting] = createSignal(false);
+const [download, setDownload] = createSignal<ConnectionProgress | null>(null);
 const [version, setVersion] = createSignal("0.0.0");
 const [branch, setBranch] = createSignal("develop");
 const [directOpen, setDirectOpen] = createSignal(false);
 const [exitOpen, setExitOpen] = createSignal(false);
 const [settings, setSettings] = createSignal<Settings | null>(null);
+const [errorOpen, setErrorOpen] = createSignal(false);
+const [errorTitle, setErrorTitle] = createSignal("Connection failed");
+const [errorMessage, setErrorMessage] = createSignal("");
 
 export {
     ready,
@@ -30,15 +34,20 @@ export {
     favorites,
     status,
     connecting,
+    download,
     version,
     branch,
     directOpen,
     exitOpen,
     settings,
+    errorOpen,
+    errorTitle,
+    errorMessage,
     setNickname,
     setAddress,
     setDirectOpen,
     setExitOpen,
+    setErrorOpen,
 };
 
 let navigateTo: (path: RoutePath) => void = () => {};
@@ -82,7 +91,24 @@ export function disconnect(): void {
     emit("connection:disconnect");
 }
 
+function showError(title: string, message: string): void {
+    const detail = message.trim();
+
+    if (detail === "") {
+        return;
+    }
+
+    setErrorTitle(title);
+    setErrorMessage(detail);
+    setErrorOpen(true);
+}
+
 export function handleEscape(): void {
+    if (errorOpen()) {
+        setErrorOpen(false);
+        return;
+    }
+
     if (exitOpen()) {
         setExitOpen(false);
         return;
@@ -120,6 +146,7 @@ export function connectTo(target: string): void {
     const port = colon >= 0 ? Number.parseInt(trimmed.slice(colon + 1), 10) || 22005 : 22005;
 
     setConnecting(true);
+    setErrorOpen(false);
     setStatus(`Connecting to ${trimmed}`);
     goTo(routes.connection);
     setDirectOpen(false);
@@ -148,29 +175,61 @@ export function bindSession(): () => void {
         on("connection:connected", () => {
             setConnecting(false);
             setConnected(true);
+            setDownload(null);
             setStatus("Connected");
             showMenu(false);
         }),
         on("connection:failed", (message: string) => {
             setConnecting(false);
             setConnected(false);
+            setDownload(null);
             setStatus(message);
-            goTo(routes.connection);
+            goTo(routes.home);
             showMenu(true);
+            showError("Could not connect", message);
         }),
         on("connection:connecting", (serverName?: string) => {
             setConnecting(true);
             setConnected(false);
+            setDownload(null);
             setStatus(serverName ? `Connecting to ${serverName}` : "Connecting");
             goTo(routes.connection);
             showMenu(true);
         }),
+        on("connection:progress", (payload: ConnectionProgress) => {
+            setConnecting(true);
+            setDownload(payload);
+
+            if (payload.phase === "authenticating") {
+                setStatus("Authenticating");
+                return;
+            }
+
+            if (payload.phase === "downloading") {
+                const file = payload.currentFile ? ` — ${payload.currentFile}` : "";
+                const count =
+                    payload.filesTotal > 0 ? ` (${payload.filesDownloaded}/${payload.filesTotal})` : "";
+                setStatus(`Downloading resources${count}${file}`);
+                return;
+            }
+
+            if (payload.phase === "starting") {
+                setStatus("Starting");
+            }
+        }),
         on("connection:disconnected", (message: string) => {
             setConnecting(false);
             setConnected(false);
+            setDownload(null);
             setStatus(message);
             goTo(routes.home);
             showMenu(true);
+
+            const detail = (message ?? "").trim();
+
+            if (detail !== "" && detail !== "Disconnected" && detail !== "Cancelled") {
+                showError("Disconnected", detail);
+            }
         }),
         on("ui:toggle", (state?: boolean) => {
             if (state !== undefined) {

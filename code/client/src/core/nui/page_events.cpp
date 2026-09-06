@@ -167,9 +167,9 @@ namespace VantaMP::Nui {
         std::scoped_lock lock(gMutex);
         const auto args = argsJson.empty() ? "[]" : argsJson;
 
-        // The netgraph is ticked every frame. Keep only the newest sample so a
-        // slow page does not drain a backlog of stale FPS/ping rows.
-        if (event == "netgraph:update") {
+        // High-frequency samples: keep only the newest so a slow page does
+        // not drain a backlog of stale FPS or download ticks.
+        if (event == "netgraph:update" || event == "connection:progress") {
             for (auto &item : gPending) {
                 if (item.event == event) {
                     item.args = args;

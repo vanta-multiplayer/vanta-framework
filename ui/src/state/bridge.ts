@@ -10,6 +10,17 @@ export interface ServerEntry {
     readonly ping: number;
 }
 
+export interface ConnectionProgress {
+    readonly phase: string;
+    readonly downloading: boolean;
+    readonly progress: number;
+    readonly filesDownloaded: number;
+    readonly filesTotal: number;
+    readonly bytesDownloaded: number;
+    readonly bytesTotal: number;
+    readonly currentFile: string;
+}
+
 export interface NetgraphSample {
     readonly fps: number;
     readonly rtt: number;

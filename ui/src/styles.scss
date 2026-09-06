@@ -438,10 +438,20 @@ h3 {
     border-radius: u(100);
 }
 
+.progress__fill--determinate {
+    width: 0;
+    transition: width 0.15s ease-out;
+}
+
 .progress__fill--indeterminate {
     width: 50%;
     opacity: 0.15;
     animation: indeterminate-progress 1.5s infinite ease-in-out;
+}
+
+.progress__meta {
+    font-size: var(--text-body);
+    color: var(--color-muted);
 }
 
 @keyframes indeterminate-progress {

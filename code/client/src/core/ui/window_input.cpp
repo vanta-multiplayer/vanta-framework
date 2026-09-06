@@ -55,7 +55,24 @@ namespace VantaMP::UI {
                     manager->ProcessMouseEvent(window, message, wParam, lParam);
                 }
                 else if (IsKeyboardMessage(message)) {
+                    const bool capturing = VantaMP::Nui::IsCapturingInput();
+
+                    if (capturing) {
+                        VantaMP::Nui::EnsureViewFocus();
+                    }
+
                     manager->ProcessKeyboardEvent(window, message, wParam, lParam);
+
+                    // MTA InputGoesToGUI: the key stops here. Passing it on
+                    // lets GTA consume the same CHAR the console just took.
+                    //
+                    // CHAR is the real WM_CHAR from the Unicode window.
+                    // Synthesizing another from KEYDOWN was writing every
+                    // letter twice. Enter is still left to the page —
+                    // Framework drops WM_CHAR VK_RETURN.
+                    if (capturing) {
+                        return 0;
+                    }
                 }
                 else if (message == WM_SIZE) {
                     // ONLY ON A REAL CHANGE.
@@ -97,6 +114,11 @@ namespace VantaMP::UI {
             Framework::Logging::GetLogger("NUI")->error("The window procedure could not be subclassed; the interface will not take input");
             return;
         }
+
+        // MTA CMessageLoopHook::ApplyHook. GTA creates an ANSI window, so
+        // WM_CHAR is a code-page byte. Re-stamping the proc with the W
+        // API makes CHAR UTF-16, which is what CEF (and MTA's CEGUI) want.
+        SetWindowLongW(window, GWL_WNDPROC, GetWindowLongW(window, GWL_WNDPROC));
 
         Framework::Logging::GetLogger("NUI")->info("Window input is being forwarded to the interface");
     }

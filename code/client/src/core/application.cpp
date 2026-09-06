@@ -29,7 +29,9 @@
 #include "game/sync/vehicle_sync.h"
 #include "game/camera.h"
 #include "game/entities/local_player.h"
+#include "game/entities/remote_players.h"
 #include "game/patches/script.h"
+#include "sdk/vehicle_occupancy.h"
 #include "shared/constants.h"
 #include "shared/version.h"
 
@@ -44,9 +46,8 @@ namespace VantaMP::Core {
         Framework::Networking::Replication::EntityRegistry::Get().Register<Shared::PlayerEntity>(Shared::PlayerEntity::kTypeName);
         Framework::Networking::Replication::EntityRegistry::Get().Register<Shared::VehicleEntity>(Shared::VehicleEntity::kTypeName);
 
-        // The server placing this player in the world. Until it arrives the
-        // local ped is at a placeholder behind a black screen, because where a
-        // player belongs is not the client's decision.
+        // The server placing this player in the world. The GTA ped already
+        // exists behind the fade; this is what belongs them and lifts it.
         if (auto *net = Framework::CoreModules::GetNetworkPeer()) {
             net->RegisterRPC<Shared::RPC::LocalPlayerSpawn>([](const Shared::RPC::LocalPlayerSpawn &spawn, MafiaNet::Packet *) {
                 Game::ApplyLocalSpawn(spawn.x, spawn.y, spawn.z, spawn.heading, spawn.health, spawn.armour);
@@ -99,19 +100,86 @@ namespace VantaMP::Core {
     }
 
     void Application::OnConnectionClosed() {
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Disconnected from the server");
+        const auto reason      = GetLastDisconnectionReason();
+        const bool reachedWorld = Nui::IsInWorld();
 
-        // Back to the menu, and the remote players go with the connection -
-        // their peds belong to this client, while the entities were the
-        // network's.
+        if (reason.empty()) {
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Disconnected from the server");
+        }
+        else {
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Disconnected from the server: {}", reason);
+        }
+
+        // Remotes first: their clothes copy is taken from the local ped.
+        // DestroyLocalPlayer ends the session only - the GTA ped stays, or
+        // the next frame's RegisterReference is a null-pointer crash.
+        //
+        // Occupants before vehicles. World::Remove on a car that still
+        // names this client's ped (or a remote that just dropped) is the
+        // crash that used to ride along with a regular disconnect.
+        Game::SuspendRemotePlayers();
+        SDK::UnlinkFromVehicle(0);
         Game::ClearRemotePlayers();
         Game::ClearRemoteVehicles();
+        Game::DestroyLocalPlayer();
+        Game::ResumeRemotePlayers();
 
-        // Back behind the fade: the menu belongs over a black screen, not over
-        // a world the player is no longer in.
-        Game::ConcealWorld();
+        // A join that never landed used to report "disconnected" with no
+        // detail, so the connect screen vanished and the reason with it.
+        if (!reachedWorld && !reason.empty()) {
+            Nui::ReportConnectionState("failed", reason);
+            return;
+        }
 
-        Nui::ReportConnectionState("disconnected", "");
+        if (reason.empty()) {
+            Nui::ReportConnectionState("disconnected", reachedWorld ? "Disconnected" : "Cancelled");
+            return;
+        }
+
+        Nui::ReportConnectionState("disconnected", reason);
+    }
+
+    namespace {
+        const char *PhaseKey(Framework::Integrations::Client::ConnectionPhase phase) {
+            using Phase = Framework::Integrations::Client::ConnectionPhase;
+
+            switch (phase) {
+            case Phase::Disconnected: return "disconnected";
+            case Phase::Connecting: return "connecting";
+            case Phase::Authenticating: return "authenticating";
+            case Phase::Downloading: return "downloading";
+            case Phase::Starting: return "starting";
+            case Phase::InGame: return "inGame";
+            }
+
+            return "unknown";
+        }
+
+        void EmitConnectionProgress(Framework::Integrations::Client::ConnectionPhase phase, const Framework::Integrations::Client::AssetDownloadStatus &status) {
+            if (phase == Framework::Integrations::Client::ConnectionPhase::Disconnected ||
+                phase == Framework::Integrations::Client::ConnectionPhase::InGame) {
+                return;
+            }
+
+            Nui::ConnectionProgress progress;
+            progress.phase           = PhaseKey(phase);
+            progress.downloading     = status.downloading;
+            progress.progress        = status.progress;
+            progress.filesDownloaded = status.filesDownloaded;
+            progress.filesTotal      = status.filesTotal;
+            progress.bytesDownloaded = status.bytesDownloaded;
+            progress.bytesTotal      = status.bytesTotal;
+            progress.currentFile     = status.currentFile;
+            Nui::ReportConnectionProgress(progress);
+        }
+    } // namespace
+
+    void Application::OnAssetsDownloadProgress(const Framework::Integrations::Client::AssetDownloadStatus &status) {
+        EmitConnectionProgress(GetConnectionPhase(), status);
+    }
+
+    void Application::OnConnectionPhaseChanged(Framework::Integrations::Client::ConnectionPhase phase) {
+        EmitConnectionProgress(phase, GetAssetDownloadStatus());
     }
 
     void RequestDisconnect() {

@@ -2,6 +2,7 @@
 
 #include "core/application.h"
 #include "core/client_config.h"
+#include "core/globals.h"
 #include "core/nui/embedded_ui.h"
 #include "core/nui/events.h"
 #include "core/nui/page_events.h"
@@ -18,6 +19,14 @@
 #include <mafianet/peerinterface.h>
 #include <mafianet/statistics.h>
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
+
+#include <chrono>
+#include <cstdio>
+#include <ctime>
+#include <fstream>
+#include <sstream>
+#include <vector>
 
 namespace VantaMP::Nui {
     namespace {
@@ -27,6 +36,7 @@ namespace VantaMP::Nui {
         bool gConsoleOpen   = false;
         bool gInWorld       = false;
         bool gNetgraphOn    = false;
+        bool gLogsAttached  = false;
         float gFps          = 0.0f;
 
         Framework::GUI::View *FindView() {
@@ -83,12 +93,161 @@ namespace VantaMP::Nui {
             return settings;
         }
 
+        const char *LevelName(int level) {
+            switch (static_cast<spdlog::level::level_enum>(level)) {
+            case spdlog::level::trace:
+            case spdlog::level::debug: return "debug";
+            case spdlog::level::info: return "info";
+            case spdlog::level::warn: return "warn";
+            case spdlog::level::err: return "error";
+            case spdlog::level::critical: return "fatal";
+            default: return "info";
+            }
+        }
+
+        std::string ClockTime(std::time_t when = 0) {
+            if (when == 0) {
+                when = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            }
+
+            std::tm local {};
+            localtime_s(&local, &when);
+
+            char buffer[16];
+            std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", local.tm_hour, local.tm_min, local.tm_sec);
+            return buffer;
+        }
+
+        void PushConsoleLine(const std::string &level, const std::string &category, const std::string &message, const std::string &timestamp) {
+            nlohmann::json line = {
+                {"level", level},
+                {"category", category},
+                {"message", message},
+                {"timestamp", timestamp},
+            };
+
+            Emit(Event::kConsolePush, nlohmann::json::array({line}));
+        }
+
+        void PushLogFileTail(const std::string &path, const std::string &fallbackCategory) {
+            std::ifstream file(path, std::ios::binary);
+
+            if (!file) {
+                return;
+            }
+
+            file.seekg(0, std::ios::end);
+            const auto size = static_cast<std::streamoff>(file.tellg());
+
+            if (size <= 0) {
+                return;
+            }
+
+            constexpr std::streamoff kTailBytes = 96 * 1024;
+            const auto start = size > kTailBytes ? size - kTailBytes : std::streamoff {0};
+            file.seekg(start);
+
+            std::string text(static_cast<std::size_t>(size - start), '\0');
+            file.read(text.data(), static_cast<std::streamsize>(text.size()));
+
+            std::istringstream stream(text);
+            std::string raw;
+
+            if (start > 0) {
+                std::getline(stream, raw);
+            }
+
+            while (std::getline(stream, raw)) {
+                if (!raw.empty() && raw.back() == '\r') {
+                    raw.pop_back();
+                }
+
+                if (raw.empty()) {
+                    continue;
+                }
+
+                // [2026-09-06 23:31:07.666] [Config] [info] Display: ...
+                std::string time = ClockTime();
+                std::string category = fallbackCategory;
+                std::string level = "info";
+                std::string message = raw;
+
+                if (raw.size() > 2 && raw.front() == '[') {
+                    const auto timeEnd = raw.find(']');
+
+                    if (timeEnd != std::string::npos && timeEnd >= 20) {
+                        time = raw.substr(12, 8);
+
+                        const auto catOpen = raw.find('[', timeEnd + 1);
+                        const auto catEnd  = raw.find(']', catOpen == std::string::npos ? timeEnd : catOpen);
+                        const auto lvlOpen = raw.find('[', catEnd == std::string::npos ? timeEnd : catEnd + 1);
+                        const auto lvlEnd  = raw.find(']', lvlOpen == std::string::npos ? timeEnd : lvlOpen);
+
+                        if (catOpen != std::string::npos && catEnd != std::string::npos) {
+                            category = raw.substr(catOpen + 1, catEnd - catOpen - 1);
+                        }
+
+                        if (lvlOpen != std::string::npos && lvlEnd != std::string::npos) {
+                            level = raw.substr(lvlOpen + 1, lvlEnd - lvlOpen - 1);
+
+                            if (level == "err" || level == "error") {
+                                level = "error";
+                            }
+                            else if (level == "warning" || level == "warn") {
+                                level = "warn";
+                            }
+                            else if (level == "critical" || level == "fatal") {
+                                level = "fatal";
+                            }
+                            else if (level == "trace") {
+                                level = "debug";
+                            }
+
+                            const auto textStart = raw.find_first_not_of(' ', lvlEnd + 1);
+                            if (textStart != std::string::npos) {
+                                message = raw.substr(textStart);
+                            }
+                        }
+                    }
+                }
+
+                PushConsoleLine(level, category, message, time);
+            }
+        }
+
+        void FeedConsoleLogs() {
+            if (gLogsAttached) {
+                return;
+            }
+
+            gLogsAttached = true;
+
+            // Launcher wrote this before inject. The client log is VantaMP-<pid>.log.
+            PushLogFileTail(Core::gProjectPath + "/logs/VantaMP.log", "Launcher");
+
+            if (auto *logging = Framework::Logging::GetInstance()) {
+                if (auto ring = logging->GetRingBuffer()) {
+                    for (const auto &msg : ring->last_raw()) {
+                        PushConsoleLine(LevelName(static_cast<int>(msg.level)), std::string(msg.logger_name.data(), msg.logger_name.size()),
+                                        std::string(msg.payload.data(), msg.payload.size()), ClockTime(spdlog::log_clock::to_time_t(msg.time)));
+                    }
+                }
+
+                logging->SetLogForwarder(
+                    [](int level, const std::string &name, const std::string &message) {
+                        PushConsoleLine(LevelName(level), name, message, ClockTime());
+                    },
+                    static_cast<int>(spdlog::level::debug));
+            }
+        }
+
         void PushStartup() {
             Emit(Event::kVersionUpdate, nlohmann::json::array({Version::rel, "develop", "", false, false}));
             Emit(Event::kSettingsUpdate, nlohmann::json::array({CurrentSettings()}));
             Emit(Event::kServersRecent, nlohmann::json::array({nlohmann::json::array()}));
             Emit(Event::kServersFav, nlohmann::json::array({nlohmann::json::array()}));
             Emit(Event::kServersUpdate, nlohmann::json::array({nlohmann::json::array()}));
+            FeedConsoleLogs();
             Emit(Event::kVersionReady);
         }
 
@@ -140,7 +299,6 @@ namespace VantaMP::Nui {
                 const auto command = !args.empty() && args[0].is_string() ? args[0].get<std::string>() : "";
 
                 Framework::Logging::GetLogger("Console")->info("{}", command);
-                Emit(Event::kConsolePush, nlohmann::json::array({14, command}));
             });
 
             On(Event::kConsoleSetState, [](const std::string &payload) {
@@ -284,6 +442,10 @@ namespace VantaMP::Nui {
         return gVisible && (gMenuOpen || gConsoleOpen);
     }
 
+    void EnsureViewFocus() {
+        ApplyViewFocus();
+    }
+
     void ToggleMenu() {
         if (!gVisible) {
             return;
@@ -422,6 +584,21 @@ namespace VantaMP::Nui {
         if (state == "connected") {
             return;
         }
+    }
+
+    void ReportConnectionProgress(const ConnectionProgress &progress) {
+        nlohmann::json payload = {
+            {"phase", progress.phase},
+            {"downloading", progress.downloading},
+            {"progress", progress.progress},
+            {"filesDownloaded", progress.filesDownloaded},
+            {"filesTotal", progress.filesTotal},
+            {"bytesDownloaded", progress.bytesDownloaded},
+            {"bytesTotal", progress.bytesTotal},
+            {"currentFile", progress.currentFile},
+        };
+
+        Emit(Event::kConnectionProgress, nlohmann::json::array({payload}));
     }
 
     void ShutdownInterface() {

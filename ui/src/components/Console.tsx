@@ -1,5 +1,5 @@
 import type {JSX} from "solid-js";
-import { createSignal, For, onCleanup, onMount } from "solid-js";
+import { Show, createSignal, For, onCleanup, onMount } from "solid-js";
 import { emit, on, type ConsoleLevel, type ConsoleLine } from "../state/bridge";
 import { claimFocus } from "../state/focus";
 
@@ -76,44 +76,56 @@ export function Console(): JSX.Element {
         emit("console:setState", next);
 
         if (next) {
+            // Off-screen CEF often ignores element.focus() until a click.
+            // The window handler below still types if this does nothing.
             queueMicrotask(() => inputElement?.focus());
+            requestAnimationFrame(() => inputElement?.focus());
         }
     }
 
-    function submit(event: SubmitEvent): void {
-        event.preventDefault();
+    function runCommand(command: string): void {
+        const trimmed = command.trim();
 
-        const command = input().trim();
-
-        if (command === "") {
+        if (trimmed === "") {
             return;
         }
 
         append({
             level: "info",
             category: "Console",
-            message: `> ${command}`,
+            message: `> ${trimmed}`,
             timestamp: timestamp(),
         });
 
         // clear is handled here rather than natively: the page owns what is on
         // screen, and a round trip to the client only to come back and empty a
         // list would be indirection for its own sake.
-        const word = command.toLowerCase();
+        const word = trimmed.toLowerCase();
 
         if (word === "clear" || word === "cls") {
             setLines([]);
         } else {
-            emit("console:execute", command);
+            emit("console:execute", trimmed);
         }
 
-        setHistory((current) => [command, ...current.filter((entry) => entry !== command)].slice(0, 50));
+        setHistory((current) => [trimmed, ...current.filter((entry) => entry !== trimmed)].slice(0, 50));
         setHistoryIndex(-1);
         setInput("");
     }
 
+    function submit(event: SubmitEvent): void {
+        event.preventDefault();
+        runCommand(input());
+    }
+
     /** Up and down walk the command history, as a shell does. */
     function onInputKeyDown(event: KeyboardEvent): void {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            runCommand(input());
+            return;
+        }
+
         if (event.key === "ArrowUp") {
             event.preventDefault();
 
@@ -149,19 +161,57 @@ export function Console(): JSX.Element {
             if (event.key === "Escape" && open()) {
                 event.preventDefault();
                 toggle();
+                return;
+            }
+
+            if (!open()) {
+                return;
+            }
+
+            // Letters come from CEF's WM_CHAR into the field. Filling the
+            // signal here as well wrote every character twice. Enter still
+            // has to be taken when the field has no DOM focus: Framework
+            // drops WM_CHAR VK_RETURN, so the form never submits on its own.
+            if (document.activeElement === inputElement) {
+                return;
+            }
+
+            if (event.key === "Enter") {
+                event.preventDefault();
+                runCommand(input());
+                return;
+            }
+
+            if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                onInputKeyDown(event);
             }
         }
 
         window.addEventListener("keydown", onKeyDown);
 
-        const stopLog = on("console:push", (color: number, data: string) => {
-            const level: ConsoleLevel = color >= 12 ? "error" : color >= 8 ? "warn" : "info";
-            append({
-                level,
-                category: "",
-                message: data,
-                timestamp: timestamp(),
-            });
+        const stopLog = on("console:push", (...args: unknown[]) => {
+            const first = args[0];
+
+            if (first && typeof first === "object" && "message" in first) {
+                const line = first as Partial<ConsoleLine>;
+                append({
+                    level: line.level ?? "info",
+                    category: line.category ?? "",
+                    message: String(line.message),
+                    timestamp: line.timestamp || timestamp(),
+                });
+                return;
+            }
+
+            if (typeof first === "number" && typeof args[1] === "string") {
+                const level: ConsoleLevel = first >= 12 ? "error" : first >= 8 ? "warn" : "info";
+                append({
+                    level,
+                    category: "",
+                    message: args[1],
+                    timestamp: timestamp(),
+                });
+            }
         });
 
         const stopClear = on("console:clear", () => setLines([]));
@@ -250,10 +300,11 @@ export function Console(): JSX.Element {
                         <div class={`flex items-start gap-3 px-5 py-1 wrap-break-word whitespace-pre-wrap ${lineClasses(line.level)}`}>
                             <span class="shrink-0 text-muted tabular-nums">{line.timestamp}</span>
 
-                            {/* A badge, so the source reads as a label rather than as more log text. */}
-                            <span class={`shrink-0 rounded border px-1.5 ${badgeClasses(line.level)}`}>
-                                {line.category}
-                            </span>
+                            <Show when={line.category}>
+                                <span class={`shrink-0 rounded border px-1.5 ${badgeClasses(line.level)}`}>
+                                    {line.category}
+                                </span>
+                            </Show>
 
                             <span class="min-w-0 flex-1">{line.message}</span>
                         </div>
@@ -272,6 +323,7 @@ export function Console(): JSX.Element {
                     value={input()}
                     spellcheck={false}
                     autocomplete="off"
+                    autofocus
                     placeholder="Type a command, or 'help'"
                     onInput={(event) => setInput(event.currentTarget.value)}
                     onKeyDown={onInputKeyDown}

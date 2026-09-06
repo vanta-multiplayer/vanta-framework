@@ -17,6 +17,7 @@ namespace VantaMP::Nui {
         inline constexpr const char *kConnectionConnected    = "connection:connected";
         inline constexpr const char *kConnectionDisconnected = "connection:disconnected";
         inline constexpr const char *kConnectionFailed       = "connection:failed";
+        inline constexpr const char *kConnectionProgress     = "connection:progress";
 
         inline constexpr const char *kConsoleExecute  = "console:execute";
         inline constexpr const char *kConsoleSetState = "console:setState";

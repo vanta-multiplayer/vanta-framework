@@ -5,6 +5,7 @@ import {Transition} from "solid-transition-group";
 import {Console} from "./Console";
 import {Netgraph} from "./Netgraph";
 import {SideNav} from "./SideNav";
+import {ConnectionError} from "./modals/ConnectionError";
 import {DirectConnect} from "./modals/DirectConnect";
 import {ExitModal} from "./modals/ExitModal";
 import {About} from "./views/About";
@@ -21,6 +22,7 @@ import {
     bindSession,
     connected,
     directOpen,
+    errorOpen,
     exitOpen,
     handleEscape,
     menuOpen,
@@ -109,6 +111,11 @@ function Shell(props: {children?: JSX.Element}): JSX.Element {
             <Transition name="fade">
                 <Show when={exitOpen()}>
                     <ExitModal />
+                </Show>
+            </Transition>
+            <Transition name="fade">
+                <Show when={errorOpen()}>
+                    <ConnectionError />
                 </Show>
             </Transition>
 

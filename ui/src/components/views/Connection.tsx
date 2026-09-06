@@ -3,13 +3,32 @@ import {Show} from "solid-js";
 import {emit} from "../../state/bridge";
 import {useNavigate} from "@solidjs/router";
 import {routes} from "../../routes";
-import {address, connecting, status} from "../../state/session";
+import {address, connecting, download, status} from "../../state/session";
 import {Button} from "../form/Button";
 
 export function Connection(): JSX.Element {
     const navigate = useNavigate();
 
+    const phase = () => download()?.phase ?? "";
+    const determinate = () => {
+        const current = download();
+        return Boolean(current && (current.downloading || current.phase === "downloading") && current.progress > 0);
+    };
+    const percent = () => Math.round(Math.min(1, Math.max(0, download()?.progress ?? 0)) * 100);
+
     const title = () => {
+        if (phase() === "downloading") {
+            return "Downloading";
+        }
+
+        if (phase() === "authenticating") {
+            return "Authenticating";
+        }
+
+        if (phase() === "starting") {
+            return "Starting";
+        }
+
         if (connecting()) {
             return "Connecting";
         }
@@ -47,8 +66,16 @@ export function Connection(): JSX.Element {
             <Show when={connecting()}>
                 <div class="progress">
                     <div class="progress__bar">
-                        <div class="progress__fill progress__fill--indeterminate" />
+                        <Show
+                            when={determinate()}
+                            fallback={<div class="progress__fill progress__fill--indeterminate" />}
+                        >
+                            <div class="progress__fill progress__fill--determinate" style={{width: `${percent()}%`}} />
+                        </Show>
                     </div>
+                    <Show when={determinate()}>
+                        <div class="progress__meta">{percent()}%</div>
+                    </Show>
                 </div>
             </Show>
 
