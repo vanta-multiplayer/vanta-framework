@@ -71,6 +71,14 @@ namespace VantaMP::Game {
             // every fourth update.
             std::uint32_t updates = 0;
 
+            // The heading this ped is turning FROM and TO, and the window it has
+            // to do it in. See the note where it is advanced.
+            float headingFrom = 0.0f;
+            float headingTo   = 0.0f;
+
+            std::uint32_t headingBeginMs = 0;
+            std::uint32_t headingEndMs   = 0;
+
             bool valid = false;
         };
 
@@ -82,6 +90,8 @@ namespace VantaMP::Game {
             int applies     = 0; // how often ApplyRemoteState ran at all
             int corrections = 0; // how often the per-ped correction ran
         int warps       = 0; // how often the gap was big enough to snap
+        int swimStarts  = 0; // how often a swim task had to be installed
+        int velocities  = 0; // how often move speed was written over the game's
 
         float worstWarp = 0.0f; // and the biggest gap that caused one
 
@@ -113,12 +123,14 @@ namespace VantaMP::Game {
                 const float error = glm::distance(t.lastTarget, t.lastPedPosition);
 
                 Framework::Logging::GetLogger("SyncDbg")
-                    ->info("RECV slot {} | new {}/s corr {}/s warp {}/s ({:.2f}) | target {:.2f},{:.2f} ped {:.2f},{:.2f} err {:.2f} worst {:.2f} | headTarget {:.1f} headPed {:.1f}", slot, t.newTargets, t.corrections, t.warps, t.worstWarp, t.lastTarget.x, t.lastTarget.y, t.lastPedPosition.x, t.lastPedPosition.y, error, t.worstError, t.targetHeading * kDegrees, t.pedHeading * kDegrees);
+                    ->info("RECV slot {} | new {}/s corr {}/s warp {}/s ({:.2f}) swim {}/s vel {}/s | target {:.2f},{:.2f} ped {:.2f},{:.2f} err {:.2f} worst {:.2f} | headTarget {:.1f} headPed {:.1f}", slot, t.newTargets, t.corrections, t.warps, t.worstWarp, t.swimStarts, t.velocities, t.lastTarget.x, t.lastTarget.y, t.lastPedPosition.x, t.lastPedPosition.y, error, t.worstError, t.targetHeading * kDegrees, t.pedHeading * kDegrees);
 
                 t.newTargets  = 0;
                 t.applies     = 0;
                 t.corrections = 0;
                 t.warps       = 0;
+                t.swimStarts  = 0;
+                t.velocities  = 0;
                 t.worstError  = 0.0f;
                 t.worstWarp   = 0.0f;
             }
@@ -166,6 +178,30 @@ namespace VantaMP::Game {
 
         glm::quat HeadingTo(float heading) {
             return glm::quat(glm::vec3(0.0f, 0.0f, heading));
+        }
+
+        // The signed short way round from one heading to another.
+        //
+        // THE SHORT WAY, because headings wrap. A ped at 179 degrees told to
+        // face -179 has moved two degrees, not three hundred and fifty eight,
+        // and interpolating the plain difference would spin it the whole way
+        // round the wrong way once per crossing.
+        //
+        // This is MTA's GetOffsetRadians, which its rotation interpolation is
+        // built on.
+        float OffsetRadians(float from, float to) {
+            constexpr float kPi  = 3.14159265358979323846f;
+            constexpr float kTau = 2.0f * kPi;
+
+            float offset = to - from;
+
+            if (offset > kPi) {
+                offset -= kTau;
+            } else if (offset <= -kPi) {
+                offset += kTau;
+            }
+
+            return offset;
         }
 
         // Copies the local player into the entity the server sees.
@@ -223,7 +259,7 @@ namespace VantaMP::Game {
                 lastSendReportMs = now;
 
                 Framework::Logging::GetLogger("SyncDbg")
-                    ->info("SEND me {:.2f},{:.2f} head {:.1f} vel {:.2f},{:.2f} stick {},{} buttons {:#x} ducked {}", local.x, local.y, local.heading * 57.2957795f, local.velocityX, local.velocityY, input.leftStickX, input.leftStickY, entity->buttons, local.ducked);
+                    ->info("SEND me {:.2f},{:.2f} head {:.1f} vel {:.2f},{:.2f} stick {},{} buttons {:#x} ducked {} air {} water {}", local.x, local.y, local.heading * 57.2957795f, local.velocityX, local.velocityY, input.leftStickX, input.leftStickY, entity->buttons, local.ducked, local.inAir, local.inWater);
             }
         }
 
@@ -336,6 +372,7 @@ namespace VantaMP::Game {
                 // while airborne, every fourth otherwise.
                 if (entity->isInAir || (aimed.updates % 4u) == 0u) {
                     SDK::SetRemotePedVelocity(slot, entity->velocity.x, entity->velocity.y, entity->velocity.z);
+                    ++telemetry.velocities;
                 }
 
                 // 2. Health and armour.
@@ -364,8 +401,15 @@ namespace VantaMP::Game {
 
                 interpolator.GetPosition()->SetTargetValue(glm::vec3(current.x, current.y, current.z), entity->position, static_cast<float>(Shared::SyncRate::kPlayerMs));
 
-                // Set outright - see the note in CorrectRemotePlayer.
-                SDK::SetRemotePedHeading(slot, HeadingFrom(entity->rotation));
+                // Rotation is AIMED here and turned frame by frame in
+                // CorrectRemotePlayer, the same shape as the position above.
+                // From wherever the ped is actually facing now, so the turn
+                // starts where the last one ended rather than from the last
+                // value received.
+                aimed.headingFrom    = HeadingFrom(SDK::GetRemotePedRotation(slot));
+                aimed.headingTo      = HeadingFrom(entity->rotation);
+                aimed.headingBeginMs = now;
+                aimed.headingEndMs   = now + Shared::SyncRate::kPlayerMs;
 
                 aimed.position = entity->position;
                 aimed.rotation = entity->rotation;
@@ -401,8 +445,8 @@ namespace VantaMP::Game {
             // applied above, which is what MTA uses its own copy for too.
             SDK::SetRemotePedDucked(slot, entity->isDucked);
 
-            if (entity->isInWater) {
-                SDK::StartRemotePedSwimming(slot);
+            if (entity->isInWater && SDK::StartRemotePedSwimming(slot)) {
+                ++telemetry.swimStarts;
             }
         }
     } // namespace
@@ -464,6 +508,52 @@ namespace VantaMP::Game {
 
         auto &interpolator = found->second;
 
+        // TURNED FRAME BY FRAME, NOT SNAPPED TEN TIMES A SECOND.
+        //
+        // Heading used to be written once per update, straight to the value
+        // received. In between, the game turned the ped with its own animation,
+        // and then every hundred milliseconds this put it back - so a remote
+        // player who was turning visibly stepped round in tenths.
+        //
+        // IT SHOWED UP IN THE WATER FIRST because that is where a turn is all
+        // there is to see: the swim animation yaws the whole body with no
+        // footfalls to hide the seam, and the ped is moving slowly enough that
+        // the step is not mistaken for speed.
+        //
+        // An earlier note here said rotation must NOT be interpolated, on the
+        // grounds that the write and the read addressed different things - the
+        // write went to m_fCurrentRotation and the read came off the ped's
+        // matrix, which the game rebuilds from that field only during its own
+        // processing, so a correction was always measured against a stale value
+        // and never converged. That was true when it was written and is not any
+        // more: HeadingOf reads m_fCurrentRotation now, the same field
+        // SetPedRotation writes, which is what the ninety degree fix was.
+        //
+        // With the read honest, this is what MTA has always done - see
+        // CClientPed::Interpolate, which lerps from the heading held when the
+        // update arrived to the one it carried, across the send interval.
+        {
+            auto aiming = gAimedBySlot.find(slot);
+
+            if (aiming != gAimedBySlot.end() && aiming->second.headingEndMs != 0) {
+                auto &aimed = aiming->second;
+
+                if (const std::uint32_t now = GetTickCount(); now < aimed.headingEndMs) {
+                    const float span     = static_cast<float>(aimed.headingEndMs - aimed.headingBeginMs);
+                    const float progress = static_cast<float>(now - aimed.headingBeginMs);
+                    const float offset   = OffsetRadians(aimed.headingFrom, aimed.headingTo);
+
+                    SDK::SetRemotePedHeading(slot, aimed.headingFrom + offset * (progress / span));
+                } else {
+                    // Landed exactly, rather than left wherever the last frame
+                    // of the window happened to fall.
+                    SDK::SetRemotePedHeading(slot, aimed.headingTo);
+
+                    aimed.headingEndMs = 0;
+                }
+            }
+        }
+
         // WHERE THE GAME JUST PUT THIS PED, read after its own processing has
         // walked it. The interpolator returns that position plus a share of the
         // error, so the walk is kept and only the drift from what the owner
@@ -516,20 +606,6 @@ namespace VantaMP::Game {
         ++telemetry.corrections;
         telemetry.lastPedPosition = next;
         telemetry.worstError      = std::max(telemetry.worstError, glm::distance(next, telemetry.lastTarget));
-
-        // ROTATION IS NOT INTERPOLATED, AND MUST NOT BE.
-        //
-        // The write and the read do not address the same thing: heading is set
-        // through m_fCurrentRotation, but read back off the ped's MATRIX, which
-        // the game only rebuilds from that field during its own processing. An
-        // interpolator therefore compares this frame's target against a stale
-        // matrix, applies a partial correction, and reads the same stale value
-        // again next frame - so it never converges and the ped spins.
-        //
-        // MTA applies ped rotation directly for the same reason
-        // (CClientPed::SetTargetRotation calls SetCurrentRotation outright).
-        // The ped's own turn animation is what makes it smooth; the network
-        // only says where it should end up.
     }
 
     void InstallRemotePlayerCorrection() {
