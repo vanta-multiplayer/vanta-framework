@@ -177,34 +177,29 @@ confirmed; it is marked `TEMPORARY TELEMETRY` at each site.
   the same property. Only worth fixing if it reads badly.
 - A remote player's **held weapon is invisible** — weapon type and ammo are not
   on the wire at all.
-- `isInAir` / `isInWater` are sent but **not applied**. Both are outputs the game
-  recomputes, so the flag write reverts. Swimming needs `CTaskComplexInWater`,
-  which plugin-sdk does not describe.
+- Swimming is implemented but has **never been tested in actual water**. It is
+  the riskiest code here: `CTaskComplexInWater` is absent from plugin-sdk, so the
+  task is allocated raw at 24 bytes (12 of layout, 12 of MTA's safety slack) from
+  the game's own task pool. If a remote player entering water crashes a client,
+  start there.
+- `isInAir` is sent and deliberately not applied — see the TODOs.
 - Nothing is committed yet this session — working tree is dirty.
 
 ## TODOs, roughly in order
 
 1. Confirm with two clients that remote peds now walk, jump once per press, and
    crouch. Then strip the telemetry and commit.
-2. **Swim.** `isInWater` is on the wire and still not applied. MTA's recipe:
-   on the 0→1 edge only, set `bTouchingWater` + `bSubmergedInWater` and install
-   a `CTaskComplexInWater` at `TASK_PRIORITY_EVENT_RESPONSE_NONTEMP`. Blocked on
-   two unknowns — plugin-sdk has no `CTaskComplexInWater`, so both its size and
-   its constructor need deriving. MTA's 1.0 US address for the ctor is
-   `0x6350D0`; derive a signature from that with `scripts/derive_pattern.py`.
-   Note the primary task array is reachable as `m_TaskMgr.m_aPrimaryTasks[prio]`,
-   so no `GetTask` signature is needed.
-3. Weapon type + ammo on the wire, so a remote player's weapon is visible.
-4. Vertical aim. Needs `CShotSyncData::m_fArmDirectionY`, whose offset must be
+2. Weapon type + ammo on the wire, so a remote player's weapon is visible.
+3. Vertical aim. Needs `CShotSyncData::m_fArmDirectionY`, whose offset must be
    derived (plugin-sdk does not describe it), and it will likely need the same
    treatment as `cameraRotation` — held per slot and swapped in around the ped's
    processing, since a value written to a ped directly is recomputed from the
    local camera on the next frame.
-5. Ledge-grab, if it turns out to look wrong. Ordinary climbs ride the jump
+4. Ledge-grab, if it turns out to look wrong. Ordinary climbs ride the jump
    button and need nothing; only *hanging* needs seeding, via MTA's
    `hangingDuringClimb` flag → `CTaskSimpleClimb` at `CLIMB_GRAB`
    (`0x67A110`, with `TestForClimb` at `0x6803A0`). Costs a wire bit.
-6. `isInAir` is intentionally not applied to the ped — it is an output the game
+5. `isInAir` is intentionally not applied to the ped — it is an output the game
    recomputes, and MTA does not apply its equivalent either. It exists only to
    gate velocity. Leave it that way.
 
