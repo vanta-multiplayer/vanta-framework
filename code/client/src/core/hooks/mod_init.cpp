@@ -3,6 +3,7 @@
 #include <logging/logger.h>
 #include <utils/hooking/hook_function.h>
 
+#include "core/diagnostics/breadcrumbs.h"
 #include "core/globals.h"
 #include "game/entities/player_slots.h"
 #include "sdk/patterns.h"
@@ -28,5 +29,13 @@ static InitFunction init(
         logger->info("Players array relocated to {}", VantaMP::Game::PlayerInfoAt(0));
 
         AddVectoredExceptionHandler(1, ReportFirstChanceFault);
+
+        // EVERY BREADCRUMB SO FAR WAS RECORDED WITHOUT A REPORTER TO SEND IT
+        // TO. Patching and hooking run in InitClient, before the framework
+        // instance exists, so SetStage found no reporter and published nothing -
+        // and the patch window is exactly where a crash is most likely and
+        // least self-explanatory. This is the first moment the reporter is
+        // available, so hand it the whole backlog at once.
+        VantaMP::Diagnostics::Breadcrumbs::PublishToCrashReporter();
     },
     "ModInit");

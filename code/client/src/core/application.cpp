@@ -9,6 +9,7 @@
 #include "shared/rpc/local_player_spawn.h"
 
 #include "core/client_config.h"
+#include "core/diagnostics/breadcrumbs.h"
 #include "core/globals.h"
 #include "core/ui/nui.h"
 #include "core/ui/window_input.h"
@@ -52,6 +53,8 @@ namespace VantaMP::Core {
         // THE PAGE CLOSES ITS OWN MENU, and keeps its console and netgraph.
         // Hiding the view would take all three, which is not what a player who
         // just joined a server wants.
+        Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::InGame);
+
         VantaMP::UI::ReportConnected(GetClientConfig().serverHost);
         VantaMP::UI::ReportConnectionState("connected", "");
 
@@ -154,6 +157,8 @@ namespace VantaMP::Core {
             const auto port = _pendingPort;
 
             _pendingHost.clear();
+
+            Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::Connecting);
 
             const auto result = ConnectToServer(host, static_cast<std::int32_t>(port), "");
 

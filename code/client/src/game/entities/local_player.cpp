@@ -2,6 +2,7 @@
 
 #include "game/camera.h"
 #include "game/entities/remote_players.h"
+#include "core/diagnostics/breadcrumbs.h"
 #include "sdk/patterns.h"
 #include "shared/spawn_points.h"
 
@@ -32,6 +33,13 @@ namespace VantaMP::Game {
     } // namespace
 
     void CreateLocalPlayer() {
+        Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::WaitingForPlayer);
+
+        // Named because this is the riskiest call in startup: it builds a ped
+        // through the game's own path, and a crash inside it says nothing about
+        // who asked.
+        VANTAMP_OPERATION("creating the local player");
+
         const auto &p = SDK::gPatterns;
 
         // BLACK FIRST, PLAYER SECOND.
@@ -79,6 +87,8 @@ namespace VantaMP::Game {
         RegisterRemotePlayer(kLocalPlayerSlot, player);
 
         gPlayerSpawned.store(true, std::memory_order_release);
+
+        Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::PlayerReady);
 
         Framework::Logging::GetLogger("Player")->info("Local player created at {:.1f}, {:.1f}, {:.1f} behind a black screen", gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z);
     }

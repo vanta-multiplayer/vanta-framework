@@ -5,3 +5,7 @@ __pycache__/
 *_launcher.json
 /logs/
 /cache/
+
+# Local crash reports and minidumps, written beside the client at runtime.
+crashes/
+*.dmp

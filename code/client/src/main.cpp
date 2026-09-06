@@ -9,6 +9,8 @@
 #include <utils/string_utils.h>
 
 #include "core/client_config.h"
+#include "core/diagnostics/breadcrumbs.h"
+#include "core/diagnostics/crash_report.h"
 #include "core/globals.h"
 #include "game/patches/boot.h"
 #include "game/patches/display.h"
@@ -32,6 +34,12 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     Framework::Logging::GetInstance()->SetLogName("VantaMP");
     Framework::Logging::GetInstance()->SetLogFolder(fmt::format("{}/logs", VantaMP::Core::gProjectPath));
 
+    // BEFORE ANY PATCHING, because the patch burst below is where a crash is
+    // both most likely and least self-explanatory - it runs against a game the
+    // signatures may have misidentified. Installed this early it costs a
+    // filter registration and catches everything after it.
+    VantaMP::Diagnostics::CrashReport::Install(fmt::format("{}/crashes", VantaMP::Core::gProjectPath));
+
     // Before anything reads a setting. The display module in particular is
     // consulted from the CreateDevice hook, which the game can reach as soon as
     // its first frame - there is no later point that is still early enough.
@@ -45,6 +53,8 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     // Which build we are in. Recorded rather than enforced: the scans below
     // decide whether this executable is usable, and they say so loudly if it is
     // not. Knowing the build first only makes that failure legible.
+    VantaMP::Diagnostics::Breadcrumbs::SetStage(VantaMP::Diagnostics::Stage::GameIdentified);
+
     (void)VantaMP::SDK::IdentifyGameBuild();
 
     VantaMP::SDK::Patterns::InitPatterns();
@@ -58,12 +68,16 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     // patch is written into. Running it afterwards would scan over bytes Vanta
     // had already changed, and any of those that happened to look like an array
     // reference would be rewritten a second time.
+    VantaMP::Diagnostics::Breadcrumbs::SetStage(VantaMP::Diagnostics::Stage::PatchesApplying);
+
+    VantaMP::Diagnostics::Breadcrumbs::SetLastPatch("player slots");
     VantaMP::Game::ExpandPlayerSlots();
 
     // Before the game gets a chance to populate the world. GTA starts inventing
     // pedestrians and traffic as soon as it streams anything in, and a ped that
     // already exists has to be deleted rather than never created - which fights
     // the very lifetime rules this is establishing.
+    VantaMP::Diagnostics::Breadcrumbs::SetLastPatch("population");
     VantaMP::Game::DisableAutonomousPopulation();
 
     // Everything above runs before the game has drawn a frame, which is what
@@ -71,25 +85,34 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     // the game has not reached yet.
     VantaMP::Game::SetFrameLimitOnStart(static_cast<int>(config.frameLimit));
 
+    VantaMP::Diagnostics::Breadcrumbs::SetLastPatch("boot");
     VantaMP::Game::ApplyBootPatches();
 
     // Last of the startup patches: this one disables the mission script and
     // takes over its per-frame call, which is where the local player is
     // created once the world is complete.
+    VantaMP::Diagnostics::Breadcrumbs::SetLastPatch("script");
     VantaMP::Game::ApplyScriptPatches();
 
     // After the slots exist, since the hooks index into them.
+    VantaMP::Diagnostics::Breadcrumbs::SetStage(VantaMP::Diagnostics::Stage::HooksInstalling);
+
     VantaMP::Game::InstallRemotePlayerHooks();
 
     // Has to land before the game acquires the mouse, which it does during its
     // own startup - from a frame callback this would already be too late.
+    VantaMP::Diagnostics::Breadcrumbs::SetLastPatch("input");
     VantaMP::Game::ReleaseMouseCapture();
 
+    VantaMP::Diagnostics::Breadcrumbs::SetLastPatch("gameplay");
     VantaMP::Game::ApplyGameplayPatches();
 
     // Unlocks the wider modes. The projection itself is corrected later, once
     // there is a window whose shape can be measured.
+    VantaMP::Diagnostics::Breadcrumbs::SetLastPatch("widescreen");
     VantaMP::Game::ApplyWidescreenPatches();
+
+    VantaMP::Diagnostics::Breadcrumbs::SetStage(VantaMP::Diagnostics::Stage::WaitingForFrontend);
 
     InitFunction::RunAll();
     MH_EnableHook(MH_ALL_HOOKS);

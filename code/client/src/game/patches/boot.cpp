@@ -1,5 +1,6 @@
 #include "game/patches/boot.h"
 
+#include "core/diagnostics/breadcrumbs.h"
 #include "game/patches/display.h"
 #include "game/patches/input.h"
 #include "sdk/patterns.h"
@@ -49,11 +50,15 @@ namespace VantaMP::Game {
         // taking nothing would leave that push unmatched and hand Init3
         // whatever happened to be on top of the stack.
         void __cdecl Init3_Hook(const char *dataFile) {
+            Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::StartingGame);
+
             Framework::Logging::GetLogger("Boot")->info("Initialising the game engine from {}", dataFile ? dataFile : "(null)");
 
             gOriginalInit3(dataFile);
 
             gEngineInitialised.store(true, std::memory_order_release);
+            Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::WaitingForWorld);
+
             Framework::Logging::GetLogger("Boot")->info("Game engine initialised; the world exists");
         }
 
@@ -100,7 +105,9 @@ namespace VantaMP::Game {
                 // write into a global before anything guarantees it resolved.
                 SetFrameLimit(gFrameLimit);
 
-                Framework::Logging::GetLogger("Boot")->info("Frontend bypassed; the game is playing");
+                Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::FrontendReady);
+
+            Framework::Logging::GetLogger("Boot")->info("Frontend bypassed; the game is playing");
             }
 
             if (gOriginalMenuProcess) {
