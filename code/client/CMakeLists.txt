@@ -74,7 +74,7 @@ set(VANTAMP_CLIENT_FILES
 )
 
 # The interface is compiled into the DLL. ui/dist if someone just built it,
-# otherwise the last checked-in data/ui/index.html. Never copied next to the
+# otherwise the last local data/ui/index.html. Never copied next to the
 # binary — CEF loads http://vanta/ui.html from the byte array.
 set(VANTA_UI_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/ui_content.hpp")
 set(VANTA_UI_EMBED "${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/embed_ui.py")

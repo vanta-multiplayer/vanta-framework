@@ -10,6 +10,10 @@ __pycache__/
 # CMake writes the real header into the build tree.
 /code/client/src/core/ui/generated/
 
+# Last vite-plugin-singlefile page. Rebuilds rewrite the whole file;
+# the client embeds ui/dist or this copy locally, not from git.
+/data/ui/index.html
+
 # Launcher runtime artifacts
 *_launcher.json
 /logs/

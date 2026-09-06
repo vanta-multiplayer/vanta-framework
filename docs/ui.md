@@ -30,7 +30,7 @@ Compiled in, it cannot.
 | `ui/index.html` | Shell |
 | `scripts/build_ui.py` | `npm run build` then embed |
 | `scripts/embed_ui.py` | HTML bytes → C++ header |
-| `data/ui/index.html` | Last built page. Fallback so a client compile does not need node |
+| `data/ui/index.html` | Last local build (gitignored). Fallback so a client compile does not need node |
 | `code/client/src/core/nui/` | C++ side: serve `http://vanta/`, emit/on, connect menu |
 
 ## Rebuild the page
@@ -48,7 +48,7 @@ builds\build.bat VantaMPUi 32
 ```
 
 Then rebuild the client. Node is only required for that step. Linking a
-client that already has `data/ui/index.html` just embeds that file.
+client that already has a local `data/ui/index.html` just embeds that file.
 
 ## How the URL is served
 
