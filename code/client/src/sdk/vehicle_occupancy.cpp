@@ -1,6 +1,7 @@
 #include "vehicle_occupancy.h"
 
 #include "ped/access.h"
+#include "ped/remote_ped.h"
 #include "sdk/game_sdk.h"
 #include "sdk/patterns.h"
 
@@ -49,6 +50,8 @@ namespace VantaMP::SDK {
 
         constexpr int kNoDoor     = 0;
         constexpr int kNoSuchDoor = 0xFF;
+
+        void (*gExplosionDeath)() = nullptr;
 
         CPed *PedFor(int slot) {
             return slot <= 0 ? Internal::LocalPed() : PedAt(slot);
@@ -271,6 +274,34 @@ namespace VantaMP::SDK {
             // MTA SetTargetDoor: same field, same GTA eTargetDoor ids.
             // Door 0 is FRONT_LEFT and is a real door, so 0xFF is "unset".
             static_cast<CTaskComplexEnterCar *>(task)->m_nTargetDoor = door;
+        }
+
+        void DetachPedFromVehicle(CPed *ped, CVehicle *vehicle) {
+            if (!ped) {
+                return;
+            }
+
+            // NO LEAVE TASK. SetPedOut / LeaveCar during BlowUpCar re-enters
+            // vehicle processing on a wreck and is itself a crash. Clear the
+            // pointers and drop the enter/leave task.
+            if (ped->m_pIntelligence) {
+                reinterpret_cast<FlushTasksFn>(gPatterns.CPedIntelligence__FlushImmediately)(ped->m_pIntelligence, false);
+            }
+
+            if (vehicle) {
+                if (vehicle->m_pDriver == ped) {
+                    vehicle->m_pDriver = nullptr;
+                }
+
+                for (auto &passenger : vehicle->m_apPassengers) {
+                    if (passenger == ped) {
+                        passenger = nullptr;
+                    }
+                }
+            }
+
+            ped->m_pVehicle = nullptr;
+            ped->bInVehicle = false;
         }
     } // namespace
 
@@ -648,5 +679,71 @@ namespace VantaMP::SDK {
         }
 
         return false;
+    }
+
+    void SetVehicleExplosionDeathHandler(void (*handler)()) {
+        gExplosionDeath = handler;
+    }
+
+    void EvacuateVehicle(void *handle, bool killOccupants) {
+        auto *vehicle = static_cast<CVehicle *>(handle);
+
+        if (!vehicle) {
+            return;
+        }
+
+        CancelEntriesInto(vehicle);
+
+        CPed *occupants[1 + kMaxPassengerSeats] {};
+        std::size_t count = 0;
+
+        if (vehicle->m_pDriver) {
+            occupants[count++] = vehicle->m_pDriver;
+        }
+
+        for (auto *passenger : vehicle->m_apPassengers) {
+            if (passenger) {
+                occupants[count++] = passenger;
+            }
+        }
+
+        for (std::size_t i = 0; i < count; ++i) {
+            auto *ped = occupants[i];
+            int   slot = -1;
+
+            if (ped == Internal::LocalPed()) {
+                slot = 0;
+            }
+            else {
+                for (int candidate = 2; candidate < Game::kMaxPlayers; ++candidate) {
+                    if (PedAt(candidate) == ped) {
+                        slot = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (killOccupants && slot >= 0) {
+                // IsAlive() is the DIE/DEAD state, not health. Leave them
+                // IDLE at 0 and the explosion that follows still treats
+                // them as a live CPlayerPed.
+                ped->m_fHealth    = 0.0f;
+                ped->m_fArmour    = 0.0f;
+                ped->m_ePedState  = PEDSTATE_DEAD;
+
+                if (slot == 0) {
+                    if (gExplosionDeath) {
+                        gExplosionDeath();
+                    }
+                }
+                else {
+                    SetRemotePedHealth(slot, 0.0f, 0.0f);
+                }
+            }
+
+            // Pointers only. UnlinkFromVehicle runs SetPedOut, which
+            // re-enters the vehicle while it is exploding.
+            DetachPedFromVehicle(ped, vehicle);
+        }
     }
 } // namespace VantaMP::SDK

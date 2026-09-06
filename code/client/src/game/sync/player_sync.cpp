@@ -2,6 +2,7 @@
 
 #include "game/sync/death.h"
 #include "game/sync/vehicle_sync.h"
+#include "game/entities/local_player.h"
 #include "game/entities/player_slots.h"
 #include "game/entities/remote_players.h"
 #include "sdk/game.h"
@@ -306,6 +307,10 @@ namespace VantaMP::Game {
 
         // Copies the local player into the entity the server sees.
         void PushLocalState(Shared::PlayerEntity *entity) {
+            if (!IsPlayerSpawned()) {
+                return;
+            }
+
             const auto local = SDK::QueryLocalPed();
 
             if (!local.valid) {

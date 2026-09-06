@@ -7,6 +7,7 @@
 #include "game/sync/death.h"
 #include "sdk/ped/local_ped.h"
 #include "sdk/ped/weapon.h"
+#include "sdk/vehicle_occupancy.h"
 #include "shared/spawn_points.h"
 
 #include <utils/safe_win32.h>
@@ -42,67 +43,76 @@ namespace VantaMP::Game {
         using FindPlayerFn  = void *(__cdecl *)(int);
         using LoadSceneFn   = void(__cdecl *)(const float *);
         using SetPosnFn     = void(__thiscall *)(void *, float, float, float);
+
+        void *FindLocalPed() {
+            return reinterpret_cast<FindPlayerFn>(SDK::gPatterns.FindPlayerPed)(0);
+        }
+
+        void PlaceLocalPed(void *player, float x, float y, float z) {
+            const auto &p = SDK::gPatterns;
+
+            reinterpret_cast<SetPosnFn>(p.CPlaceable__SetPosn)(player, x, y, z);
+
+            const float position[3] = {x, y, z};
+            reinterpret_cast<LoadSceneFn>(p.CStreaming__LoadScene)(position);
+        }
+
+        void ClaimLocalPed(void *player) {
+            hook::put<int>(SDK::gPatterns.CWorld__PlayerInFocus, 0);
+            RegisterRemotePlayer(kLocalPlayerSlot, player);
+        }
     } // namespace
 
     void CreateLocalPlayer() {
+        if (auto *existing = FindLocalPed()) {
+            ClaimLocalPed(existing);
+            return;
+        }
+
         Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::WaitingForPlayer);
 
-        // Named because this is the riskiest call in startup: it builds a ped
-        // through the game's own path, and a crash inside it says nothing about
-        // who asked.
         VANTAMP_OPERATION("creating the local player");
 
         const auto &p = SDK::gPatterns;
 
-        // BLACK FIRST, PLAYER SECOND.
-        //
-        // The ped has to exist before the world is usable, but a client that has
-        // not joined a server has nothing truthful to show: no spawn point, no
-        // model choice, no position that means anything. Creating it in view
-        // briefly presents a default CJ standing in Los Santos, which reads as
-        // "you are playing" when the connect menu is the actual state.
-        //
-        // Duration 0, not a timed fade: this has to be black on the very first
-        // frame the ped could be visible on, and a fade with a duration is still
-        // part transparent while it runs.
+        // BLACK FIRST. The ped has to exist or CEntity::RegisterReference
+        // (0x571B70) reads a null player and dies. Nobody should see default
+        // CJ in Los Santos while the connect menu is up.
         FadeOut(0.0f);
 
-        // The model id SetupPlayerPed pushes. Patched rather than passed: the id
-        // is baked into the instruction, not taken as an argument.
         hook::put<std::uint8_t>(p.CPlayerPed__ModelIdPush + 1, kPlayerModelId);
-
         reinterpret_cast<SetupPlayerFn>(p.CPlayerPed__SetupPlayerPed)(0);
-        hook::put<int>(p.CWorld__PlayerInFocus, 0);
 
-        const auto player = reinterpret_cast<FindPlayerFn>(p.FindPlayerPed)(0);
+        const auto player = FindLocalPed();
 
         if (!player) {
             Framework::Logging::GetLogger("Player")->error("The local player was not created; FindPlayerPed returned nothing");
             return;
         }
 
-        // Through the game's own SetPosn rather than by writing the matrix. A
-        // ped carries both a matrix and a simple transform which have to agree,
-        // and reimplementing that from offsets is how a player ends up visible
-        // in one place and collidable in another.
-        reinterpret_cast<SetPosnFn>(p.CPlaceable__SetPosn)(player, gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z);
-
-        // Streams the world in around where the player now is, so the first
-        // visible frame is not an empty landscape.
-        const float position[3] = {gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z};
-        reinterpret_cast<LoadSceneFn>(p.CStreaming__LoadScene)(position);
-
-        // Slot 0 is the local player. The hooks would fall back to it anyway for
-        // a ped they do not recognise, but claiming the slot makes that the
-        // answer rather than the default - and it is what tells SlotOfPed the
-        // difference between "the local player" and "a ped Vanta does not own".
-        RegisterRemotePlayer(kLocalPlayerSlot, player);
-
-        gPlayerSpawned.store(true, std::memory_order_release);
-
-        Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::PlayerReady);
+        PlaceLocalPed(player, gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z);
+        ClaimLocalPed(player);
 
         Framework::Logging::GetLogger("Player")->info("Local player created at {:.1f}, {:.1f}, {:.1f} behind a black screen", gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z);
+    }
+
+    void DestroyLocalPlayer() {
+        ConcealWorld();
+
+        // Always out of the seat first. The ped exists from the first
+        // gameplay frame, so they can be in a car before a spawn, and
+        // deleting that car with them still named as driver is a crash.
+        if (FindLocalPed()) {
+            SDK::UnlinkFromVehicle(kLocalPlayerSlot);
+        }
+
+        if (!gPlayerSpawned.exchange(false, std::memory_order_acq_rel)) {
+            return;
+        }
+
+        UnregisterRemotePlayer(kLocalPlayerSlot);
+
+        Framework::Logging::GetLogger("Player")->info("Local player session ended; the GTA ped stays");
     }
 
     bool IsPlayerSpawned() {
@@ -114,14 +124,15 @@ namespace VantaMP::Game {
     }
 
     void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour) {
-        const auto &p = SDK::gPatterns;
+        CreateLocalPlayer();
 
-        const auto player = reinterpret_cast<FindPlayerFn>(p.FindPlayerPed)(0);
-
-        if (!player) {
-            Framework::Logging::GetLogger("Player")->error("A spawn arrived before the local player existed");
+        if (!FindLocalPed()) {
+            Framework::Logging::GetLogger("Player")->error("A spawn arrived and the local player could not be created");
             return;
         }
+
+        gPlayerSpawned.store(true, std::memory_order_release);
+        Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::PlayerReady);
 
         // Health and heading used to be ignored, so a respawn left the ped
         // dead on the ground at the new coordinates. Revive first, then
@@ -130,7 +141,7 @@ namespace VantaMP::Game {
         ClearLocalDeathReport();
 
         const float position[3] = {x, y, z};
-        reinterpret_cast<LoadSceneFn>(p.CStreaming__LoadScene)(position);
+        reinterpret_cast<LoadSceneFn>(SDK::gPatterns.CStreaming__LoadScene)(position);
 
         // A TESTING LOADOUT, not a design decision - the same kind of thing
         // as the waterfront spawn point. Weapon sync cannot be looked at

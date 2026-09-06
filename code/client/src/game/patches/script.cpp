@@ -22,12 +22,14 @@ namespace VantaMP::Game {
         //
         // The SCM is disabled, so this call is free - and it is the right place
         // for per-frame work: it runs once a frame during gameplay, and the
-        // first time it runs is the moment the world is complete.
+        // first time it runs is the moment the world is complete. The GTA ped
+        // is created here - the camera registers a reference to it the same
+        // frame, and a null FindPlayerPed is the 0x571B73 crash.
         void ScriptProcess_Hook() {
-            static bool spawned = false;
+            static bool worldReady = false;
 
-            if (!spawned) {
-                spawned = true;
+            if (!worldReady) {
+                worldReady = true;
                 CreateLocalPlayer();
 
                 // Correction runs per ped from the ProcessControl hook rather
@@ -59,7 +61,7 @@ namespace VantaMP::Game {
 
             reloadHeld = reloadDown;
 
-            if (reloadPress && !IsGameInputSuppressed()) {
+            if (reloadPress && !IsGameInputSuppressed() && IsPlayerSpawned()) {
                 SDK::ReloadLocalPedWeapon();
             }
 
@@ -72,7 +74,7 @@ namespace VantaMP::Game {
 
             passengerHeld = passengerDown;
 
-            if (passengerPress && !IsGameInputSuppressed()) {
+            if (passengerPress && !IsGameInputSuppressed() && IsPlayerSpawned()) {
                 TryLocalPassengerKey();
             }
 

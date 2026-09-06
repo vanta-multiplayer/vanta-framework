@@ -55,4 +55,16 @@ namespace VantaMP::SDK {
 
     // Warp-exit plus explicit pointer clear. Call before the ped is freed.
     void UnlinkFromVehicle(int slot);
+
+    // Take every Vanta occupant out of this vehicle and drop the seat
+    // pointers. World::Remove on a car that still names a CPlayerPed is
+    // how a disconnect (or a streamed-out wreck) takes the client down
+    // with it. killOccupants writes health to zero first so an explosion
+    // still counts as a death after the seats are empty.
+    void EvacuateVehicle(void *vehicle, bool killOccupants = false);
+
+    // Called for the local player when EvacuateVehicle kills them. The
+    // death packet needs a weapon type; occupancy does not know about
+    // the network.
+    void SetVehicleExplosionDeathHandler(void (*handler)());
 } // namespace VantaMP::SDK

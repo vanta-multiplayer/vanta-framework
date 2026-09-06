@@ -3,8 +3,11 @@
 #include "ped/access.h"
 #include "sdk/game_sdk.h"
 #include "sdk/patterns.h"
+#include "sdk/vehicle_occupancy.h"
 
 #include <utils/safe_win32.h>
+
+#include <MinHook.h>
 
 #include <CAutomobile.h>
 #include <CDamageManager.h>
@@ -228,9 +231,18 @@ namespace VantaMP::SDK {
         // CoopAndreas hook for the same pad swap.
         constexpr std::size_t kProcessControlSlot = 10;
 
+        // CVehicle::BlowUpCar. plugin-sdk reaches it as vtable[41].
+        constexpr std::size_t kBlowUpCarSlot = 41;
+
         using ProcessControlFn = void(__thiscall *)(void *);
+        using BlowUpCarFn      = void(__thiscall *)(CVehicle *, CEntity *, bool);
+        using KillPedsFn       = void(__thiscall *)(CVehicle *);
 
         std::unordered_map<void **, ProcessControlFn> gOriginalProcessControl;
+        std::unordered_map<void **, BlowUpCarFn>      gOriginalBlowUpCar;
+
+        KillPedsFn gOriginalKillPedsIn        = nullptr;
+        KillPedsFn gOriginalKillPedsGettingIn = nullptr;
 
         int SlotOfRemoteDriver(CPed *driver) {
             if (!driver || driver == Internal::LocalPed()) {
@@ -277,6 +289,38 @@ namespace VantaMP::SDK {
                 std::memcpy(localPad, saved.data(), Game::kPadSize);
             }
         }
+
+        void __fastcall BlowUpCar_Hook(CVehicle *vehicle, void * /*edx*/, CEntity *damager, bool hideExplosion) {
+            void **vtable = vehicle ? *reinterpret_cast<void ***>(vehicle) : nullptr;
+            const auto found = vtable ? gOriginalBlowUpCar.find(vtable) : gOriginalBlowUpCar.end();
+
+            if (found == gOriginalBlowUpCar.end()) {
+                return;
+            }
+
+            // Empty the seats before GTA posts CEventVehicleDied. That
+            // event treats a Vanta CPlayerPed as an NPC or the single
+            // local player, and either reading is a crash. The occupants
+            // are already marked dead so CheckLocalDeath still fires.
+            EvacuateVehicle(vehicle, true);
+            found->second(vehicle, damager, hideExplosion);
+        }
+
+        void __fastcall KillPedsInVehicle_Hook(CVehicle *vehicle, void * /*edx*/) {
+            // THIS is what a tank shot reaches. BlowUpCar is not always
+            // taken through the vtable we patch; this function is.
+            EvacuateVehicle(vehicle, true);
+
+            if (gOriginalKillPedsIn) {
+                gOriginalKillPedsIn(vehicle);
+            }
+        }
+
+        void __fastcall KillPedsGettingInVehicle_Hook(CVehicle *vehicle, void * /*edx*/) {
+            // Walks the whole ped pool and posts CEventDamage on anyone
+            // with an enter task. Vanta CPlayerPeds live in that pool.
+            CancelEntriesInto(vehicle);
+        }
     } // namespace
 
     bool IsVehicleModel(int modelId) {
@@ -313,6 +357,10 @@ namespace VantaMP::SDK {
             return;
         }
 
+        // Occupants first. CWorld::Remove walks the driver/passenger
+        // pointers, and a Vanta CPlayerPed still sitting here is the
+        // disconnect crash.
+        EvacuateVehicle(vehicle);
         reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(vehicle);
         DeleteFromVehiclePool(vehicle);
     }
@@ -473,18 +521,46 @@ namespace VantaMP::SDK {
             return;
         }
 
-        void **slot = &vtable[kProcessControlSlot];
+        void **controlSlot = &vtable[kProcessControlSlot];
+        void **blowSlot    = &vtable[kBlowUpCarSlot];
 
         DWORD previous = 0;
 
-        if (VirtualProtect(slot, sizeof(void *), PAGE_EXECUTE_READWRITE, &previous) == 0) {
+        if (VirtualProtect(controlSlot, sizeof(void *), PAGE_EXECUTE_READWRITE, &previous) == 0) {
             return;
         }
 
-        gOriginalProcessControl.emplace(vtable, reinterpret_cast<ProcessControlFn>(*slot));
-        *slot = reinterpret_cast<void *>(&VehicleProcessControl_Hook);
+        gOriginalProcessControl.emplace(vtable, reinterpret_cast<ProcessControlFn>(*controlSlot));
+        *controlSlot = reinterpret_cast<void *>(&VehicleProcessControl_Hook);
 
         DWORD ignored = 0;
-        VirtualProtect(slot, sizeof(void *), previous, &ignored);
+        VirtualProtect(controlSlot, sizeof(void *), previous, &ignored);
+
+        if (gOriginalBlowUpCar.contains(vtable)) {
+            return;
+        }
+
+        if (VirtualProtect(blowSlot, sizeof(void *), PAGE_EXECUTE_READWRITE, &previous) == 0) {
+            return;
+        }
+
+        gOriginalBlowUpCar.emplace(vtable, reinterpret_cast<BlowUpCarFn>(*blowSlot));
+        *blowSlot = reinterpret_cast<void *>(&BlowUpCar_Hook);
+
+        VirtualProtect(blowSlot, sizeof(void *), previous, &ignored);
+    }
+
+    void InstallVehicleExplosionHooks() {
+        if (gOriginalKillPedsIn) {
+            return;
+        }
+
+        MH_CreateHook(reinterpret_cast<void *>(gPatterns.CVehicle__KillPedsInVehicle), reinterpret_cast<void *>(&KillPedsInVehicle_Hook),
+                      reinterpret_cast<void **>(&gOriginalKillPedsIn));
+        MH_EnableHook(reinterpret_cast<void *>(gPatterns.CVehicle__KillPedsInVehicle));
+
+        MH_CreateHook(reinterpret_cast<void *>(gPatterns.CVehicle__KillPedsGettingInVehicle), reinterpret_cast<void *>(&KillPedsGettingInVehicle_Hook),
+                      reinterpret_cast<void **>(&gOriginalKillPedsGettingIn));
+        MH_EnableHook(reinterpret_cast<void *>(gPatterns.CVehicle__KillPedsGettingInVehicle));
     }
 } // namespace VantaMP::SDK

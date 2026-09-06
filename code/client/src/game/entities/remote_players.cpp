@@ -284,6 +284,10 @@ namespace VantaMP::Game {
         gSuspended.store(true, std::memory_order_release);
     }
 
+    void ResumeRemotePlayers() {
+        gSuspended.store(false, std::memory_order_release);
+    }
+
     void SetRemotePedCorrector(void (*corrector)(int slot)) {
         gCorrectPed = corrector;
     }

@@ -33,11 +33,13 @@ namespace VantaMP::Game {
     // and the game will act on it the next time that ped is processed.
     [[nodiscard]] void *InputForSlot(int slot);
 
-    // Stops remote processing during shutdown.
+    // Stops remote processing during teardown.
     //
     // The world and the pools are dismantled on the way out, and swapping
-    // context against them faults. Set before teardown begins.
+    // context against them faults. Set before teardown begins; clear again
+    // once the remotes are gone so a later reconnect can process new ones.
     void SuspendRemotePlayers();
+    void ResumeRemotePlayers();
 
     // Called for each remote ped once the game has finished processing it, so
     // a correction lands on top of the movement the game just produced instead

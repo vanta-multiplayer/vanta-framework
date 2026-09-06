@@ -81,5 +81,10 @@ namespace VantaMP::SDK {
     // GetPad(0) every frame, which is why writing the angle never turned
     // the wheels. MTA swaps the local pad for the remote driver's; we
     // do the same, once per vehicle subclass, from the live vtable.
+    //
     void BindRemoteVehicleProcessControl(void *vehicle);
+
+    // KillPedsInVehicle / KillPedsGettingInVehicle. A tank shot reaches
+    // those even when BlowUpCar is not taken through the vtable we patch.
+    void InstallVehicleExplosionHooks();
 } // namespace VantaMP::SDK

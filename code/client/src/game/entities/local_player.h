@@ -7,12 +7,21 @@ namespace VantaMP::Game {
         float z = 0.0f;
     };
 
-    // The ped this client controls.
+    // The GTA ped this client controls.
     //
-    // Created during startup because the world needs one to exist, and put at a
-    // placeholder behind a black screen because until a server says otherwise
-    // there is no position that means anything.
+    // Built on the first gameplay frame because the camera and world call
+    // CEntity::RegisterReference on FindPlayerPed(0) and crash if it is null.
+    // MTA already has that ped from StartGame; we stub the SCM, so we have to
+    // create it ourselves. It stays allocated and in the world for the process.
+    //
+    // The SERVER session is separate: ApplyLocalSpawn is what places them and
+    // lifts the fade. DestroyLocalPlayer ends the session, not the GTA ped.
     void CreateLocalPlayer();
+
+    // Ends the multiplayer session. The ped is unlinked, unregistered and
+    // hidden. It is not removed from the world and not freed - that is the
+    // 0x571B73 crash (RegisterReference on a null player).
+    void DestroyLocalPlayer();
 
     [[nodiscard]] bool IsPlayerSpawned();
 
@@ -22,13 +31,8 @@ namespace VantaMP::Game {
 
     // Puts the local player where the server says, and reveals the world.
     //
-    // THE SERVER DECIDES WHERE A PLAYER BELONGS. This is the first position
-    // that means anything, which is why it is also what lifts the fade.
-    //
-    // Safe to call again on a player already in the world: it moves them, which
-    // is what a respawn is. The fade only lifts when the world is currently
-    // hidden (first join, or after a disconnect) - an in-session respawn must
-    // not flash the screen.
+    // THE SERVER DECIDES WHERE A PLAYER BELONGS. Later calls move an existing
+    // ped (a respawn). The fade only lifts when the world is currently hidden.
     void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour);
 
     // Black screen for the connect menu. The next ApplyLocalSpawn fades back in.
