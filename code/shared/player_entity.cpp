@@ -27,7 +27,6 @@ namespace VantaMP::Shared {
 
         // Appended, per the note above.
         fields.Field(cameraRotation);
-        fields.Field(aimVertical);
 
         fields.Field(isDucked);
         fields.Field(isInAir);

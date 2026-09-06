@@ -76,9 +76,19 @@ namespace VantaMP::Shared {
         // against: arriving a tick late it would describe a different frame.
         float cameraRotation = 0.0f;
 
-        // Vertical aim, for the same reason - it is what the game pitches the
-        // torso and the weapon by when a player looks up or down.
-        float aimVertical = 0.0f;
+        // VERTICAL AIM IS NOT HERE, DELIBERATELY.
+        //
+        // MTA sends it as m_fArmDirectionY out of the ped's shot-sync data, and
+        // it is what pitches the torso and the weapon when a player looks up or
+        // down. It is missing here because there is nothing to read it from or
+        // write it to yet: plugin-sdk does not describe CShotSyncData, so the
+        // offset has to be derived first, and the horizontal case suggests it
+        // then needs the same treatment as cameraRotation - held per slot and
+        // swapped in around the ped's processing, because a value written to a
+        // ped directly is recomputed from the local camera on the next frame.
+        //
+        // The field existed briefly with neither end wired up, which put four
+        // bytes of zeros on every tick and made aim look synced. Better absent.
 
         // POSE, SENT AS STATE RATHER THAN DERIVED FROM THE INPUT.
         //
