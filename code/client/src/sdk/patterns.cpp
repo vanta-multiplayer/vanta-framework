@@ -227,6 +227,16 @@ namespace VantaMP::SDK {
         gPatterns.CPedIK__PointGunInDirectionCallB = Resolve("E8 ? ? ? ? 8B 4F 30 8B 51 18 C1 EA 0B F6 C2 01 74 2F"); // 0x0061F351
         gPatterns.CPedIK__PointGunInDirectionCallC = Resolve("E8 ? ? ? ? 5F 5E 5D 5B 83 C4 34 C2 04"); // 0x0062876D
 
+        gPatterns.CPed__GetBonePosition    = Resolve("8A 44 24 0C 83 EC 0C 56 8B F1 84 C0 8B 86 74 04 00 00 57 74 51"); // 0x005E4280
+        gPatterns.CSprite__CalcScreenCoors = Resolve("83 EC 14 A1 A0 EF"); // 0x0070CE30
+
+        // The CALL to CHud::Draw, which is plugin-sdk's drawHudEvent in
+        // Render2dStuff. Hooked before the HUD so a nametag is world 2D.
+        gPatterns.CHud__DrawCall = Resolve("E8 ? ? ? ? E8 DC 15"); // 0x0053E4FA
+
+        // Differs from DefinedState only in the last push (0 vs 1).
+        gPatterns.DefinedState2d = Resolve("A1 24 7B C9 00 6A 01 6A 02 FF 50 20 8B 0D 24 7B C9 00 6A 00"); // 0x00734750
+
         // --- Running more than one client --------------------------------------
 
         gPatterns.MultiInstanceCheckCall = Resolve("E8 ? ? ? ? 85 C0 75 0F 53"); // 0x0074872D

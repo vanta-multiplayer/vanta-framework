@@ -316,6 +316,24 @@ namespace VantaMP::SDK {
         uintptr_t CPedIK__PointGunInDirectionCallB = 0;
         uintptr_t CPedIK__PointGunInDirectionCallC = 0;
 
+        // A bone in the world, and that point on the screen. Nametags sit on
+        // the head bone, so both have to exist before anything is drawn there.
+        uintptr_t CPed__GetBonePosition    = 0;
+        uintptr_t CSprite__CalcScreenCoors = 0;
+
+        // --- World 2D, before the HUD ------------------------------------------
+        //
+        // plugin-sdk's drawHudEvent. The CALL to CHud::Draw inside Render2dStuff
+        // - not the 0x53E4FF the event table names, which is the next
+        // instruction and would run after the HUD had already painted.
+        uintptr_t CHud__DrawCall = 0;
+
+        // Re-applies RenderWare's 2D states. ImGui talks to D3D itself, so the
+        // game's cached states are lies after a nametag flush; HUD and weapon
+        // sprites then draw as white boxes. Called before CHud::Draw returns
+        // to the rest of Render2dStuff.
+        uintptr_t DefinedState2d = 0;
+
         // --- Running more than one client --------------------------------------
         //
         // GTA refuses to start twice, and testing a multiplayer platform means

@@ -11,6 +11,7 @@
 // Prefer including the specific header when a file only needs one of these.
 
 #include "camera.h"
+#include "draw.h"
 #include "input.h"
 #include "streaming.h"
 #include "ped/aim.h"

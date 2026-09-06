@@ -205,6 +205,28 @@ namespace VantaMP::SDK {
         return position;
     }
 
+    Position GetRemotePedBonePosition(int slot, unsigned int bone, bool updateSkin) {
+        Position position;
+
+        auto *ped = PedAt(slot);
+
+        if (!ped) {
+            return position;
+        }
+
+        float out[3] = {};
+
+        using GetBonePositionFn = void(__thiscall *)(void *, float *, unsigned int, bool);
+
+        reinterpret_cast<GetBonePositionFn>(gPatterns.CPed__GetBonePosition)(ped, out, bone, updateSkin);
+
+        position.x = out[0];
+        position.y = out[1];
+        position.z = out[2];
+
+        return position;
+    }
+
     void SetRemotePedPosition(int slot, float x, float y, float z) {
         if (auto *ped = PedAt(slot)) {
             SetPedPosition(ped, x, y, z);

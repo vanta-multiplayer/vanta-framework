@@ -16,4 +16,19 @@ namespace VantaMP::SDK {
     void SetRemoteCameraRotation(int slot, float rotation);
 
     [[nodiscard]] float GetRemoteCameraRotation(int slot);
+
+    // A point in the world, as pixels on this frame's backbuffer.
+    //
+    // visible is false when the point is behind the camera or the game refuses
+    // the projection. z is the camera-space depth, useful for a cheap "in
+    // front" test after the fact.
+    struct ScreenPoint {
+        bool visible = false;
+
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+    };
+
+    [[nodiscard]] ScreenPoint WorldToScreen(float x, float y, float z);
 } // namespace VantaMP::SDK

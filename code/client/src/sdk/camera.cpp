@@ -42,4 +42,35 @@ namespace VantaMP::SDK {
 
         return gRemoteCameraRotation[static_cast<std::size_t>(slot)];
     }
+
+    ScreenPoint WorldToScreen(float x, float y, float z) {
+        ScreenPoint screen;
+
+        // Three floats in, three out. RwV3d is that layout, and naming it
+        // would pull RenderWare into a file that does not have it.
+        float world[3] = {x, y, z};
+        float out[3]   = {};
+        float width    = 0.0f;
+        float height   = 0.0f;
+
+        using CalcScreenCoorsFn = bool(__cdecl *)(const float *, float *, float *, float *, bool, bool);
+
+        if (!reinterpret_cast<CalcScreenCoorsFn>(gPatterns.CSprite__CalcScreenCoors)(world, out, &width, &height, true, false)) {
+            return screen;
+        }
+
+        // z <= 0 is behind the near plane. The game still writes an x/y for
+        // those, and drawing there puts a nametag on the wrong side of the
+        // screen.
+        if (out[2] <= 0.1f) {
+            return screen;
+        }
+
+        screen.visible = true;
+        screen.x       = out[0];
+        screen.y       = out[1];
+        screen.z       = out[2];
+
+        return screen;
+    }
 } // namespace VantaMP::SDK

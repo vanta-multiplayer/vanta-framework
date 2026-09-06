@@ -36,6 +36,15 @@ namespace VantaMP::SDK {
     // difference between the two is what the interpolation corrects.
     [[nodiscard]] Position GetRemotePedPosition(int slot);
 
+    // GTA's own head bone. plugin-sdk names it BONE_HEAD; the number is here
+    // so callers above the SDK boundary do not have to.
+    inline constexpr unsigned int kBoneHead = 8;
+
+    // Where a named bone is this frame. updateSkin is the expensive rebuild;
+    // nametags do not need it, because the game has already posed the ped by
+    // the time the overlay draws.
+    [[nodiscard]] Position GetRemotePedBonePosition(int slot, unsigned int bone, bool updateSkin = false);
+
     void SetRemotePedPosition(int slot, float x, float y, float z);
     // includeAiming writes the upper-body target as well. Leave it false while
     // a gun is up: that field then belongs to the aim IK, and writing it is
