@@ -234,6 +234,15 @@ namespace VantaMP::SDK {
         uintptr_t CTaskManager__SetTaskSecondary = 0;
         uintptr_t CTaskManager__GetTaskSecondary = 0;
 
+        // Swimming is the same story as ducking, one level up. Being in water
+        // is an OUTPUT too - the flags come from the task, not the other way
+        // round - so a remote player who is swimming has to be handed the task
+        // that produces them, or they are drawn walking along the riverbed.
+        //
+        // A PRIMARY task this time, hence SetTask rather than SetTaskSecondary.
+        uintptr_t CTaskComplexInWater__Constructor = 0;
+        uintptr_t CTaskManager__SetTask            = 0;
+
         // Camera rotation drives which way "forward" is, and mouse look decides
         // whether local mouse movement steers whoever is being processed.
         uintptr_t CCamera__Rotation    = 0;

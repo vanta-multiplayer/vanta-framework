@@ -178,6 +178,12 @@ namespace VantaMP::SDK {
         gPatterns.CTaskManager__SetTaskSecondary = Resolve("53 8B 5C 24 08 56 57 8B 7C 24 14 8B F1 8B"); // 0x00681B60
         gPatterns.CTaskManager__GetTaskSecondary = Resolve("8B 44 24 04 8B 44 81 14"); // 0x00681810
 
+        // Near-identical prologues, so both carry the call that follows: the
+        // duck constructor above starts with the same four bytes and is told
+        // apart only by its relative offset.
+        gPatterns.CTaskComplexInWater__Constructor = Resolve("56 8B F1 E8 D8 52"); // 0x006350D0
+        gPatterns.CTaskManager__SetTask            = Resolve("53 8B 5C 24 08 85 DB 56 57 8B 7C"); // 0x00681AF0
+
         gPatterns.CCamera__Rotation  = OperandAt(hook::get_pattern("FF D8 25 ? ? ? ? D9 5C 24 20"), 3); // site 0x00688FA6 -> 0x00B6F178
         gPatterns.CCamera__MouseLook = OperandAt(hook::get_pattern("50 A0 ? ? ? ? 64 89 25 00 00 00 00 83 EC 74"), 2); // site 0x0060B65D -> 0x00B6EC2E
 
