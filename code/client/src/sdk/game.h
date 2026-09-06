@@ -13,6 +13,7 @@
 #include "camera.h"
 #include "input.h"
 #include "streaming.h"
+#include "ped/aim.h"
 #include "ped/local_ped.h"
 #include "ped/remote_ped.h"
 #include "ped/weapon.h"

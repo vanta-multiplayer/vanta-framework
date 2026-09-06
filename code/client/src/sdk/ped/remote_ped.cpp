@@ -221,9 +221,9 @@ namespace VantaMP::SDK {
         return glm::quat(glm::vec3(0.0f, 0.0f, HeadingOf(ped)));
     }
 
-    void SetRemotePedHeading(int slot, float heading) {
+    void SetRemotePedHeading(int slot, float heading, bool includeAiming) {
         if (auto *ped = PedAt(slot)) {
-            SetPedRotation(ped, heading);
+            SetPedRotation(ped, heading, includeAiming);
         }
     }
 

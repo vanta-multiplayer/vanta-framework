@@ -104,11 +104,18 @@ namespace VantaMP::SDK::Internal {
         reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(ped, x, y, z);
     }
 
-    inline void SetPedRotation(CPed *ped, float heading) {
+    inline void SetPedRotation(CPed *ped, float heading, bool includeAiming = true) {
         auto *base = reinterpret_cast<std::uint8_t *>(ped);
 
         *reinterpret_cast<float *>(base + kCurrentRotationOffset) = heading;
-        *reinterpret_cast<float *>(base + kAimingRotationOffset)  = heading;
+
+        // BOTH, unless a gun is up. m_fAimingRotation is the upper body's
+        // target, and PointGunInDirection writes it while aiming. Overwriting
+        // it with the walk heading every frame is the arms stuttering against
+        // the IK - the feet step smoothly and the hands jump.
+        if (includeAiming) {
+            *reinterpret_cast<float *>(base + kAimingRotationOffset) = heading;
+        }
     }
 
     // READ FROM THE FIELD THAT IS WRITTEN, NOT FROM THE MATRIX.

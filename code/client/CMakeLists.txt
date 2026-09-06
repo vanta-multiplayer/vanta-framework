@@ -51,6 +51,7 @@ set(VANTAMP_CLIENT_FILES
     src/sdk/camera.cpp
     src/sdk/game_build.cpp
     src/sdk/patterns.cpp
+    src/sdk/ped/aim.cpp
 
     ${VANTAMP_CLIENT_SDK_FILES}
 

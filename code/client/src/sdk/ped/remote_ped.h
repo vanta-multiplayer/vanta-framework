@@ -37,7 +37,10 @@ namespace VantaMP::SDK {
     [[nodiscard]] Position GetRemotePedPosition(int slot);
 
     void SetRemotePedPosition(int slot, float x, float y, float z);
-    void SetRemotePedHeading(int slot, float heading);
+    // includeAiming writes the upper-body target as well. Leave it false while
+    // a gun is up: that field then belongs to the aim IK, and writing it is
+    // what makes the hands stutter against a smooth heading lerp.
+    void SetRemotePedHeading(int slot, float heading, bool includeAiming = true);
 
     // The ped's facing, as a quaternion so it interpolates as a rotation rather
     // than as an angle - lerping two headings the short way round is what makes
