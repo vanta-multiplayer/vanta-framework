@@ -1,3 +1,18 @@
+# THE ONLY FILES plugin-sdk REACHES.
+#
+# Listed separately because the boundary is enforced here and nowhere else:
+# these get the plugin-sdk include directories below, and everything else in the
+# project therefore cannot name a game type even by accident. Above the boundary
+# the game is player slots and plain numbers - see src/sdk/game.h.
+#
+# Adding a file here should be a deliberate act. Prefer putting the game call
+# behind an existing SDK function instead.
+set(VANTAMP_CLIENT_SDK_FILES
+    src/sdk/input.cpp
+    src/sdk/ped/local_ped.cpp
+    src/sdk/ped/remote_ped.cpp
+)
+
 set(VANTAMP_CLIENT_FILES
     src/main.cpp
 
@@ -29,10 +44,13 @@ set(VANTAMP_CLIENT_FILES
     # Keeping those things in step with the server.
     src/game/sync/player_sync.cpp
 
-    # plugin-sdk lives behind here and nowhere else.
-    src/sdk/game.cpp
+    # The game's memory, wrapped. These need no plugin-sdk of their own: an
+    # address is a number and a slot is an integer.
+    src/sdk/camera.cpp
     src/sdk/game_build.cpp
     src/sdk/patterns.cpp
+
+    ${VANTAMP_CLIENT_SDK_FILES}
 
     ../shared/player_entity.cpp
 
@@ -47,8 +65,8 @@ target_link_options(VantaMPClient PRIVATE /MANIFEST:NO)
 # plugin-sdk's bundled safetyhook uses std::expected
 set_target_properties(VantaMPClient PROPERTIES CXX_STANDARD 23)
 
-# See vendors/plugin-sdk.cmake: the SDK reaches this one file and no further
-set_source_files_properties(src/sdk/game.cpp PROPERTIES
+# See vendors/plugin-sdk.cmake: the SDK reaches these files and no further.
+set_source_files_properties(${VANTAMP_CLIENT_SDK_FILES} PROPERTIES
     INCLUDE_DIRECTORIES "${PLUGIN_SDK_SA_INCLUDE_DIRS}"
     COMPILE_DEFINITIONS "${PLUGIN_SDK_SA_DEFINITIONS}")
 

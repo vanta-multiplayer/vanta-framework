@@ -1,0 +1,72 @@
+#pragma once
+
+#include <glm/gtc/quaternion.hpp>
+
+namespace VantaMP::SDK {
+    // Peds owned by somebody else, addressed by the player slot they occupy.
+    //
+    // Creating one needs plugin-sdk's CPlayerPed constructor and a dozen of its
+    // fields, so it lives behind this boundary with the rest of the SDK.
+    // Everything above the boundary works in slots and plain numbers.
+
+    struct Position {
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+    };
+
+    // Builds a ped for `slot` and puts it in the world.
+    //
+    // The sequence mirrors what the game does for the local player, in the same
+    // order. Every step in it exists because leaving it out produced something
+    // specific and unpleasant - see the implementation.
+    //
+    // Returns the ped, or nullptr if it could not be created.
+    void *CreateRemotePed(int slot, int modelIndex, float x, float y, float z);
+
+    // Removes a ped created by CreateRemotePed.
+    void DestroyRemotePed(int slot);
+
+    // Moves a ped that already exists. Position and heading only - velocity and
+    // animation come from the game processing the ped's input.
+    void SetRemotePedTransform(int slot, float x, float y, float z, float heading);
+
+    // Where a ped currently is, which is not where it was last told to be: the
+    // game moves it too, from its own physics and the input it was given. The
+    // difference between the two is what the interpolation corrects.
+    [[nodiscard]] Position GetRemotePedPosition(int slot);
+
+    void SetRemotePedPosition(int slot, float x, float y, float z);
+    void SetRemotePedHeading(int slot, float heading);
+
+    // The ped's facing, as a quaternion so it interpolates as a rotation rather
+    // than as an angle - lerping two headings the short way round is what makes
+    // a player spin the wrong way past due north.
+    [[nodiscard]] glm::quat GetRemotePedRotation(int slot);
+
+    void SetRemotePedHealth(int slot, float health, float armour);
+
+    // The momentum a remote ped carries between updates.
+    //
+    // Without it a remote ped has no speed of its own: it only ever moves when a
+    // correction drags it, so it lags behind by however far its owner travelled
+    // since the last update - which at 100ms is metres.
+    //
+    // Not on every update while on foot, though - see the caller.
+    void SetRemotePedVelocity(int slot, float x, float y, float z);
+
+    // Puts a remote ped into, or out of, a crouch.
+    //
+    // DUCKING IS A TASK, NOT A FLAG. Writing bIsDucking to start one looks like
+    // it works and does nothing: the flag is an OUTPUT the game recomputes from
+    // whatever task is running, so the ped stands straight back up on the next
+    // frame. The pose has to be produced the way the owner's game produced it,
+    // by running the same task - which is what MTA's CClientPed::Duck does.
+    //
+    // Ending one is not symmetric with starting one; the implementation says
+    // why, and it matters.
+    //
+    // Idempotent: asking for a crouch that is already running does nothing, so
+    // this can be called on every frame without restarting the animation.
+    void SetRemotePedDucked(int slot, bool ducked);
+} // namespace VantaMP::SDK

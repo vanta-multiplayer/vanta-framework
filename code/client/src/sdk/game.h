@@ -1,141 +1,16 @@
 #pragma once
 
-#include <cstdint>
+// The SDK's public surface, in one include.
+//
+// plugin-sdk lives behind this boundary and nowhere else. Above it, the game is
+// player slots and plain numbers; below it are CPed, CPad and raw offsets. The
+// boundary is enforced by CMakeLists, which hands the plugin-sdk include
+// directories to the listed sdk sources only - so a header that names a game
+// type simply will not compile anywhere else.
+//
+// Prefer including the specific header when a file only needs one of these.
 
-#include <glm/gtc/quaternion.hpp>
-
-namespace VantaMP::SDK {
-    // Plain on purpose: plugin-sdk defines RW and drags RenderWare in, so it stays behind this.
-    struct LocalPedState {
-        bool valid = false;
-
-        float x = 0.0f;
-        float y = 0.0f;
-        float z = 0.0f;
-
-        float heading = 0.0f;
-
-        int modelIndex = 0;
-        int pedType    = 0;
-
-        float health    = 0.0f;
-        float maxHealth = 0.0f;
-
-        bool inVehicle        = false;
-        int vehicleModelIndex = 0;
-
-        // Pose the game is actually in, which is not always what the input
-        // asked for - see PlayerEntity::isDucked.
-        bool ducked  = false;
-        bool inAir   = false;
-        bool inWater = false;
-    };
-
-    LocalPedState QueryLocalPed();
-
-    // --- Remote peds ---------------------------------------------------------
-    //
-    // Creating a ped needs plugin-sdk's CPlayerPed constructor and a dozen of
-    // its fields, so it lives behind this boundary with the rest of the SDK.
-    // Everything above the boundary works in slots and plain numbers.
-
-    // Builds a ped for `slot` and puts it in the world.
-    //
-    // The sequence mirrors what the game does for the local player, in the same
-    // order. Every step in it exists because leaving it out produced something
-    // specific and unpleasant - see the implementation.
-    //
-    // Returns the ped, or nullptr if it could not be created.
-    void *CreateRemotePed(int slot, int modelIndex, float x, float y, float z);
-
-    // Removes a ped created by CreateRemotePed.
-    void DestroyRemotePed(int slot);
-
-    // Moves a ped that already exists. Position and heading only - velocity and
-    // animation come from the game processing the ped's input.
-    void SetRemotePedTransform(int slot, float x, float y, float z, float heading);
-
-    void SetRemotePedHealth(int slot, float health, float armour);
-
-    // The pose flags a remote ped is drawn in. Written straight to the ped's
-    // own bitfield rather than simulated: these are the same fields the game
-    // sets on the local player, so the animation system reads them unmodified.
-    void SetRemotePedPose(int slot, bool ducked, bool inAir, bool inWater);
-
-    struct Position {
-        float x = 0.0f;
-        float y = 0.0f;
-        float z = 0.0f;
-    };
-
-    // Where a ped currently is, which is not where it was last told to be: the
-    // game moves it too, from its own physics and the input it was given. The
-    // difference between the two is what the interpolation corrects.
-    [[nodiscard]] Position GetRemotePedPosition(int slot);
-
-    void SetRemotePedPosition(int slot, float x, float y, float z);
-    void SetRemotePedHeading(int slot, float heading);
-
-    // The ped's facing, as a quaternion so it interpolates as a rotation rather
-    // than as an angle - lerping two headings the short way round is what makes
-    // a player spin the wrong way past due north.
-    [[nodiscard]] glm::quat GetRemotePedRotation(int slot);
-
-    // --- Controller state ----------------------------------------------------
-    //
-    // What a player is holding, reduced to what has to cross the wire.
-    //
-    // THE STICKS AND THE PEDALS ARE ANALOGUE, THE REST ARE NOT. Accelerator and
-    // brake carry pressure and can both be held at once - that is a drift, and
-    // a bitmask can express neither fact. Everything else is on or off.
-    struct ControllerInput {
-        std::int16_t leftStickX = 0;
-        std::int16_t leftStickY = 0;
-
-        std::uint8_t accelerator = 0;
-        std::uint8_t brake       = 0;
-
-        std::uint16_t buttons = 0;
-    };
-
-    // The buttons the mask carries.
-    //
-    // GTA stores each as a signed short, 255 when pressed, which is 44 bytes
-    // for what fits in two.
-    namespace Button {
-        inline constexpr std::uint16_t Fire      = 1u << 0;
-        inline constexpr std::uint16_t Aim       = 1u << 1;
-        inline constexpr std::uint16_t Jump      = 1u << 2;
-        inline constexpr std::uint16_t Sprint    = 1u << 3;
-        inline constexpr std::uint16_t EnterExit = 1u << 4;
-        inline constexpr std::uint16_t Crouch    = 1u << 5;
-        inline constexpr std::uint16_t Walk      = 1u << 6;
-    } // namespace Button
-
-    // Reads what the local player is holding right now.
-    //
-    // Sampled for the context the player is actually in: GTA reuses its
-    // buttons, so cross is sprint on foot and accelerate at the wheel. Reading
-    // them by their on-foot names while driving puts "sprinting, jumping" on
-    // the wire for someone sitting still, and the receiver plays exactly that.
-    [[nodiscard]] ControllerInput ReadLocalInput();
-
-    // Writes input into a slot's pad, for the game to act on when it next
-    // processes that ped.
-    void WriteRemoteInput(int slot, const ControllerInput &input);
-
-    // Which way the local player's camera is pointing, in radians.
-    //
-    // GTA resolves stick input against this rather than against the ped's
-    // heading, so it has to travel with the input it will be interpreted
-    // against - see PlayerEntity::cameraRotation.
-    float ReadLocalCameraRotation();
-
-    // The camera rotation a remote player's ped is processed under.
-    //
-    // Stored per slot rather than written straight to the game: the global is
-    // shared, so it can only hold one player's value at a time and is swapped
-    // in around each ped's processing.
-    void SetRemoteCameraRotation(int slot, float rotation);
-    float GetRemoteCameraRotation(int slot);
-} // namespace VantaMP::SDK
+#include "camera.h"
+#include "input.h"
+#include "ped/local_ped.h"
+#include "ped/remote_ped.h"
