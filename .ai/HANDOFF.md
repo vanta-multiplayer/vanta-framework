@@ -89,8 +89,20 @@ corrects where that walk has drifted.
   interest management. It is never relayed to other clients and changes nothing
   about rendering. The camera value that matters — rotation — rides the per-tick
   path, where MTA puts it. Revisit only when there is a camera scripting API.
-- **Ped rotation is not interpolated.** Applied outright, as MTA does. Its own
-  turn animation is what makes it smooth.
+- **Ped rotation IS interpolated** — aimed on arrival, turned frame by frame
+  across the send interval, which is `CClientPed::Interpolate`. This reverses an
+  earlier decision, and the reason is worth knowing before reversing it back: it
+  was correct to snap only while `HeadingOf` read the ped's matrix, because a
+  correction was then measured against a value the game had not rebuilt yet and
+  never converged. The 90° fix made the read honest and retired that reason.
+  Use the framework interpolator for position only; rotation is a plain lerp
+  with `OffsetRadians` for the wrap, as MTA does.
+- **Being in water is the in-water task running**, not `bSubmergedInWater`
+  (false on the surface) or `bTouchingWater` (true in the shallows). Both are
+  flags that task maintains. `Internal::IsPedInWater` is the only place to ask.
+- **A swimmer is not airborne.** `bIsStanding` is false for both, so `isInAir`
+  has to exclude water explicitly, or velocity lands on the every-update branch
+  and fights the swim task.
 - **Velocity is gated, MTA's way**: every update while airborne, every fourth on
   the ground, and only on an update rather than every frame. A ped on the ground
   gets its move speed from its own walk animation; overwriting that with the
@@ -156,12 +168,32 @@ corrects where that walk has drifted.
   accessor repeated. The `CPlaceable` and `CEntity` layout asserts moved into
   `ped/access.h`, so now every SDK translation unit re-checks them instead of
   whichever file happened to hold them.
+- **Swimming confirmed working in real water**, which was the untested risk. The
+  raw 24-byte `CTaskComplexInWater` allocation has not crashed a client. In
+  practice the receiving game usually starts the task itself before we get
+  there — `swim 0/s` is the normal reading, not a fault — because a ped whose
+  position is synced really is in the water.
+- **Fixed the swim warp, which was two separate faults.** First, `isInAir` was
+  true for the whole time a ped was in water, putting velocity on the
+  every-update branch: the owner's move speed was written over GTA's swim task
+  ten times a second, the same movement counted twice. Now 2–3/s, the ground
+  rule. Second, and what was actually visible, heading was snapped once per
+  update while the game turned the ped in between, so a turn stepped round in
+  tenths. Water exposed it because the swim animation yaws the whole body with
+  no footfalls to hide the seam.
 
 ## Current state
 
-Two clients connect, see each other, and track: position error 0.00 idle and
-~0.6 worst while moving, heading exact when steady. No crashes. Client and server
-both build clean.
+Committed and clean at `Shared: Spawn at the waterfront while swimming is being
+watched`. Two clients connect, see each other, walk, jump, crouch and swim.
+Position error 0.00–0.16 with `warp 0/s`; turning is smooth in and out of water.
+
+No crashes. Client and server both build clean.
+
+**The spawn is a testing spawn**, at the Los Santos waterfront so both players
+start within walking distance of deep water. Grove Street is commented directly
+beside it in `shared/spawn_points.h` and should go back once remote players in
+water have been watched for long enough.
 
 **Temporary telemetry is still in `player_sync.cpp`** — a `Telemetry` struct,
 `ReportTelemetry()`, and a `SEND`/`RECV` line per second under the `SyncDbg`
@@ -170,26 +202,21 @@ confirmed; it is marked `TEMPORARY TELEMETRY` at each site.
 
 ## Known issues / not yet verified
 
-- Whether a remote player visibly **walks** rather than glides has still never
-  been confirmed by eye with two clients. That is the real test of the input
-  relay design.
-- Heading lags by up to one update during a fast turn (~25° observed). MTA has
-  the same property. Only worth fixing if it reads badly.
 - A remote player's **held weapon is invisible** — weapon type and ammo are not
-  on the wire at all.
-- Swimming is implemented but has **never been tested in actual water**. It is
-  the riskiest code here: `CTaskComplexInWater` is absent from plugin-sdk, so the
-  task is allocated raw at 24 bytes (12 of layout, 12 of MTA's safety slack) from
-  the game's own task pool. If a remote player entering water crashes a client,
-  start there.
+  on the wire at all. This is the largest remaining gap.
+- **Camera rotation is still snapped** at 10Hz, the way heading used to be. MTA
+  lerps it in the same window as rotation and we do not. It was left alone only
+  because it is applied in a different phase — before the ped is processed, in
+  `ApplyRemoteState`, not after it in `CorrectRemotePlayer` — so it needs its
+  own lerp rather than joining the heading one. First suspect if any turning
+  seam remains.
 - `isInAir` is sent and deliberately not applied — see the TODOs.
-- Nothing is committed yet this session — working tree is dirty.
 
 ## TODOs, roughly in order
 
-1. Confirm with two clients that remote peds now walk, jump once per press, and
-   crouch. Then strip the telemetry and commit.
-2. Weapon type + ammo on the wire, so a remote player's weapon is visible.
+1. Weapon type + ammo on the wire, so a remote player's weapon is visible.
+2. Strip the `SyncDbg` telemetry from `player_sync.cpp` once sync has been
+   watched for long enough, and put the Grove Street spawn back.
 3. Vertical aim. Needs `CShotSyncData::m_fArmDirectionY`, whose offset must be
    derived (plugin-sdk does not describe it), and it will likely need the same
    treatment as `cameraRotation` — held per slot and swapped in around the ped's
@@ -225,5 +252,13 @@ confirmed; it is marked `TEMPORARY TELEMETRY` at each site.
   in-water are all outputs. Run the task instead.
 - Read and write the same field. Most of the sync bugs so far have been a value
   going out through one accessor and coming back through another.
+- **A workaround outlives the reason for it.** Rotation was snapped to dodge a
+  read that has since been fixed, and the comment explaining why kept the
+  workaround alive long after it had become the bug. When a note says "must
+  not", check whether what it describes is still true.
+- Symptoms surface where nothing hides them. The heading snap existed on land
+  the whole time and only became visible in water, because a swim turn has no
+  footfalls to mask the step. "It only happens while X" usually means X is the
+  quiet case, not the broken one.
 - Batch verification into one game launch. Rebuild-and-relaunch per hypothesis is
   the expensive part of this loop.
