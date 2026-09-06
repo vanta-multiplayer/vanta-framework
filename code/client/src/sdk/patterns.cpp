@@ -281,6 +281,19 @@ namespace VantaMP::SDK {
         gPatterns.CPopulation__UpdateEarlyOut    = Resolve("E8 ? ? ? ? A0 23"); // 0x00616698
         gPatterns.CCarCtrl__GenerateRandomCars   = Resolve("A0 51 F8 B5 00 84 C0 74 08"); // 0x004341C0
         gPatterns.CCarCtrl__RemoveCarsIfPoolFull = Resolve("A1 4C CB B7 00 83 E0 07 83 EC 08 3C 03"); // 0x004322B0
+        gPatterns.CCarCtrl__CreateCarForScript   = Resolve("6A FF 68 BB 74 83"); // 0x00431F80
+        gPatterns.CPools__ms_pVehiclePool        = OperandAt(hook::get_pattern("8D FA FF 83 C4 08 8B 0D"), 8); // site 0x0045FABB -> 0x00B74494
+
+        gPatterns.CTaskComplexEnterCarAsDriver__Constructor    = Resolve("8B 44 24 04 56 6A 00 6A 00 6A 00"); // 0x006402F0
+        gPatterns.CTaskComplexEnterCarAsPassenger__Constructor = Resolve("8B 44 24 0C 56 50 6A"); // 0x00640340
+        gPatterns.CTaskSimpleCarSetPedInAsDriver__Constructor  = Resolve("6A FF 68 E8 26 84"); // 0x006470E0
+        gPatterns.CTaskSimpleCarSetPedInAsPassenger__Constructor = Resolve("6A FF E9 13 AC DB"); // 0x00646FE0
+        gPatterns.CTaskComplexLeaveCar__Constructor            = Resolve("6A FF 68 18 16 84"); // 0x0063B8C0
+        gPatterns.CTaskSimpleCarSetPedOut__Constructor         = Resolve("6A FF E9 4B A4 DB"); // 0x006478B0
+        gPatterns.CCarEnterExit__ComputeTargetDoorToEnterAsPassenger = Resolve("8B 54 24 04 8A 8A"); // 0x0064F190
+        gPatterns.CCarEnterExit__ComputeTargetDoorToExit             = Resolve("8B 4C 24 04 8B 91 60"); // 0x0064F110
+        gPatterns.CCarEnterExit__ComputePassengerIndexFromCarDoor    = Resolve("8B 44 24 04 83 B8"); // 0x0064F1E0
+        gPatterns.CCarEnterExit__GetNearestCarPassengerDoor          = Resolve("83 EC 48 53 56 8B 74"); // 0x00650BB0
         gPatterns.CStreaming__StreamPedsAndCars  = Resolve("6A 00 6A FF E8 77 2A"); // 0x0040B650
         gPatterns.CStreaming__AmbientModelsJump  = Resolve("75 1A E8 1A CF FF"); // 0x0040E7DF
         gPatterns.CGangWars__Update              = Resolve("83 EC 34 53 E8 37"); // 0x00446610

@@ -18,3 +18,5 @@
 #include "ped/local_ped.h"
 #include "ped/remote_ped.h"
 #include "ped/weapon.h"
+#include "vehicle.h"
+#include "vehicle_occupancy.h"

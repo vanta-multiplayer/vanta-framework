@@ -103,5 +103,8 @@ namespace VantaMP::SDK {
     // swim task every frame never gets to swim in any of them.
     bool StartRemotePedSwimming(int slot);
 
+    // Off while a remote ped is in a car so they do not shove it around.
+    void SetRemotePedCollision(int slot, bool enabled);
+
     // What a remote player HOLDS is in sdk/ped/weapon.h, not here.
 } // namespace VantaMP::SDK

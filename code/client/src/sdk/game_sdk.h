@@ -14,5 +14,9 @@
 #include <CPedClothesDesc.h>
 #include <CTaskSimpleDuck.h>
 #include <CTaskSimpleUseGun.h>
+#include <CAutomobile.h>
+#include <CPools.h>
+#include <CTaskComplexEnterCar.h>
+#include <CVehicle.h>
 #include <CWorld.h>
 #pragma warning(pop)

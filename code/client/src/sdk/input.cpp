@@ -119,16 +119,19 @@ namespace VantaMP::SDK {
         state.ButtonTriangle = set((input.buttons & Button::EnterExit) != 0);
         state.m_bPedWalk     = set((input.buttons & Button::Walk) != 0);
 
-        // CROUCH IS DELIBERATELY NOT REPLAYED, THOUGH IT IS ON THE WIRE.
+        const auto *ped    = Internal::PedAt(slot);
+        const bool  seated = ped && ped->bInVehicle;
+
+        // CROUCH IS A TOGGLE ON FOOT AND A HORN IN A CAR.
         //
-        // The crouch key is a TOGGLE, and the duck it produces is already
-        // synced properly as a task from the isDucked flag - see
-        // SetRemotePedDucked. Replaying the button as well means two things
-        // driving one pose: the flag says stand, the toggle says the opposite of
-        // whatever it is now, and the ped flickers between them.
-        //
-        // A state is synced as a state. MTA strips this same button on receive
-        // for the same reason.
+        // On foot the duck is already synced as a task from isDucked, so
+        // replaying the button flickers the pose. In a vehicle the same
+        // physical key is ShockButtonL - horn / siren - and MTA writes it
+        // there. Without this a remote driver can never honk.
+        if (seated) {
+            state.ShockButtonL = set((input.buttons & Button::Crouch) != 0);
+            return;
+        }
 
         // Jump and sprint share their buttons with the pedals, which were
         // already written above from their own analogue fields. Setting them

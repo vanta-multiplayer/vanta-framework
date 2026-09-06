@@ -410,6 +410,32 @@ namespace VantaMP::SDK {
         uintptr_t CPopulation__UpdateEarlyOut    = 0;
         uintptr_t CCarCtrl__GenerateRandomCars   = 0;
         uintptr_t CCarCtrl__RemoveCarsIfPoolFull = 0;
+
+        // CCarCtrl::CreateCarForScript. What GTA's own mission scripts call:
+        // pool allocation, world add, physics. Mission cleanup is the third
+        // argument - we pass false so the game never deletes a Vanta car.
+        uintptr_t CCarCtrl__CreateCarForScript = 0;
+
+        // CPools::ms_pVehiclePool. CreateCarForScript allocates from it;
+        // operator delete has no unique body, so we free through the pool
+        // the same way the game does.
+        uintptr_t CPools__ms_pVehiclePool = 0;
+
+        // Occupancy tasks. Warp uses the simple SetPedIn/Out; walk-in uses
+        // the complex Enter/Leave. ProcessPed is reached through the vtable.
+        uintptr_t CTaskComplexEnterCarAsDriver__Constructor    = 0;
+        uintptr_t CTaskComplexEnterCarAsPassenger__Constructor = 0;
+        uintptr_t CTaskSimpleCarSetPedInAsDriver__Constructor  = 0;
+        uintptr_t CTaskSimpleCarSetPedInAsPassenger__Constructor = 0;
+        uintptr_t CTaskComplexLeaveCar__Constructor            = 0;
+        uintptr_t CTaskSimpleCarSetPedOut__Constructor         = 0;
+        uintptr_t CCarEnterExit__ComputeTargetDoorToEnterAsPassenger = 0;
+        uintptr_t CCarEnterExit__ComputeTargetDoorToExit             = 0;
+        uintptr_t CCarEnterExit__ComputePassengerIndexFromCarDoor    = 0;
+
+        // Door position for passenger reach. Asking this on a vehicle with
+        // no RenderWare object is a null deref inside GTA.
+        uintptr_t CCarEnterExit__GetNearestCarPassengerDoor          = 0;
         uintptr_t CStreaming__StreamPedsAndCars  = 0;
         uintptr_t CStreaming__AmbientModelsJump  = 0;
         uintptr_t CGangWars__Update              = 0;

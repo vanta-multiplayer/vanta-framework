@@ -2,6 +2,7 @@
 
 #include "access.h"
 #include "game/entities/remote_players.h"
+#include "sdk/vehicle_occupancy.h"
 
 #include <cstddef>
 #include <iterator>
@@ -160,6 +161,8 @@ namespace VantaMP::SDK {
         }
 
         auto *ped = info->m_pPed;
+
+        UnlinkFromVehicle(slot);
 
         // The clothes descriptor was allocated per ped above, so it is released
         // here - the game does not know Vanta allocated it.
@@ -389,5 +392,15 @@ namespace VantaMP::SDK {
         reinterpret_cast<SetTaskFn>(gPatterns.CTaskManager__SetTask)(tasks, storage, kTaskPriorityEventResponseNonTemp, true);
 
         return true;
+    }
+
+    void SetRemotePedCollision(int slot, bool enabled) {
+        auto *ped = PedAt(slot);
+
+        if (!ped) {
+            return;
+        }
+
+        ped->bUsesCollision = enabled;
     }
 } // namespace VantaMP::SDK
