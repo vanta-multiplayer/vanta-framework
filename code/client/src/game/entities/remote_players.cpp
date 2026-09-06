@@ -1,6 +1,7 @@
 #include "game/entities/remote_players.h"
 
 #include "game/entities/player_slots.h"
+#include "sdk/game.h"
 #include "sdk/patterns.h"
 
 #include <utils/safe_win32.h>
@@ -83,6 +84,16 @@ namespace VantaMP::Game {
 
             *reinterpret_cast<std::int32_t *>(p.CWorld__PlayerInFocus) = slot;
 
+            // THE REMOTE PLAYER'S OWN VIEW DIRECTION, NOT THIS CLIENT'S.
+            //
+            // Saving and restoring the global around the call is not enough on
+            // its own: without writing the owner's value here, every remote ped
+            // is processed against the LOCAL camera. GTA resolves stick input
+            // relative to the camera, so their movement comes out rotated by
+            // the difference between the two views - they walk sideways, and
+            // change direction whenever the local player turns their head.
+            *reinterpret_cast<float *>(p.CCamera__Rotation) = SDK::GetRemoteCameraRotation(slot);
+
             // Local mouse movement must not steer somebody else's player.
             *reinterpret_cast<bool *>(p.CCamera__MouseLook) = false;
         }
@@ -111,6 +122,17 @@ namespace VantaMP::Game {
             *reinterpret_cast<float *>(p.CCamera__Rotation)            = gSaved.cameraRotation;
             *reinterpret_cast<bool *>(p.CCamera__MouseLook)            = gSaved.mouseLook;
             *reinterpret_cast<std::int32_t *>(p.CWorld__PlayerInFocus) = gSaved.focus;
+        }
+
+        // Applied to a ped once the game has finished moving it. Set by the
+        // sync layer, which owns the interpolators; left null this file does
+        // nothing extra, which is what a client with no remote players wants.
+        void (*gCorrectPed)(int slot) = nullptr;
+
+        void CorrectRemotePed(int slot) {
+            if (gCorrectPed) {
+                gCorrectPed(slot);
+            }
         }
 
         // Replaces CPlayerPed::ProcessControl.
@@ -142,6 +164,16 @@ namespace VantaMP::Game {
             SwitchToRemote(slot);
 
             gOriginalProcessControl(ped);
+
+            // CORRECTED HERE, IMMEDIATELY AFTER THE GAME MOVED THIS PED.
+            //
+            // The interpolator adds a share of the error to wherever the ped
+            // currently is, so it has to run once the walk has already been
+            // applied - it nudges the result rather than replacing it. Run
+            // before the game processes peds, as this used to be, every frame
+            // would overwrite the position the walk produced with one derived
+            // from a stale read, and the ped would slide instead of walking.
+            CorrectRemotePed(slot);
 
             SwitchToLocal(slot);
             gSwitched = false;
@@ -243,5 +275,9 @@ namespace VantaMP::Game {
 
     void SuspendRemotePlayers() {
         gSuspended.store(true, std::memory_order_release);
+    }
+
+    void SetRemotePedCorrector(void (*corrector)(int slot)) {
+        gCorrectPed = corrector;
     }
 } // namespace VantaMP::Game

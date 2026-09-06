@@ -24,16 +24,16 @@ namespace VantaMP::Game {
             if (!spawned) {
                 spawned = true;
                 CreateLocalPlayer();
+
+                // Correction runs per ped from the ProcessControl hook rather
+                // than from here, so it sees the position the game's own walk
+                // produced instead of overwriting it.
+                InstallRemotePlayerCorrection();
             }
 
             // The network, once per frame and on the game thread - which is the
             // only thread allowed to touch peds.
             UpdatePlayerSync();
-
-            // And a step of correction towards where everyone should be. State
-            // arrives ten times a second and the game draws sixty, so this is
-            // what turns six-frame-apart positions into movement.
-            InterpolateRemotePlayers();
 
             if (gFrameCallback) {
                 gFrameCallback();

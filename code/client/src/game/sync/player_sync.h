@@ -16,13 +16,19 @@ namespace VantaMP::Game {
     // on the game thread and can touch the world directly.
     void UpdatePlayerSync();
 
-    // Moves every remote ped a step towards where its owner says it is.
+    // Registers the per-ped correction below. Called once, at startup.
+    void InstallRemotePlayerCorrection();
+
+    // Moves one remote ped a step towards where its owner says it is.
     //
-    // SEPARATE FROM UpdatePlayerSync, AND RUN EVERY FRAME. State arrives ten
-    // times a second; the game draws sixty. Applying a position only when one
-    // arrives makes remote players jump between six-frame-apart poses, which is
-    // the difference between "networked" and "playable".
-    void InterpolateRemotePlayers();
+    // RUN PER PED, IMMEDIATELY AFTER THE GAME HAS PROCESSED THAT PED - not once
+    // per frame ahead of them all. State arrives ten times a second and the game
+    // draws sixty, so a correction every frame is what turns six-frame-apart
+    // updates into movement. But it adds a share of the error to where the ped
+    // currently is, so it has to see the position the walk produced: run before
+    // the game moves peds, it overwrites that walk with a value derived from a
+    // stale read, and the ped slides instead of walking.
+    void CorrectRemotePlayer(int slot);
 
     // Drops every remote ped, without touching the entities.
     //

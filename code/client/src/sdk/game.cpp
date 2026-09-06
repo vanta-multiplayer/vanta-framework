@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <array>
 #include <cstdint>
 
 static_assert(sizeof(CPlaceable) == 0x18, "CPlaceable layout changed");
@@ -90,6 +91,13 @@ namespace VantaMP::SDK {
         state.pedType    = ped->m_nPedType;
         state.health     = ped->m_fHealth;
         state.maxHealth  = ped->m_fMaxHealth;
+
+        state.ducked = ped->bIsDucking;
+
+        // bIsStanding is the game's own "on something solid" flag; in the air
+        // is its absence, which is what decides a falling animation.
+        state.inAir   = ped->bIsInTheAir || !ped->bIsStanding;
+        state.inWater = ped->bSubmergedInWater;
 
         if (ped->bInVehicle && ped->m_pVehicle) {
             state.inVehicle         = true;
@@ -404,5 +412,52 @@ namespace VantaMP::SDK {
 
         info->m_pPed->m_fHealth = health;
         info->m_pPed->m_fArmour = armour;
+    }
+
+    void SetRemotePedPose(int slot, bool ducked, bool inAir, bool inWater) {
+        auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
+
+        if (!info || !info->m_pPed) {
+            return;
+        }
+
+        auto *ped = info->m_pPed;
+
+        ped->bIsDucking  = ducked;
+        ped->bIsInTheAir = inAir;
+        ped->bIsStanding = !inAir;
+
+        ped->bSubmergedInWater = inWater;
+    }
+
+    float ReadLocalCameraRotation() {
+        return *reinterpret_cast<const float *>(gPatterns.CCamera__Rotation);
+    }
+
+    namespace {
+        // One camera rotation per player slot.
+        //
+        // The game has a SINGLE camera rotation global, because it was built for
+        // one player. Every remote ped still has to be processed under its own
+        // owner's value, so each is kept here and swapped into that global for
+        // the duration of that ped's processing - the same approach the pad
+        // takes, and for the same reason.
+        std::array<float, static_cast<std::size_t>(Game::kMaxPlayers)> gRemoteCameraRotation {};
+    } // namespace
+
+    void SetRemoteCameraRotation(int slot, float rotation) {
+        if (slot < 0 || slot >= Game::kMaxPlayers) {
+            return;
+        }
+
+        gRemoteCameraRotation[static_cast<std::size_t>(slot)] = rotation;
+    }
+
+    float GetRemoteCameraRotation(int slot) {
+        if (slot < 0 || slot >= Game::kMaxPlayers) {
+            return 0.0f;
+        }
+
+        return gRemoteCameraRotation[static_cast<std::size_t>(slot)];
     }
 } // namespace VantaMP::SDK

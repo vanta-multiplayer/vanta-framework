@@ -23,6 +23,12 @@ namespace VantaMP::SDK {
 
         bool inVehicle        = false;
         int vehicleModelIndex = 0;
+
+        // Pose the game is actually in, which is not always what the input
+        // asked for - see PlayerEntity::isDucked.
+        bool ducked  = false;
+        bool inAir   = false;
+        bool inWater = false;
     };
 
     LocalPedState QueryLocalPed();
@@ -50,6 +56,11 @@ namespace VantaMP::SDK {
     void SetRemotePedTransform(int slot, float x, float y, float z, float heading);
 
     void SetRemotePedHealth(int slot, float health, float armour);
+
+    // The pose flags a remote ped is drawn in. Written straight to the ped's
+    // own bitfield rather than simulated: these are the same fields the game
+    // sets on the local player, so the animation system reads them unmodified.
+    void SetRemotePedPose(int slot, bool ducked, bool inAir, bool inWater);
 
     struct Position {
         float x = 0.0f;
@@ -112,4 +123,19 @@ namespace VantaMP::SDK {
     // Writes input into a slot's pad, for the game to act on when it next
     // processes that ped.
     void WriteRemoteInput(int slot, const ControllerInput &input);
+
+    // Which way the local player's camera is pointing, in radians.
+    //
+    // GTA resolves stick input against this rather than against the ped's
+    // heading, so it has to travel with the input it will be interpreted
+    // against - see PlayerEntity::cameraRotation.
+    float ReadLocalCameraRotation();
+
+    // The camera rotation a remote player's ped is processed under.
+    //
+    // Stored per slot rather than written straight to the game: the global is
+    // shared, so it can only hold one player's value at a time and is swapped
+    // in around each ped's processing.
+    void SetRemoteCameraRotation(int slot, float rotation);
+    float GetRemoteCameraRotation(int slot);
 } // namespace VantaMP::SDK

@@ -38,4 +38,9 @@ namespace VantaMP::Game {
     // The world and the pools are dismantled on the way out, and swapping
     // context against them faults. Set before teardown begins.
     void SuspendRemotePlayers();
+
+    // Called for each remote ped once the game has finished processing it, so
+    // a correction lands on top of the movement the game just produced instead
+    // of replacing it. See the note at the call site.
+    void SetRemotePedCorrector(void (*corrector)(int slot));
 } // namespace VantaMP::Game

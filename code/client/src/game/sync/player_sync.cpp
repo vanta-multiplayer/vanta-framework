@@ -110,6 +110,16 @@ namespace VantaMP::Game {
             entity->accelerator = input.accelerator;
             entity->brake       = input.brake;
             entity->buttons     = input.buttons;
+
+            // SENT WITH THE INPUT, BECAUSE IT IS WHAT THE INPUT MEANS. A stick
+            // pushed forward means "away from the camera", so the two are one
+            // reading: pair this tick's stick with last tick's view and the
+            // player moves in a direction neither of them described.
+            entity->cameraRotation = SDK::ReadLocalCameraRotation();
+
+            entity->isDucked  = local.ducked;
+            entity->isInAir   = local.inAir;
+            entity->isInWater = local.inWater;
         }
 
         // Applies a remote entity to its ped, creating one if needed.
@@ -143,7 +153,7 @@ namespace VantaMP::Game {
             // AIMED AT, NOT SNAPPED TO.
             //
             // The ped is given a target and a deadline, and moved towards it a
-            // frame at a time by InterpolateRemotePlayers. Writing the position
+            // frame at a time by CorrectRemotePlayer. Writing the position
             // here instead puts the ped in a new place ten times a second and
             // leaves it still in between - which is what makes a remote player
             // read as teleporting rather than walking.
@@ -171,6 +181,12 @@ namespace VantaMP::Game {
             input.buttons     = entity->buttons;
 
             SDK::WriteRemoteInput(slot, input);
+
+            // Held until this ped is processed, when it is swapped into the
+            // game's single camera-rotation global for the length of that call.
+            SDK::SetRemoteCameraRotation(slot, entity->cameraRotation);
+
+            SDK::SetRemotePedPose(slot, entity->isDucked, entity->isInAir, entity->isInWater);
         }
     } // namespace
 
@@ -219,22 +235,36 @@ namespace VantaMP::Game {
         }
     }
 
-    void InterpolateRemotePlayers() {
-        for (auto &[slot, interpolator] : gInterpolationBySlot) {
-            const auto current = SDK::GetRemotePedPosition(slot);
-            const glm::vec3 here(current.x, current.y, current.z);
+    void CorrectRemotePlayer(int slot) {
+        const auto found = gInterpolationBySlot.find(slot);
 
-            const auto next = interpolator.GetPosition()->UpdateTargetValue(here);
-
-            SDK::SetRemotePedPosition(slot, next.x, next.y, next.z);
-
-            // Rotation follows the same correction. Written through the game's
-            // own rotation fields rather than the matrix, so a ped on the
-            // ground and one in the air both end up facing the right way.
-            const auto rotation = interpolator.GetRotation()->UpdateTargetValue(SDK::GetRemotePedRotation(slot));
-
-            SDK::SetRemotePedHeading(slot, glm::yaw(rotation));
+        if (found == gInterpolationBySlot.end()) {
+            return;
         }
+
+        auto &interpolator = found->second;
+
+        // WHERE THE GAME JUST PUT THIS PED, read after its own processing has
+        // walked it. The interpolator returns that position plus a share of the
+        // error, so the walk is kept and only the drift from what the owner
+        // reports is taken out.
+        const auto current = SDK::GetRemotePedPosition(slot);
+        const glm::vec3 here(current.x, current.y, current.z);
+
+        const auto next = interpolator.GetPosition()->UpdateTargetValue(here);
+
+        SDK::SetRemotePedPosition(slot, next.x, next.y, next.z);
+
+        // Rotation follows the same correction. Written through the game's own
+        // rotation fields rather than the matrix, so a ped on the ground and
+        // one in the air both end up facing the right way.
+        const auto rotation = interpolator.GetRotation()->UpdateTargetValue(SDK::GetRemotePedRotation(slot));
+
+        SDK::SetRemotePedHeading(slot, glm::yaw(rotation));
+    }
+
+    void InstallRemotePlayerCorrection() {
+        SetRemotePedCorrector(&CorrectRemotePlayer);
     }
 
     void ClearRemotePlayers() {

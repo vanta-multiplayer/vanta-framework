@@ -24,5 +24,13 @@ namespace VantaMP::Shared {
         fields.Field(accelerator);
         fields.Field(brake);
         fields.Field(buttons);
+
+        // Appended, per the note above.
+        fields.Field(cameraRotation);
+        fields.Field(aimVertical);
+
+        fields.Field(isDucked);
+        fields.Field(isInAir);
+        fields.Field(isInWater);
     }
 } // namespace VantaMP::Shared

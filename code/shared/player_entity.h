@@ -61,6 +61,41 @@ namespace VantaMP::Shared {
 
         std::uint16_t buttons = 0;
 
+        // WHICH WAY THIS PLAYER IS LOOKING, WHICH IS NOT WHICH WAY THEY FACE.
+        //
+        // GTA resolves stick input against the camera: pushing forward means
+        // "away from the camera", not "along the ped's heading". Process a
+        // remote ped with the local camera rotation and their movement is
+        // rotated by the difference - they walk sideways, and change direction
+        // whenever the local player turns their own view.
+        //
+        // It also aims the upper body, so without it a remote player shoots
+        // wherever the local player happens to be looking.
+        //
+        // Radians. Sent every tick with the input it has to be interpreted
+        // against: arriving a tick late it would describe a different frame.
+        float cameraRotation = 0.0f;
+
+        // Vertical aim, for the same reason - it is what the game pitches the
+        // torso and the weapon by when a player looks up or down.
+        float aimVertical = 0.0f;
+
+        // POSE, SENT AS STATE RATHER THAN DERIVED FROM THE INPUT.
+        //
+        // The crouch button is already in the mask, so replicating "is ducked"
+        // as well looks redundant - but the two do not agree. GTA enters and
+        // leaves the ducked state through animations that take time and can be
+        // refused mid-transition, so a ped told to crouch is not crouched yet,
+        // and one that was crouching may still be standing up. MTA sends the
+        // flag for exactly this reason.
+        //
+        // In the air and in water matter for the same reason: the animation the
+        // game picks depends on them, and the receiving client cannot infer
+        // either from a stick position.
+        bool isDucked  = false;
+        bool isInAir   = false;
+        bool isInWater = false;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
     };
