@@ -8,7 +8,8 @@ players are input replay — GTA walks them from the owner's pad. Cars are occup
 owner motion plus a pad swap for steering. **F** is driver / jack; **G** is passenger.
 
 How that is put together, and the rules that keep it from fighting itself, live in
-[`docs/`](docs/README.md).
+[`docs/`](docs/README.md). Agents read [`AGENTS.md`](AGENTS.md) (Claude:
+[`CLAUDE.md`](CLAUDE.md); Cursor rules in [`.cursor/rules/`](.cursor/rules)).
 
 ## Layout
 

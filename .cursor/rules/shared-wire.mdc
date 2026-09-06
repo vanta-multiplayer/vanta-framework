@@ -1,0 +1,20 @@
+---
+description: Append-only replicas and reliable RPC transitions
+globs: code/shared/**/*.{h,cpp}
+alwaysApply: false
+---
+
+# Shared wire
+
+Client and server compile the same structs in the same order. A second
+copy will drift. A field in the middle shifts every later value into
+garbage, silently.
+
+- Append fields at the end of `PlayerEntity` / `VehicleEntity`.
+- Position / velocity / rotation stay on `NetworkEntity`. Do not
+  re-declare them.
+- Transitions that play once (enter, exit, shot, reload, death, bystander
+  damage) are reliable RPCs in `code/shared/rpc/`.
+- `applyRatios` on `VehicleDamageReport` must stay false for status-only
+  reports or every door slams shut.
+- After any serialize change, restart the server **and** both clients.

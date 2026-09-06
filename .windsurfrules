@@ -1,0 +1,15 @@
+# Windsurf — VantaMP
+
+Read `AGENTS.md` before editing. Human map: `docs/README.md`.
+
+This folder is the VantaMP git repo. Do not edit the Framework outside it,
+`current/`, or `reference/`. Do not commit unless asked.
+
+- Signatures in `code/client/src/sdk/patterns.*`, never hardcoded addresses.
+- Never null-check a resolved `gPatterns.*` entry.
+- plugin-sdk / `CPed` / `CVehicle` only in `VANTAMP_CLIENT_SDK_FILES`.
+- Append-only wire. Occupancy is a reliable RPC. F = jack, G = passenger.
+- Do not write GTA outputs. Heading is +0x558, not the matrix.
+- `OpenDoor` only on a real ratio change. Driver owns the swing.
+- Build from `new/`: `builds\build.bat VantaMPClient 32` and
+  `builds\build.bat VantaMPServer 64`.

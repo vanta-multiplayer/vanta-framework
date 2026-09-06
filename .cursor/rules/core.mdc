@@ -1,0 +1,27 @@
+---
+description: VantaMP non-negotiables — SDK wall, signatures, wire, no drive-by commits
+alwaysApply: true
+---
+
+# VantaMP core
+
+Read `AGENTS.md` and `docs/README.md` before changing behaviour.
+
+- This git repo only. Do not edit Framework (`new/` outside here), `current/`, or `reference/`.
+- Do not commit or push unless the user asks.
+- Game types stay behind `VANTAMP_CLIENT_SDK_FILES`. Put the call in the SDK.
+- Signatures in `sdk/patterns.*`, never literal GTA addresses. Derive, then verify.
+- Never null-check `gPatterns.*` after init — a miss already aborted startup.
+- Shared entities are append-only. Restart the server after a field change.
+- Occupancy / shot / death are reliable RPCs. Puresync never seats anyone.
+- Do not write GTA outputs (`bIsDucking`, `m_fSteerAngle`, `isInAir`).
+- **F** = driver / jack (seat 0). **G** = passenger. Never reassign a taken seat.
+
+```cpp
+// ❌ BAD — dead branch, address, and a game type above the wall
+if (gPatterns.CVehicle__OpenDoor == nullptr) return;
+auto *car = reinterpret_cast<CVehicle *>(handle);
+
+// ✅ GOOD — SDK function, pattern already valid
+SDK::ApplyVehicleDoorRatios(handle, packed, skipMask);
+```

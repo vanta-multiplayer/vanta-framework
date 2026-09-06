@@ -1,0 +1,22 @@
+---
+description: Remote peds are input replay — pad edges, heading, velocity
+globs: code/client/src/game/sync/player_sync.*,code/client/src/game/entities/remote_players.*,code/client/src/sdk/input.cpp,code/client/src/sdk/ped/**
+alwaysApply: false
+---
+
+# Player sync
+
+Remotes are a real `CPlayerPed` plus the owner's pad. Position only
+corrects drift. Details: `docs/player-sync.md`.
+
+- Correct **after** `ProcessControl` and **outside** the pad swap.
+- `OldState` is the previous frame. Copying new onto old kills jump,
+  crouch and enter (every GTA discrete action is an edge).
+- Heading: read/write `m_fCurrentRotation` (+0x558). The matrix is 90° off.
+- Interpolate heading (lerp + wrap). Re-aim position every `kPlayerMs`.
+- Crouch button off on foot (task from `isDucked`). In a car it is the
+  horn — write `ShockButtonL`.
+- A swimmer is not airborne. Velocity: every update in air, every fourth
+  on ground, only on an update.
+- A ped occupying a vehicle is left alone by the on-foot interpolator.
+  Do not start `LeaveCar` while someone is jacking (`IsAnyoneEnteringVehicleAsDriver`).

@@ -1,0 +1,6 @@
+# Cursor (legacy root file)
+
+Newer Cursor loads `.cursor/rules/*.mdc`. This file exists so older builds
+still see the same contract.
+
+Read `AGENTS.md`. Human map: `docs/README.md`.

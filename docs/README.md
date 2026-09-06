@@ -22,3 +22,18 @@ The short version of the whole project:
 
 Session notes for agents live in [`.ai/HANDOFF.md`](../.ai/HANDOFF.md). Prefer
 this folder when the handoff and the code disagree — the handoff is a snapshot.
+
+## Agent files
+
+[`AGENTS.md`](../AGENTS.md) is the binding rule sheet. Everything else is a
+pointer so the tool you opened actually loads it:
+
+| File | Tool |
+|------|------|
+| [`AGENTS.md`](../AGENTS.md) | Cursor, Codex, Aider, anything that reads a root agent file |
+| [`CLAUDE.md`](../CLAUDE.md) | Claude Code |
+| [`GEMINI.md`](../GEMINI.md) | Gemini CLI |
+| [`.github/copilot-instructions.md`](../.github/copilot-instructions.md) | GitHub Copilot |
+| [`.windsurfrules`](../.windsurfrules) | Windsurf |
+| [`CONVENTIONS.md`](../CONVENTIONS.md) | Aider |
+| [`.cursor/rules/`](../.cursor/rules) | Cursor project rules (core + per-area) |

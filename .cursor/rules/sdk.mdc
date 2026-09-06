@@ -1,0 +1,24 @@
+---
+description: SDK boundary, patterns, and plugin-sdk confinement
+globs: code/client/src/sdk/**/*.{h,cpp},code/client/CMakeLists.txt,scripts/*pattern*
+alwaysApply: false
+---
+
+# SDK
+
+plugin-sdk is header-only. Method bodies are 1.0 US — call through a
+signature or a vtable slot. A 1.0 US address in a comment is provenance.
+
+- Prefer extending an existing SDK function over adding a `.cpp` to
+  `VANTAMP_CLIENT_SDK_FILES`.
+- `sdk/ped/access.h` is internal. Above the wall, peds are slots.
+- `CancelEntriesInto` before deleting a car. `UnlinkFromVehicle` before
+  freeing a ped.
+- Never call `GetNearestCarPassengerDoor` if `m_pRwObject` is null.
+- `m_nMaxPassengers == 255` means unknown, not 255 seats.
+
+New call checklist: find 1.0 US address → `derive_pattern.py` on
+`current/build/gta-clean/gta_sa.exe` → add to `patterns.*` →
+`verify_patterns.py` → wrap in an SDK function.
+
+See `docs/sdk-and-patterns.md`.

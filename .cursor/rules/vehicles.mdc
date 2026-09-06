@@ -1,0 +1,23 @@
+---
+description: Occupancy RPCs, jacking, door ratios, steering pad swap
+globs: code/client/src/game/sync/vehicle_sync.*,code/client/src/sdk/vehicle*,code/server/src/game/vehicle_manager.*,code/shared/rpc/player_enter_vehicle.h,code/shared/rpc/player_exit_vehicle.h,code/shared/rpc/vehicle_damage_report.h,code/shared/vehicle_entity.*
+alwaysApply: false
+---
+
+# Vehicles
+
+Three channels: occupancy (RPC), motion (owner replica), controls (pad
+swap). Do not collapse them. Details: `docs/vehicles.md`.
+
+- **F** = seat 0, including jack through a passenger door. **G** never jacks.
+- Taken seat → broadcast enter, do not assign. Jack completes on `warp`.
+- Stamp a real `eTargetDoor` (8 / 9 / 11). `0` / `0xFF` freezes the walk.
+- `m_fSteerAngle` is an output. Swap the pad on `ProcessControl`. Lerp
+  analogue; snap buttons.
+- `OpenDoor` only if `|current - target| > 2/255`. It slams even with
+  `playSound=false`. Skip the door the local ped is climbing through.
+- Driver owns the swing. Passengers report only while entering/leaving
+  on an empty car. Server ignores ratio reports when seat 0 is taken.
+- Never max-merge ratios. Status-only damage sets `applyRatios=false`.
+- Warp at `15 + 10×speed`, then `× tick/100`. Do not interpolate the
+  local driver's car.
