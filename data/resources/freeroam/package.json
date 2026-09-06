@@ -1,0 +1,9 @@
+{
+  "name": "freeroam",
+  "version": "0.1.0",
+  "description": "Default spawn until a real gamemode exists.",
+  "mafiahub": {
+    "serverScripts": ["server.js"],
+    "clientScripts": ["client.js"]
+  }
+}
