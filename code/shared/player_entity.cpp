@@ -31,5 +31,9 @@ namespace VantaMP::Shared {
         fields.Field(isDucked);
         fields.Field(isInAir);
         fields.Field(isInWater);
+
+        fields.Field(weaponType);
+        fields.Field(ammoClip);
+        fields.Field(ammoTotal);
     }
 } // namespace VantaMP::Shared

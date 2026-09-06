@@ -106,6 +106,23 @@ namespace VantaMP::Shared {
         bool isInAir   = false;
         bool isInWater = false;
 
+        // WHAT IS IN THIS PLAYER'S HANDS.
+        //
+        // The type alone is what makes a weapon visible, since a held weapon is
+        // a model the receiving client attaches from it. Without this every
+        // remote player is empty-handed however they are standing, and aiming
+        // and firing animate against nothing.
+        //
+        // The ammo counts are not needed to draw it and are sent anyway,
+        // because they are what a HUD, a reload animation and any future hit
+        // validation all read, and because they cost four bytes against a
+        // weapon switch that already costs a model load. MTA sends the same
+        // three, plus the slot - which is omitted here because the receiver
+        // gets it back from GiveWeapon rather than having to be told.
+        std::uint32_t weaponType = 0;
+        std::uint32_t ammoClip   = 0;
+        std::uint32_t ammoTotal  = 0;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
     };
