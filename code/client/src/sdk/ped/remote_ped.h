@@ -87,4 +87,6 @@ namespace VantaMP::SDK {
     // the task is not being found where it was put, and a ped handed a fresh
     // swim task every frame never gets to swim in any of them.
     bool StartRemotePedSwimming(int slot);
+
+    // What a remote player HOLDS is in sdk/ped/weapon.h, not here.
 } // namespace VantaMP::SDK

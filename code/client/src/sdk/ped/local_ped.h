@@ -35,5 +35,8 @@ namespace VantaMP::SDK {
         float velocityZ = 0.0f;
     };
 
+    // What the local player is HOLDING is in sdk/ped/weapon.h, not here.
+    // Weapons are their own subsystem - a model to stream, a slot to select, a
+    // clip to track - rather than another few fields of ped state.
     LocalPedState QueryLocalPed();
 } // namespace VantaMP::SDK

@@ -9,8 +9,10 @@
 # behind an existing SDK function instead.
 set(VANTAMP_CLIENT_SDK_FILES
     src/sdk/input.cpp
+    src/sdk/streaming.cpp
     src/sdk/ped/local_ped.cpp
     src/sdk/ped/remote_ped.cpp
+    src/sdk/ped/weapon.cpp
 )
 
 set(VANTAMP_CLIENT_FILES

@@ -4,6 +4,7 @@
 #include "game/entities/remote_players.h"
 
 #include <cstddef>
+#include <iterator>
 
 namespace VantaMP::SDK {
     namespace {
@@ -33,6 +34,7 @@ namespace VantaMP::SDK {
 
         using InWaterCtorFn = void(__thiscall *)(void *);
         using SetTaskFn     = void(__thiscall *)(void *, void *, int, bool);
+
 
         // Twelve bytes of task, and twelve of slack.
         //
