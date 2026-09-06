@@ -44,5 +44,7 @@ namespace VantaMP::Shared {
         // other way to learn it. Cheap enough that re-sending it every tick
         // is fine against a string that almost never changes.
         fields.Field(nickname);
+
+        fields.Field(isReloading);
     }
 } // namespace VantaMP::Shared

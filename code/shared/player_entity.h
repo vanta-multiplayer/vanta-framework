@@ -125,6 +125,12 @@ namespace VantaMP::Shared {
         std::uint32_t ammoClip   = 0;
         std::uint32_t ammoTotal  = 0;
 
+        // Reloading is a task, not an ammo count. The clip going to zero is
+        // visible on the snapshot, but CWeapon::Update only plays the anim
+        // when UseGun's command is reload - and a 10 Hz ammo write during
+        // that anim is MTA's #4503, the reload that never finishes.
+        bool isReloading = false;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
     };
