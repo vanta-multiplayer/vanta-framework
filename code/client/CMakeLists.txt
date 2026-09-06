@@ -46,9 +46,12 @@ set(VANTAMP_CLIENT_FILES
     # Keeping those things in step with the server.
     src/game/sync/player_sync.cpp
 
+    src/game/ui/nametags.cpp
+
     # The game's memory, wrapped. These need no plugin-sdk of their own: an
     # address is a number and a slot is an integer.
     src/sdk/camera.cpp
+    src/sdk/draw.cpp
     src/sdk/game_build.cpp
     src/sdk/patterns.cpp
     src/sdk/ped/aim.cpp

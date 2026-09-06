@@ -24,9 +24,10 @@ namespace VantaMP::Core {
 
         // Queued rather than acted on: this is called from a CEF thread, and
         // connecting touches state the game thread owns.
-        void RequestConnectTo(const std::string &host, std::uint32_t port) {
+        void RequestConnectTo(const std::string &host, std::uint32_t port, const std::string &nickname) {
             _pendingHost      = host;
             _pendingPort      = port;
+            _pendingNickname  = nickname;
             _connectRequested = true;
         }
 
@@ -35,6 +36,7 @@ namespace VantaMP::Core {
         // the client no longer connects on its own.
         std::string _pendingHost;
         std::uint32_t _pendingPort = 0;
+        std::string _pendingNickname;
         bool _connectRequested     = false;
 
         // The menu is held back until the game's own startup screens are done.

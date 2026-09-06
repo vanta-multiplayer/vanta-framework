@@ -66,4 +66,9 @@ namespace VantaMP::Core {
     // otherwise choosing a resolution appears to work and is forgotten on the
     // next start.
     void SaveDisplaySettings(std::uint32_t width, std::uint32_t height, bool borderless);
+
+    // Last server and the name this client will announce as. Written when the
+    // player asks to connect, so the next start opens on the same identity
+    // rather than the compile-time default.
+    void SaveConnectSettings(const std::string &host, std::uint32_t port, const std::string &nickname);
 } // namespace VantaMP::Core

@@ -690,4 +690,10 @@ namespace VantaMP::Game {
         gInterpolationBySlot.clear();
         gAimedBySlot.clear();
     }
+
+    int SlotOfNetworkId(std::uint64_t networkId) {
+        const auto found = gSlotByNetworkId.find(networkId);
+
+        return found != gSlotByNetworkId.end() ? found->second : -1;
+    }
 } // namespace VantaMP::Game

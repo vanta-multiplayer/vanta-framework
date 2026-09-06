@@ -15,6 +15,9 @@
 #include "core/ui/window_input.h"
 #include "core/ui/ped_debug_ui.h"
 #include "game/patches/boot.h"
+#include "sdk/draw.h"
+
+#include <graphics/backend/d3d9.h>
 #include "game/sync/player_sync.h"
 #include "game/camera.h"
 #include "game/entities/local_player.h"
@@ -102,7 +105,7 @@ namespace VantaMP::Core {
 
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("{} asked to join {}:{}", nickname, host, port);
 
-        gApplication->RequestConnectTo(host, port);
+        gApplication->RequestConnectTo(host, port, nickname);
     }
 
     void Application::PostUpdate() {
@@ -155,8 +158,24 @@ namespace VantaMP::Core {
 
             const auto host = _pendingHost;
             const auto port = _pendingPort;
+            auto nickname   = _pendingNickname;
 
             _pendingHost.clear();
+            _pendingNickname.clear();
+
+            if (nickname.empty()) {
+                nickname = GetClientConfig().nickname;
+            }
+
+            // Identity is read from this when assets finish, not from the
+            // connect call. Leaving it empty is why every remote nametag
+            // used to say "Player".
+            Framework::Integrations::Client::CurrentState state;
+            state.host     = host;
+            state.port     = static_cast<std::int32_t>(port);
+            state.nickname = nickname;
+            SetCurrentState(state);
+            SaveConnectSettings(host, port, nickname);
 
             Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::Connecting);
 
@@ -222,6 +241,8 @@ namespace VantaMP::Core {
         // fault.
         options.sentryAttachments = {fmt::format("{}/logs/VantaMP.log", gProjectPath)};
 
+        SDK::SetWorldOverlayDevice(device);
+
         if (const auto result = gApplication->Init(options); !result) {
             Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->error("Failed to initialize the client: {}", result.GetError().message);
             gApplication.reset();
@@ -280,6 +301,8 @@ namespace VantaMP::Core {
     }
 
     void OnDeviceLost() {
+        SDK::OnWorldOverlayDeviceLost();
+
         if (gApplication && gApplication->IsInitialized()) {
             if (const auto imgui = gApplication->GetImGUI(); imgui && imgui->IsInitialized()) {
                 imgui->OnDeviceLost();
@@ -291,6 +314,12 @@ namespace VantaMP::Core {
         if (gApplication && gApplication->IsInitialized()) {
             if (const auto imgui = gApplication->GetImGUI(); imgui && imgui->IsInitialized()) {
                 imgui->OnDeviceReset();
+            }
+
+            if (auto *renderer = gApplication->GetRenderer()) {
+                if (auto *d3d = renderer->GetD3D9Backend()) {
+                    SDK::OnWorldOverlayDeviceReset(d3d->GetDevice());
+                }
             }
         }
     }

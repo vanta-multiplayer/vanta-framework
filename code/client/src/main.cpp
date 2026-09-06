@@ -21,6 +21,7 @@
 #include "game/patches/population.h"
 #include "game/entities/local_player.h"
 #include "game/patches/script.h"
+#include "game/ui/nametags.h"
 #include "sdk/game_build.h"
 #include "sdk/patterns.h"
 
@@ -106,6 +107,9 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     VantaMP::Diagnostics::Breadcrumbs::SetStage(VantaMP::Diagnostics::Stage::HooksInstalling);
 
     VantaMP::Game::InstallRemotePlayerHooks();
+
+    VantaMP::Diagnostics::Breadcrumbs::SetLastPatch("nametags");
+    VantaMP::Game::InstallNametags();
 
     // Has to land before the game acquires the mouse, which it does during its
     // own startup - from a frame callback this would already be too late.

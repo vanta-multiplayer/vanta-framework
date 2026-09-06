@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace VantaMP::Game {
     // Keeps the game and the network in step, in both directions.
     //
@@ -35,4 +37,7 @@ namespace VantaMP::Game {
     // For a disconnect: the peds belong to this client and have to go, while the
     // entities are the network's to clean up.
     void ClearRemotePlayers();
+
+    // Which slot a remote player's ped occupies, or -1 if they have none yet.
+    [[nodiscard]] int SlotOfNetworkId(std::uint64_t networkId);
 } // namespace VantaMP::Game

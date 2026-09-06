@@ -121,6 +121,17 @@ namespace VantaMP::Core {
         Framework::Logging::GetLogger("Config")->info("Display saved: {} {}x{}", borderless ? "borderless" : "windowed", width, height);
     }
 
+    void SaveConnectSettings(const std::string &host, std::uint32_t port, const std::string &nickname) {
+        gConfig.serverHost = host;
+        gConfig.serverPort = port;
+
+        if (!nickname.empty()) {
+            gConfig.nickname = nickname;
+        }
+
+        WriteConfig(std::filesystem::path(gConfigPath) / kFileName, gConfig);
+    }
+
     const ClientConfig &GetClientConfig() {
         return gConfig;
     }
