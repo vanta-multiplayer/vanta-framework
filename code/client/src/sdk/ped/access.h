@@ -42,6 +42,48 @@ namespace VantaMP::SDK::Internal {
     inline constexpr std::size_t kCurrentRotationOffset = 0x558;
     inline constexpr std::size_t kAimingRotationOffset  = 0x55C;
 
+    // CTask's virtuals, reached through the vtable rather than by name.
+    //
+    // plugin-sdk DECLARES them but their bodies are at 1.0 US addresses in .cpp
+    // files this build does not compile, so `task->GetId()` would want a
+    // definition to link against. The vtable is where the answer lives in any
+    // case, and the slot is the one plugin-sdk itself uses.
+    inline constexpr std::size_t kTaskGetIdSlot = 4;
+
+    // Where the in-water task sits. plugin-sdk names the primary task array but
+    // not the priorities that index it; this is MTA's
+    // TASK_PRIORITY_EVENT_RESPONSE_NONTEMP, which is where it looks for the same
+    // task and where we put ours.
+    inline constexpr int kTaskPriorityEventResponseNonTemp = 2;
+
+    inline void *TaskVirtual(void *task, std::size_t slot) {
+        return (*reinterpret_cast<void ***>(task))[slot];
+    }
+
+    // Which task this is. A slot holds whatever is running, so finding something
+    // in the duck slot does not mean it is a duck.
+    inline eTaskType TaskIdOf(void *task) {
+        using GetIdFn = eTaskType(__thiscall *)(void *);
+
+        return reinterpret_cast<GetIdFn>(TaskVirtual(task, kTaskGetIdSlot))(task);
+    }
+
+    // Whether this ped is in the water, ASKED THE WAY THE GAME ANSWERS IT.
+    //
+    // Not from bSubmergedInWater, which is false for a player swimming along the
+    // surface, and not from bTouchingWater, which is true for one standing in
+    // the shallows. Being in water is the in-water TASK running, the flags being
+    // things that task maintains. MTA's CClientPed::IsInWater asks exactly this.
+    inline bool IsPedInWater(const CPed *ped) {
+        if (!ped || !ped->m_pIntelligence) {
+            return false;
+        }
+
+        auto *running = ped->m_pIntelligence->m_TaskMgr.m_aPrimaryTasks[kTaskPriorityEventResponseNonTemp];
+
+        return running && TaskIdOf(running) == TASK_COMPLEX_IN_WATER;
+    }
+
     inline CPed *LocalPed() {
         // Slot 0, out of the RELOCATED array. Reading gPatterns.CWorld__Players
         // instead would find the array the game shipped with, which nothing

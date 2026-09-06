@@ -81,5 +81,10 @@ namespace VantaMP::SDK {
     // getting IN needs help, because a remote ped is walked by replayed input
     // and can be somewhere its own physics has not caught up with yet. MTA
     // starts this task on the same edge and likewise never ends it.
-    void StartRemotePedSwimming(int slot);
+    //
+    // Returns whether it actually installed a task, which should be true once
+    // per entry into water and false on every other call. Anything else means
+    // the task is not being found where it was put, and a ped handed a fresh
+    // swim task every frame never gets to swim in any of them.
+    bool StartRemotePedSwimming(int slot);
 } // namespace VantaMP::SDK

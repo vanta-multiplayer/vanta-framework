@@ -27,14 +27,12 @@ namespace VantaMP::SDK {
         using GetTaskSecondaryFn = void *(__thiscall *)(void *, int);
         using SetTaskSecondaryFn = void(__thiscall *)(void *, void *, int);
 
+        using Internal::IsPedInWater;
+        using Internal::kTaskPriorityEventResponseNonTemp;
+        using Internal::TaskIdOf;
+
         using InWaterCtorFn = void(__thiscall *)(void *);
         using SetTaskFn     = void(__thiscall *)(void *, void *, int, bool);
-
-        // Where the in-water task sits. plugin-sdk names the array but not the
-        // priorities that index it; this is MTA's
-        // TASK_PRIORITY_EVENT_RESPONSE_NONTEMP, which is where it puts the same
-        // task.
-        constexpr int kTaskPriorityEventResponseNonTemp = 2;
 
         // Twelve bytes of task, and twelve of slack.
         //
@@ -45,26 +43,6 @@ namespace VantaMP::SDK {
         // the cost of guessing low is a heap the game writes past the end of.
         // Twelve wasted bytes against that is not a trade worth agonising over.
         constexpr unsigned int kInWaterTaskBytes = 12 + 12;
-
-        // CTask's virtuals, reached through the vtable rather than by name.
-        //
-        // plugin-sdk DECLARES them but their bodies are at 1.0 US addresses in
-        // .cpp files this build does not compile, so `task->GetId()` would want
-        // a definition to link against. The vtable is where the answer lives in
-        // any case, and the slot is the one plugin-sdk itself uses.
-        constexpr std::size_t kTaskGetIdSlot = 4;
-
-        void *TaskVirtual(void *task, std::size_t slot) {
-            return (*reinterpret_cast<void ***>(task))[slot];
-        }
-
-        // Which task this is. The secondary slots hold whatever is running, so
-        // finding something in the duck slot does not mean it is a duck.
-        eTaskType TaskIdOf(void *task) {
-            using GetIdFn = eTaskType(__thiscall *)(void *);
-
-            return reinterpret_cast<GetIdFn>(TaskVirtual(task, kTaskGetIdSlot))(task);
-        }
     } // namespace
 
     void *CreateRemotePed(int slot, int modelIndex, float x, float y, float z) {
@@ -321,11 +299,11 @@ namespace VantaMP::SDK {
         reinterpret_cast<SetTaskSecondaryFn>(gPatterns.CTaskManager__SetTaskSecondary)(tasks, storage, TASK_SECONDARY_DUCK);
     }
 
-    void StartRemotePedSwimming(int slot) {
+    bool StartRemotePedSwimming(int slot) {
         auto *ped = PedAt(slot);
 
         if (!ped || !ped->m_pIntelligence) {
-            return;
+            return false;
         }
 
         auto *tasks = &ped->m_pIntelligence->m_TaskMgr;
@@ -335,16 +313,19 @@ namespace VantaMP::SDK {
         // ends itself on leaving the water - so a cached "was in water" flag
         // would go stale the moment that happened. Reading the task back is what
         // makes calling this every frame safe.
-        if (auto *running = tasks->m_aPrimaryTasks[kTaskPriorityEventResponseNonTemp]) {
-            if (TaskIdOf(running) == TASK_COMPLEX_IN_WATER) {
-                return;
-            }
+        //
+        // In practice the game usually gets there first: a remote ped whose
+        // position is synced is really in the water, so GTA starts this task on
+        // its own and this returns false every time. That is the good case. The
+        // install below is for the ped the game has not caught up with yet.
+        if (IsPedInWater(ped)) {
+            return false;
         }
 
         auto *storage = reinterpret_cast<OperatorNewFn>(gPatterns.CTask__operator_new)(kInWaterTaskBytes);
 
         if (!storage) {
-            return;
+            return false;
         }
 
         reinterpret_cast<InWaterCtorFn>(gPatterns.CTaskComplexInWater__Constructor)(storage);
@@ -360,5 +341,7 @@ namespace VantaMP::SDK {
 
         // Forced, so it replaces whatever the ped was doing on dry land.
         reinterpret_cast<SetTaskFn>(gPatterns.CTaskManager__SetTask)(tasks, storage, kTaskPriorityEventResponseNonTemp, true);
+
+        return true;
     }
 } // namespace VantaMP::SDK
