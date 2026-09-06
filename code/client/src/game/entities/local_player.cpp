@@ -4,6 +4,7 @@
 #include "game/entities/remote_players.h"
 #include "core/diagnostics/breadcrumbs.h"
 #include "sdk/patterns.h"
+#include "sdk/ped/weapon.h"
 #include "shared/spawn_points.h"
 
 #include <utils/safe_win32.h>
@@ -17,6 +18,11 @@ namespace VantaMP::Game {
     namespace {
         // CJ. The model the game itself uses for the player.
         constexpr std::uint8_t kPlayerModelId = 7;
+
+        // WEAPONTYPE_AK47 and enough to see a reload. Named rather than spelled
+        // into the call so the testing loadout below is one thing to delete.
+        constexpr unsigned int kTestWeaponType = 30;
+        constexpr unsigned int kTestWeaponAmmo = 300;
 
         std::atomic_bool gPlayerSpawned {false};
         // The placeholder the ped is created at, before a server has an
@@ -120,6 +126,19 @@ namespace VantaMP::Game {
 
         if (!revealed) {
             revealed = true;
+
+            // A TESTING LOADOUT, not a design decision - the same kind of thing
+            // as the waterfront spawn point. Weapon sync cannot be looked at
+            // with two empty-handed players and there is nothing to pick up
+            // where they spawn. Goes when a resource decides what a player
+            // spawns holding.
+            //
+            // HERE AND NOT IN CreateLocalPlayer, which is the earlier and more
+            // obvious home for it. The ped is built before the engine reads
+            // GTA.DAT, so at that point there is no streamer to ask for the
+            // weapon's model - the ped exists, the world does not. By the time
+            // the server has said where to spawn, both do.
+            SDK::GiveLocalPedWeapon(kTestWeaponType, kTestWeaponAmmo);
 
             Framework::Logging::GetLogger("Player")->info("Spawned by the server at {:.1f}, {:.1f}, {:.1f}", x, y, z);
 

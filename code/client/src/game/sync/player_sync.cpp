@@ -217,6 +217,12 @@ namespace VantaMP::Game {
 
             entity->health = local.health;
 
+            const auto weapon = SDK::QueryLocalPedWeapon();
+
+            entity->weaponType = weapon.type;
+            entity->ammoClip   = weapon.ammoClip;
+            entity->ammoTotal  = weapon.ammoTotal;
+
             // VELOCITY IS SENT, AND IT IS NOT REDUNDANT WITH THE INPUT.
             //
             // A remote ped given only input and a position has no momentum of
@@ -259,7 +265,7 @@ namespace VantaMP::Game {
                 lastSendReportMs = now;
 
                 Framework::Logging::GetLogger("SyncDbg")
-                    ->info("SEND me {:.2f},{:.2f} head {:.1f} vel {:.2f},{:.2f} stick {},{} buttons {:#x} ducked {} air {} water {}", local.x, local.y, local.heading * 57.2957795f, local.velocityX, local.velocityY, input.leftStickX, input.leftStickY, entity->buttons, local.ducked, local.inAir, local.inWater);
+                    ->info("SEND me {:.2f},{:.2f} head {:.1f} vel {:.2f},{:.2f} stick {},{} buttons {:#x} ducked {} air {} water {} weapon {} ammo {}/{}", local.x, local.y, local.heading * 57.2957795f, local.velocityX, local.velocityY, input.leftStickX, input.leftStickY, entity->buttons, local.ducked, local.inAir, local.inWater, weapon.type, weapon.ammoClip, weapon.ammoTotal);
             }
         }
 
@@ -375,8 +381,13 @@ namespace VantaMP::Game {
                     ++telemetry.velocities;
                 }
 
-                // 2. Health and armour.
+                // 2. Health, armour, and what is in their hands.
                 SDK::SetRemotePedHealth(slot, entity->health, entity->armour);
+
+                // On the update path rather than per-frame. It costs nothing
+                // when the weapon has not changed, but the frame path runs six
+                // times per update and there is nothing here that needs it.
+                SDK::SetRemotePedWeapon(slot, entity->weaponType, entity->ammoClip, entity->ammoTotal);
 
                 // 3. The transform.
 
