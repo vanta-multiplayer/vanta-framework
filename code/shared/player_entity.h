@@ -131,7 +131,18 @@ namespace VantaMP::Shared {
         // that anim is MTA's #4503, the reload that never finishes.
         bool isReloading = false;
 
+        // Which car this player is in, and which seat. 0 / 0 is on foot.
+        // Enter/exit is a reliable RPC (the animation plays once); these are
+        // what a late joiner reads so they warp into the seat instead of
+        // standing on the roof. Append only.
+        std::uint64_t vehicleNetworkId = 0;
+        std::uint8_t  vehicleSeat      = 0;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
+
+        // A seated ped is meaningless without its car. The interest grid
+        // pulls the vehicle in with them, uncounted.
+        Framework::Networking::Replication::NetworkEntity *GetInterestDependency() override;
     };
 } // namespace VantaMP::Shared

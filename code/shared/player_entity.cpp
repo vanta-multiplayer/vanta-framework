@@ -46,5 +46,16 @@ namespace VantaMP::Shared {
         fields.Field(nickname);
 
         fields.Field(isReloading);
+
+        fields.Field(vehicleNetworkId);
+        fields.Field(vehicleSeat);
+    }
+
+    Framework::Networking::Replication::NetworkEntity *PlayerEntity::GetInterestDependency() {
+        if (vehicleNetworkId == 0) {
+            return nullptr;
+        }
+
+        return ResolveSibling(static_cast<MafiaNet::NetworkID>(vehicleNetworkId));
     }
 } // namespace VantaMP::Shared

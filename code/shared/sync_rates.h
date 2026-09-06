@@ -16,6 +16,10 @@ namespace VantaMP::Shared {
         // Player position, rotation and input. MTA calls this "pure sync".
         inline constexpr std::uint32_t kPlayerMs = 100;
 
+        // Occupied (and last-driver empty) vehicle motion. Same cadence as
+        // the driver, because the car is what everyone else is watching.
+        inline constexpr std::uint32_t kVehicleMs = 100;
+
         // Players far enough away that their exact pose does not matter. MTA
         // drops to this to keep a busy server's bandwidth bounded.
         inline constexpr std::uint32_t kDistantPlayerMs = 1500;
@@ -44,6 +48,17 @@ namespace VantaMP::Shared {
 
         [[nodiscard]] inline float WarpThresholdFor(float speed, std::uint32_t syncIntervalMs) {
             return (kWarpThreshold + kWarpThresholdPerSpeed * speed) * (static_cast<float>(syncIntervalMs) / 100.0f);
+        }
+
+        // MTA CClientVehicle: 15 + 10 * speed, then * tick/100.
+        // Tighter numbers snap a moving car every packet, which is the
+        // stutter - and a car that warps while someone is punching it
+        // launches them.
+        inline constexpr float kVehicleWarpThreshold         = 15.0f;
+        inline constexpr float kVehicleWarpThresholdPerSpeed = 10.0f;
+
+        [[nodiscard]] inline float VehicleWarpThresholdFor(float speed, std::uint32_t syncIntervalMs) {
+            return (kVehicleWarpThreshold + kVehicleWarpThresholdPerSpeed * speed) * (static_cast<float>(syncIntervalMs) / 100.0f);
         }
     } // namespace Interpolation
 } // namespace VantaMP::Shared
