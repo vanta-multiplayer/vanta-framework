@@ -166,6 +166,17 @@ namespace VantaMP::SDK {
         gPatterns.CPlayerPed__ProcessControlVtable = Resolve("90 EA 60 00 B0 DF"); // 0x0086D190
         gPatterns.CPlayerPed__GetPlayerInfo        = Resolve("33 C0 BA 98 CD B7"); // 0x00609FF0
         gPatterns.CPad__GetPad                     = Resolve("8B 44 24 04 69 C0 34"); // 0x0053FB70
+        gPatterns.CPad__Clear                      = Resolve("56 8B F1 E8 08 D5"); // 0x00541A70
+        gPatterns.CPad__ClearMouseHistory          = Resolve("32 C0 A2 04 34 B7"); // 0x00541BD0
+
+        gPatterns.CPad__NewMouseState = OperandAt(hook::get_pattern("FF A0 ? ? ? ? 83 C4 0C 3A"), 2); // site 0x0057E51E -> 0x00B73418
+
+        // Tasks allocate from their own pool, not the ped one - the signature
+        // differs from CPed::operator new only in the pool it loads.
+        gPatterns.CTask__operator_new            = Resolve("8B 0D A8 44 B7 00 E9"); // 0x0061A5A0
+        gPatterns.CTaskSimpleDuck__Constructor   = Resolve("56 8B F1 E8 C8 83"); // 0x00691FC0
+        gPatterns.CTaskManager__SetTaskSecondary = Resolve("53 8B 5C 24 08 56 57 8B 7C 24 14 8B F1 8B"); // 0x00681B60
+        gPatterns.CTaskManager__GetTaskSecondary = Resolve("8B 44 24 04 8B 44 81 14"); // 0x00681810
 
         gPatterns.CCamera__Rotation  = OperandAt(hook::get_pattern("FF D8 25 ? ? ? ? D9 5C 24 20"), 3); // site 0x00688FA6 -> 0x00B6F178
         gPatterns.CCamera__MouseLook = OperandAt(hook::get_pattern("50 A0 ? ? ? ? 64 89 25 00 00 00 00 83 EC 74"), 2); // site 0x0060B65D -> 0x00B6EC2E

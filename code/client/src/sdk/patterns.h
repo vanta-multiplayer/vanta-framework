@@ -209,6 +209,31 @@ namespace VantaMP::SDK {
         uintptr_t CPlayerPed__GetPlayerInfo       = 0;
         uintptr_t CPad__GetPad                    = 0;
 
+        // Wiping the local pad, so the game acts on no input for a frame.
+        //
+        // Needed because DirectInput hands an unfocused process the keyboard:
+        // with two clients open, one keypress would otherwise move both.
+        uintptr_t CPad__Clear             = 0;
+        uintptr_t CPad__ClearMouseHistory = 0;
+
+        // The mouse deltas the camera reads directly, which CPad::Clear does
+        // not touch. NewMouseControllerState; the old state follows it.
+        uintptr_t CPad__NewMouseState = 0;
+
+        // --- Pose that is a task, not a flag -----------------------------------
+        //
+        // Writing bIsDucking does nothing lasting: it is an OUTPUT the game
+        // recomputes from whatever task is running, so a remote player told to
+        // crouch stands straight back up on the next frame. The pose has to be
+        // produced the way the owner's game produced it - by running the task.
+        //
+        // MTA does the same thing for the same reason: CClientPed::Duck creates
+        // a TASK_SIMPLE_DUCK rather than setting the flag.
+        uintptr_t CTask__operator_new            = 0;
+        uintptr_t CTaskSimpleDuck__Constructor   = 0;
+        uintptr_t CTaskManager__SetTaskSecondary = 0;
+        uintptr_t CTaskManager__GetTaskSecondary = 0;
+
         // Camera rotation drives which way "forward" is, and mouse look decides
         // whether local mouse movement steers whoever is being processed.
         uintptr_t CCamera__Rotation    = 0;

@@ -12,5 +12,6 @@
 #include <CPlayerInfo.h>
 #include <CPlayerPed.h>
 #include <CPedClothesDesc.h>
+#include <CTaskSimpleDuck.h>
 #include <CWorld.h>
 #pragma warning(pop)
