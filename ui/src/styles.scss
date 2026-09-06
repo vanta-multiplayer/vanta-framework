@@ -1,0 +1,525 @@
+@use "sass:math";
+
+// Tailwind is imported from index.tsx as plain CSS, not @use'd here.
+//
+// Sass resolves @use itself and hands Vite a finished stylesheet, so Tailwind's
+// plugin never sees its own directive and never scans the components for class
+// names.
+
+/*
+ * Vanta's interface.
+ *
+ * WHAT LIVES HERE AND WHAT LIVES IN THE MARKUP
+ * Layout, spacing and colour are Tailwind utilities in the components, where
+ * they sit beside the element they describe. This file keeps only what
+ * utilities cannot express well:
+ *
+ *   - the theme tokens that must track the viewport
+ *   - the transparent, click-through page
+ *   - the u() scale
+ *   - the shell (nav, page grid, splash, progress, server cards)
+ *   - scrollbars
+ *
+ * THE PAGE MUST BE TRANSPARENT
+ * This is composited over the finished game frame, so anything the interface
+ * does not deliberately paint has to show the game through it.
+ *
+ * Nothing accepts pointer events by default either. Only what is actually
+ * shown opts back in.
+ */
+
+/*
+ * SIZES SCALE WITH THE VIEWPORT, BUT NOT BELOW LEGIBILITY
+ *
+ * u() expresses a size designed at 1080p so it grows on larger displays.
+ *
+ * It uses vh, not vmin. vmin takes the SMALLER dimension, which on a 640x480
+ * window made every size about a third of its intended value. Height alone is
+ * the right basis for an interface laid out in rows.
+ *
+ * max() holds the design size as a floor, so a small window shows a correctly
+ * sized interface rather than a shrunken one.
+ */
+@function u($pixels) {
+    @return max(#{$pixels}px, #{math.div($pixels, 1080) * 100}vh);
+}
+
+:root {
+    --primary-color: 229, 111, 45;
+    --primary-color-light: 240, 123, 53;
+    --color-background: #0d0a08;
+    --color-background-soft: #15100c;
+    --color-surface: #1b140f;
+    --color-surface-elevated: #241911;
+    --color-border: #3a281d;
+    --color-foreground: #f6ead7;
+    --color-muted: #b9a58f;
+    --color-primary: #e56f2d;
+    --color-accent: #ffe0a3;
+    --color-danger: #d95b4f;
+    --font-mono: "DM Mono", "Cascadia Mono", Consolas, "Courier New", monospace;
+    --text-h1: #{u(48)};
+    --text-h2: #{u(32)};
+    --text-h3: #{u(18)};
+    --text-body: #{u(16)};
+    --text-label: #{u(12)};
+    --nav-width: #{u(96)};
+    --nav-icon: #{u(48)};
+    --control-height: #{u(50)};
+    --space-lg: #{u(24)};
+    --space-xl: #{u(48)};
+    --header-row: #{u(154)};
+    --servers-rail: #{u(416)};
+    --settings-rail: #{u(462)};
+}
+
+html,
+body,
+#root {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+
+    background: transparent;
+    pointer-events: none;
+    user-select: none;
+
+    font-family: var(--font-sans);
+    font-size: u(16);
+    color: var(--color-foreground);
+}
+
+h1 {
+    margin: 0;
+    font-size: u(48);
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.0625rem;
+}
+
+h2 {
+    margin: 0;
+    font-size: u(32);
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.0625rem;
+}
+
+h3 {
+    margin: 0;
+    font-size: u(18);
+    font-weight: 500;
+    line-height: 1em;
+    letter-spacing: -0.02rem;
+    color: var(--color-muted);
+}
+
+.text-console {
+    font-size: u(14);
+}
+
+.text-body {
+    font-size: u(16);
+}
+
+.text-label {
+    font-size: u(12);
+}
+
+.text-title {
+    font-size: u(32);
+}
+
+.view-pad {
+    padding: u(48);
+}
+
+/* A scrollbar suited to a dark overlay; the default is jarring over a game. */
+::-webkit-scrollbar {
+    width: u(4);
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: u(62);
+    background: rgb(185 165 143 / 0.35);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted);
+}
+
+.page {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: u(96) auto;
+    height: 100vh;
+    background: var(--color-background);
+}
+
+.page--in-world {
+    background: rgb(13 10 8 / 0.72);
+}
+
+.page--pause {
+    grid-template-columns: 1fr;
+    background: rgb(13 10 8 / 0.58);
+}
+
+.pause {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+    padding: u(72) u(80);
+}
+
+.pause__eyebrow {
+    margin: 0 0 u(12);
+    font-size: u(12);
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+}
+
+.pause__title {
+    margin: 0;
+}
+
+.pause__server {
+    margin: u(12) 0 0;
+    font-size: u(16);
+    color: var(--color-muted);
+}
+
+.pause__actions {
+    display: flex;
+    flex-direction: column;
+    gap: u(4);
+    width: min(u(420), 100%);
+    margin-top: u(48);
+}
+
+.pause-item {
+    display: grid;
+    grid-template-columns: u(16) 1fr auto;
+    align-items: center;
+    gap: u(16);
+    width: 100%;
+    height: u(52);
+    padding: 0 u(8);
+    color: var(--color-foreground);
+    font-size: u(22);
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: u(4);
+
+    &:hover,
+    &:focus-visible {
+        color: var(--color-accent);
+        outline: none;
+        background: rgb(229 111 45 / 0.08);
+
+        .pause-item__mark {
+            background: var(--color-primary);
+        }
+    }
+}
+
+.pause-item--danger:hover,
+.pause-item--danger:focus-visible {
+    color: var(--color-danger);
+    background: rgb(217 91 79 / 0.1);
+
+    .pause-item__mark {
+        background: var(--color-danger);
+    }
+}
+
+.pause-item__mark {
+    width: u(4);
+    height: u(22);
+    border-radius: u(2);
+    background: transparent;
+}
+
+.pause-item__hint {
+    font-family: var(--font-mono);
+    font-size: u(12);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    width: u(96);
+    height: 100vh;
+    padding-top: u(24);
+    padding-bottom: u(12);
+    border-right: u(1) solid var(--color-border);
+}
+
+.nav__group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.nav__branch {
+    margin-bottom: u(4);
+    font-size: u(12);
+    font-weight: 800;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.nav__logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: u(48);
+    height: u(48);
+    margin-top: u(16);
+    margin-bottom: u(32);
+
+    svg {
+        width: u(48);
+        height: u(48);
+    }
+}
+
+.nav-item {
+    display: grid;
+    place-items: center;
+    width: u(96);
+    height: u(80);
+    padding: u(12) u(20);
+    color: var(--color-foreground);
+    text-decoration: none;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+
+    svg {
+        width: u(28);
+        height: u(28);
+        fill: none;
+        color: var(--color-foreground);
+        transition: color 0.15s ease-in-out, transform 0.2s ease;
+    }
+
+    &:hover:not(:disabled) svg {
+        color: var(--color-accent);
+    }
+
+    &:active:not(:disabled) svg {
+        transform: scale(0.95);
+    }
+}
+
+.nav-item--active svg {
+    color: var(--color-primary);
+}
+
+.nav-item--disabled {
+    pointer-events: none;
+
+    svg {
+        color: var(--color-muted);
+    }
+}
+
+.server-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: u(16);
+    padding: 0 u(20);
+    font-size: u(16);
+    line-height: 1;
+    text-align: left;
+    cursor: pointer;
+    background: var(--color-surface);
+    border: u(1) solid transparent;
+    border-radius: u(8);
+    transition: border-color 0.2s ease-in-out, transform 0.2s ease;
+
+    &:hover {
+        border-color: var(--color-primary);
+    }
+
+    &:active {
+        transform: scale(0.98);
+    }
+}
+
+.server-card__name {
+    flex: 1;
+    height: 100%;
+    padding-top: u(20);
+    padding-bottom: u(20);
+    overflow: hidden;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.75;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.server-card:hover .server-card__name {
+    opacity: 1;
+}
+
+.server-card__players {
+    font-size: u(16);
+    font-weight: 500;
+
+    span {
+        font-size: u(14);
+        color: var(--color-muted);
+    }
+}
+
+.splash {
+    pointer-events: auto;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: u(80);
+    background: var(--color-background);
+}
+
+.splash__mark {
+    width: u(120);
+    height: u(120);
+}
+
+.progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: u(24);
+}
+
+.progress__bar {
+    position: relative;
+    width: u(250);
+    height: u(8);
+    overflow: hidden;
+    background: var(--color-brown);
+    border-radius: u(100);
+}
+
+.progress__fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: u(100);
+}
+
+.progress__fill--indeterminate {
+    width: 50%;
+    opacity: 0.15;
+    animation: indeterminate-progress 1.5s infinite ease-in-out;
+}
+
+@keyframes indeterminate-progress {
+    0% {
+        margin-left: -51%;
+    }
+
+    100% {
+        margin-left: 101%;
+    }
+}
+
+/*
+ * The netgraph: frame rate, ping and throughput, bottom-left.
+ *
+ * OUTLINED RATHER THAN BOXED.
+ *
+ * A panel behind these numbers would occlude the game, and this is an overlay
+ * someone leaves on while playing. Four shadows around each glyph keep it
+ * legible over both a white sky and a night street.
+ *
+ * pointer-events: none so it never eats a click.
+ */
+.netgraph {
+    position: fixed;
+    left: u(40);
+    bottom: 0;
+    z-index: 101;
+    margin: 2em;
+    color: rgb(255 255 255 / 0.75);
+    font-size: u(14);
+    font-weight: 500;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    text-shadow:
+        0 2px 0 rgb(0 0 0 / 0.5),
+        0 -2px 0 rgb(0 0 0 / 0.5),
+        2px 0 0 rgb(0 0 0 / 0.5),
+        -2px 0 0 rgb(0 0 0 / 0.5);
+}
+
+.netgraph td:first-child {
+    padding-right: 0.5em;
+}
+
+.page-view {
+    height: 100%;
+    min-height: 0;
+    transform-origin: 50% 45%;
+}
+
+.page-enter-active,
+.page-exit-active {
+    transition:
+        opacity 0.22s ease,
+        transform 0.22s ease;
+}
+
+.page-enter,
+.page-exit-to {
+    opacity: 0;
+}
+
+.page-enter {
+    transform: scale(0.96);
+}
+
+.page-exit-to {
+    transform: scale(1.04);
+}
+
+.fade-enter-active,
+.fade-exit-active {
+    transition: opacity 0.2s ease;
+}
+
+.fade-enter,
+.fade-exit-to {
+    opacity: 0;
+}
