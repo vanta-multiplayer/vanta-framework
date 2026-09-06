@@ -56,6 +56,9 @@ namespace VantaMP::SDK {
     // a player spin the wrong way past due north.
     [[nodiscard]] glm::quat GetRemotePedRotation(int slot);
 
+    // Health and armour, and a revive if the ped is still in a death state
+    // while the snapshot says they are alive. Writing the numbers alone
+    // leaves them on the ground.
     void SetRemotePedHealth(int slot, float health, float armour);
 
     // The momentum a remote ped carries between updates.

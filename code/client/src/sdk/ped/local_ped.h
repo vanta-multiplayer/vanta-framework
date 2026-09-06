@@ -19,6 +19,12 @@ namespace VantaMP::SDK {
 
         float health    = 0.0f;
         float maxHealth = 0.0f;
+        float armour    = 0.0f;
+
+        // Health at or below zero, or the ped already in DIE/DEAD. Either
+        // is enough to report a death; waiting only on the state misses a
+        // frame where damage wrote 0 and the anim has not started yet.
+        bool dead = false;
 
         bool inVehicle        = false;
         int vehicleModelIndex = 0;
@@ -39,4 +45,14 @@ namespace VantaMP::SDK {
     // Weapons are their own subsystem - a model to stream, a slot to select, a
     // clip to track - rather than another few fields of ped state.
     LocalPedState QueryLocalPed();
+
+    // Armour first, then health, the way GTA's damage response does.
+    // Used when a PlayerShot names this client as the victim and the
+    // replayed ray missed because interpolation put the ped elsewhere.
+    void ApplyLocalPedDamage(float damage);
+
+    // Take a dead (or newly spawned) local ped back to standing at a point.
+    // MTA spawnPlayer: SetInitialState, then health/armour/heading. Writing
+    // health alone leaves the DIE task running and they stay on the ground.
+    void ReviveLocalPed(float x, float y, float z, float heading, float health, float armour);
 } // namespace VantaMP::SDK

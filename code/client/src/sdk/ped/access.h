@@ -142,4 +142,41 @@ namespace VantaMP::SDK::Internal {
 
         return *reinterpret_cast<const float *>(base + kCurrentRotationOffset);
     }
+
+    // Health is not the death state. GTA keeps PEDSTATE_DIE / DEAD, the DIE
+    // task and the lie-down anim after m_fHealth is written back, which is a
+    // ped with a full bar still on the ground.
+    inline bool PedLooksDead(const CPed *ped) {
+        if (!ped) {
+            return false;
+        }
+
+        return ped->m_fHealth <= 0.0f || ped->m_ePedState == PEDSTATE_DIE || ped->m_ePedState == PEDSTATE_DEAD ||
+               ped->m_ePedState == PEDSTATE_DIE_BY_STEALTH || ped->bIsPedDieAnimPlaying;
+    }
+
+    // MTA CClientPed::Respawn: SetInitialState first so a DIE task is not
+    // still running when health comes back. Position, heading and health are
+    // the caller's - this function resets those.
+    inline void StandPedUp(CPed *ped) {
+        if (!ped) {
+            return;
+        }
+
+        using SetInitialStateFn = void(__thiscall *)(void *, bool);
+        using FlushTasksFn      = void(__thiscall *)(void *, bool);
+
+        reinterpret_cast<SetInitialStateFn>(gPatterns.CPlayerPed__SetInitialState)(ped, false);
+
+        if (ped->m_pIntelligence) {
+            reinterpret_cast<FlushTasksFn>(gPatterns.CPedIntelligence__FlushImmediately)(ped->m_pIntelligence, true);
+        }
+
+        ped->m_ePedState          = PEDSTATE_IDLE;
+        ped->bIsPedDieAnimPlaying = false;
+        ped->bBloodPuddleCreated  = false;
+        ped->bIsDyingStuck        = false;
+        ped->m_nDeathTime         = 0;
+        ped->m_vecMoveSpeed       = CVector {};
+    }
 } // namespace VantaMP::SDK::Internal

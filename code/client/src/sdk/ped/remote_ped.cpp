@@ -250,10 +250,32 @@ namespace VantaMP::SDK {
     }
 
     void SetRemotePedHealth(int slot, float health, float armour) {
-        if (auto *ped = PedAt(slot)) {
-            ped->m_fHealth = health;
-            ped->m_fArmour = armour;
+        auto *ped = PedAt(slot);
+
+        if (!ped) {
+            return;
         }
+
+        // WRITING HEALTH ALONE DOES NOT STAND THEM UP. A remote who died has
+        // PEDSTATE_DEAD, a DIE task and the lie-down anim. The snapshot then
+        // comes back at 100 and this used to overwrite m_fHealth only - which
+        // is a full bar on a corpse. Same sequence as ReviveLocalPed; keep
+        // the current pose so the interpolator does not jump.
+        if (health > 0.0f && Internal::PedLooksDead(ped)) {
+            const auto  position = ped->GetPosition();
+            const float heading  = HeadingOf(ped);
+
+            Internal::StandPedUp(ped);
+            SetPedPosition(ped, position.x, position.y, position.z);
+            SetPedRotation(ped, heading);
+
+            if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot))) {
+                info->m_nPlayerState = PLAYERSTATE_PLAYING;
+            }
+        }
+
+        ped->m_fHealth = health;
+        ped->m_fArmour = armour;
     }
 
     void SetRemotePedVelocity(int slot, float x, float y, float z) {

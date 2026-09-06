@@ -24,6 +24,8 @@ namespace VantaMP::SDK {
         state.pedType    = ped->m_nPedType;
         state.health     = ped->m_fHealth;
         state.maxHealth  = ped->m_fMaxHealth;
+        state.armour     = ped->m_fArmour;
+        state.dead = Internal::PedLooksDead(ped);
 
         state.ducked = ped->bIsDucking;
 
@@ -54,5 +56,43 @@ namespace VantaMP::SDK {
         }
 
         return state;
+    }
+
+    void ApplyLocalPedDamage(float damage) {
+        auto *ped = Internal::LocalPed();
+
+        if (!ped || damage <= 0.0f) {
+            return;
+        }
+
+        float remaining = damage;
+
+        if (ped->m_fArmour > 0.0f) {
+            const float fromArmour = ped->m_fArmour < remaining ? ped->m_fArmour : remaining;
+
+            ped->m_fArmour -= fromArmour;
+            remaining -= fromArmour;
+        }
+
+        if (remaining > 0.0f) {
+            ped->m_fHealth = ped->m_fHealth > remaining ? ped->m_fHealth - remaining : 0.0f;
+        }
+    }
+
+    void ReviveLocalPed(float x, float y, float z, float heading, float health, float armour) {
+        auto *ped = Internal::LocalPed();
+
+        if (!ped) {
+            return;
+        }
+
+        Internal::StandPedUp(ped);
+
+        ped->m_fHealth    = health;
+        ped->m_fMaxHealth = health > ped->m_fMaxHealth ? health : ped->m_fMaxHealth;
+        ped->m_fArmour    = armour;
+
+        Internal::SetPedPosition(ped, x, y, z);
+        Internal::SetPedRotation(ped, heading);
     }
 } // namespace VantaMP::SDK
