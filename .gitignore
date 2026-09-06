@@ -1,6 +1,9 @@
 /reference/
 
 /build/
+
+# Absolute path to the MafiaHub Framework checkout, written by scripts/setup.bat.
+/.framework-root
 __pycache__/
 
 # Generated next to the source if embed_ui.py is run without -o.
