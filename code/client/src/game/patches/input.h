@@ -33,4 +33,27 @@ namespace VantaMP::Game {
     // GetForegroundWindow rather than GetFocus: focus is per-thread, and the
     // question worth asking is about the user, not the thread.
     [[nodiscard]] bool HasWindowFocus(HWND window);
+
+    // Keeps GTA's foreground flag matching real window focus.
+    //
+    // THE FLAG ONLY GATES THE MOUSE. Keeping it truthful is still right - the
+    // game uses it for cursor handling and window behaviour - but it is not
+    // what stops an unfocused client acting on the keyboard: GTA reads movement
+    // through DirectInput, which delivers to a process whether or not its
+    // window is focused, so the flag never gets a say. SuppressGameInput is
+    // what actually stops it.
+    //
+    // Every frame, because focus changes without asking us.
+    void UpdateForegroundFocus(HWND window);
+
+    // Stops the game acting on input it should not have.
+    //
+    // Two cases, one mechanism. An UNFOCUSED window still receives the keyboard
+    // through DirectInput, so with two clients open one keypress moves both
+    // players. And while the interface has focus, typing into it would
+    // otherwise also drive the player.
+    //
+    // Consuming window messages does not help - DirectInput never reaches the
+    // window procedure. Clearing the pad is where both paths meet.
+    void SuppressGameInput(bool suppress);
 } // namespace VantaMP::Game

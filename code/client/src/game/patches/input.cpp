@@ -7,6 +7,8 @@
 #include <logging/logger.h>
 #include <utils/hooking/hooking.h>
 
+#include "sdk/game.h"
+
 namespace VantaMP::Game {
     namespace {
         // What the exclusive-mode decision is overwritten with:
@@ -65,5 +67,34 @@ namespace VantaMP::Game {
         }
 
         return GetForegroundWindow() == window;
+    }
+
+    void UpdateForegroundFocus(HWND window) {
+        MarkGameForeground(HasWindowFocus(window));
+    }
+
+    void SuppressGameInput(bool suppress) {
+        static bool suppressing = false;
+
+        if (suppress) {
+            // CLEARED EVERY FRAME, NOT ONCE. The game repopulates the pad from
+            // DirectInput on each update, so a single clear is overwritten
+            // immediately.
+            //
+            // Clear() rather than zeroing the struct: the game keeps button
+            // history and timing alongside the current state, and a memset
+            // would leave those inconsistent.
+            // false: player controls stay disabled while suppressed.
+            // true: the phase is reset, so a key held when the menu opened is
+            // not treated as newly pressed when it closes.
+            SDK::ClearLocalInput(false);
+        }
+        else if (suppressing) {
+            // Once more on release, so input accumulated while suppressed does
+            // not all arrive the moment control comes back.
+            SDK::ClearLocalInput(true);
+        }
+
+        suppressing = suppress;
     }
 } // namespace VantaMP::Game

@@ -31,7 +31,15 @@ namespace VantaMP::Core {
 extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     VantaMP::Core::gProjectPath = Framework::Utils::StringUtils::WideToNormal(projectPath);
 
-    Framework::Logging::GetInstance()->SetLogName("VantaMP");
+    // ONE LOG PER INSTANCE. Two clients on one machine is the ordinary way to
+    // test anything involving a second player, and a single fixed name means
+    // they share one rotating file sink - so the lines interleave, or one
+    // instance truncates the other's log.
+    //
+    // Keyed by process id rather than by counting instances: a count is racy
+    // when two clients start together, and a name that depends on launch order
+    // is worse than one that is simply unique.
+    Framework::Logging::GetInstance()->SetLogName(fmt::format("VantaMP-{}", GetCurrentProcessId()));
     Framework::Logging::GetInstance()->SetLogFolder(fmt::format("{}/logs", VantaMP::Core::gProjectPath));
 
     // BEFORE ANY PATCHING, because the patch burst below is where a crash is

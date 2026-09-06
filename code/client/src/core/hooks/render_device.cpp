@@ -7,8 +7,10 @@
 #include <utils/hooking/hook_function.h>
 
 #include "core/application.h"
+#include "core/ui/nui.h"
 #include "core/ui/window_input.h"
 #include "game/patches/display.h"
+#include "game/patches/input.h"
 
 namespace {
     constexpr size_t kCreateDeviceSlot = 16;
@@ -55,6 +57,22 @@ namespace {
 
         // Keeps the pointer inside the window, and lets it go on alt-tab.
         VantaMP::UI::UpdateCursorClip(gGameWindow);
+
+        // Keeps GTA's foreground flag honest, and stops the game acting on
+        // input it should not have.
+        //
+        // WITHOUT THE SUPPRESSION, ONE KEYPRESS MOVES EVERY RUNNING CLIENT.
+        // DirectInput hands a process the keyboard whether or not its window is
+        // focused, and the foreground flag only gates the mouse - so an
+        // unfocused second client reads the same press as genuine input and
+        // sends it upstream as its own player's.
+        //
+        // The interface is the other half: typing into it would otherwise drive
+        // the player at the same time.
+        const bool focused = VantaMP::Game::HasWindowFocus(gGameWindow);
+
+        VantaMP::Game::UpdateForegroundFocus(gGameWindow);
+        VantaMP::Game::SuppressGameInput(!focused || VantaMP::UI::IsMenuOpen());
 
         VantaMP::Core::TickApplication();
         return gEndScene(device);
