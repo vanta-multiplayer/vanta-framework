@@ -79,6 +79,23 @@ namespace VantaMP::Game {
             std::uint32_t headingBeginMs = 0;
             std::uint32_t headingEndMs   = 0;
 
+            // Camera and gun aim, lerped in the same window. Snapping either is
+            // what makes a remote player who is aiming stutter at the hands:
+            // the IK follows these, not the feet.
+            float cameraFrom = 0.0f;
+            float cameraTo   = 0.0f;
+            float aimHFrom   = 0.0f;
+            float aimHTo     = 0.0f;
+            float aimVFrom   = 0.0f;
+            float aimVTo     = 0.0f;
+
+            std::uint32_t viewBeginMs = 0;
+            std::uint32_t viewEndMs   = 0;
+
+            // A gun is up, so the heading lerp must not write the upper-body
+            // target - that field is the IK's while aiming.
+            bool gunUp = false;
+
             bool valid = false;
         };
 
@@ -204,6 +221,17 @@ namespace VantaMP::Game {
             return offset;
         }
 
+        float LerpRadians(float from, float to, std::uint32_t beginMs, std::uint32_t endMs, std::uint32_t now) {
+            if (endMs == 0 || now >= endMs || endMs <= beginMs) {
+                return to;
+            }
+
+            const float span     = static_cast<float>(endMs - beginMs);
+            const float progress = static_cast<float>(now - beginMs);
+
+            return from + OffsetRadians(from, to) * (progress / span);
+        }
+
         // Copies the local player into the entity the server sees.
         void PushLocalState(Shared::PlayerEntity *entity) {
             const auto local = SDK::QueryLocalPed();
@@ -222,6 +250,11 @@ namespace VantaMP::Game {
             entity->weaponType = weapon.type;
             entity->ammoClip   = weapon.ammoClip;
             entity->ammoTotal  = weapon.ammoTotal;
+
+            const auto aim = SDK::ReadLocalPedAim();
+
+            entity->aimHorizontal = aim.horizontal;
+            entity->aimVertical   = aim.vertical;
 
             // VELOCITY IS SENT, AND IT IS NOT REDUNDANT WITH THE INPUT.
             //
@@ -422,6 +455,20 @@ namespace VantaMP::Game {
                 aimed.headingBeginMs = now;
                 aimed.headingEndMs   = now + Shared::SyncRate::kPlayerMs;
 
+                // Same window as heading. Starts from wherever the last lerp
+                // left the value, so consecutive updates join up instead of
+                // jumping back to the previous target.
+                const auto shown = SDK::GetRemotePedAim(slot);
+
+                aimed.cameraFrom  = SDK::GetRemoteCameraRotation(slot);
+                aimed.cameraTo    = entity->cameraRotation;
+                aimed.aimHFrom    = shown.horizontal;
+                aimed.aimHTo      = entity->aimHorizontal;
+                aimed.aimVFrom    = shown.vertical;
+                aimed.aimVTo      = entity->aimVertical;
+                aimed.viewBeginMs = now;
+                aimed.viewEndMs   = now + Shared::SyncRate::kPlayerMs;
+
                 aimed.position = entity->position;
                 aimed.rotation = entity->rotation;
                 aimed.speed    = glm::length(entity->velocity);
@@ -440,9 +487,20 @@ namespace VantaMP::Game {
 
             SDK::WriteRemoteInput(slot, input);
 
-            // 5. The view the input is resolved against. Held until this ped is
-            //    processed, when it is swapped into the game's single global.
-            SDK::SetRemoteCameraRotation(slot, entity->cameraRotation);
+            // 5. The view, LERPED, not snapped. Camera rotation decides which
+            //    way "forward" is, and the two aim angles decide where the
+            //    hands point. All three used to be written straight from the
+            //    last packet, ten times a second, which is invisible while
+            //    walking and obvious the moment a gun comes up.
+            aimed.gunUp = (entity->buttons & (SDK::Button::Aim | SDK::Button::Fire)) != 0;
+
+            {
+                const std::uint32_t nowView = GetTickCount();
+
+                SDK::SetRemoteCameraRotation(slot, LerpRadians(aimed.cameraFrom, aimed.cameraTo, aimed.viewBeginMs, aimed.viewEndMs, nowView));
+
+                SDK::SetRemotePedAim(slot, LerpRadians(aimed.aimHFrom, aimed.aimHTo, aimed.viewBeginMs, aimed.viewEndMs, nowView), LerpRadians(aimed.aimVFrom, aimed.aimVTo, aimed.viewBeginMs, aimed.viewEndMs, nowView));
+            }
 
             // 6. Pose, LAST, and through the game's own tasks.
             //
@@ -554,11 +612,11 @@ namespace VantaMP::Game {
                     const float progress = static_cast<float>(now - aimed.headingBeginMs);
                     const float offset   = OffsetRadians(aimed.headingFrom, aimed.headingTo);
 
-                    SDK::SetRemotePedHeading(slot, aimed.headingFrom + offset * (progress / span));
+                    SDK::SetRemotePedHeading(slot, aimed.headingFrom + offset * (progress / span), !aimed.gunUp);
                 } else {
                     // Landed exactly, rather than left wherever the last frame
                     // of the window happened to fall.
-                    SDK::SetRemotePedHeading(slot, aimed.headingTo);
+                    SDK::SetRemotePedHeading(slot, aimed.headingTo, !aimed.gunUp);
 
                     aimed.headingEndMs = 0;
                 }

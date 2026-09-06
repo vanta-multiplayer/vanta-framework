@@ -3,6 +3,7 @@
 #include "game/entities/local_player.h"
 #include "game/sync/player_sync.h"
 #include "sdk/patterns.h"
+#include "sdk/ped/aim.h"
 
 #include <utils/safe_win32.h>
 
@@ -29,6 +30,11 @@ namespace VantaMP::Game {
                 // than from here, so it sees the position the game's own walk
                 // produced instead of overwriting it.
                 InstallRemotePlayerCorrection();
+
+                // Aim is corrected per ped too, at the point the game works out
+                // where to point a gun. Installed here rather than with the
+                // startup patches because it only matters once there are peds.
+                SDK::InstallAimSync();
             }
 
             // The network, once per frame and on the game thread - which is the
