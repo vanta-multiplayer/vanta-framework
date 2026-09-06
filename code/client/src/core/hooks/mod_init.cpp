@@ -4,6 +4,7 @@
 #include <utils/hooking/hook_function.h>
 
 #include "core/diagnostics/breadcrumbs.h"
+#include "core/diagnostics/crash_report.h"
 #include "core/globals.h"
 #include "game/entities/player_slots.h"
 #include "sdk/patterns.h"
@@ -37,5 +38,13 @@ static InitFunction init(
         // least self-explanatory. This is the first moment the reporter is
         // available, so hand it the whole backlog at once.
         VantaMP::Diagnostics::Breadcrumbs::PublishToCrashReporter();
+
+        // RE-INSTALLED, because sentry_init put crashpad's own unhandled-
+        // exception filter on top of ours: crashpad captured the fault and
+        // ended the process, so our handler never ran and no local report was
+        // written. Installing again now puts ours back in front, and it chains
+        // to whatever it displaced - so a crash produces the local report AND
+        // the Sentry event, rather than one silently replacing the other.
+        VantaMP::Diagnostics::CrashReport::Install(VantaMP::Core::gProjectPath + "/crashes");
     },
     "ModInit");

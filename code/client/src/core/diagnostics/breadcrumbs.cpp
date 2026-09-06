@@ -78,14 +78,26 @@ namespace VantaMP::Diagnostics {
 
         void SetLastNativeCall(const char *name) noexcept {
             gLastNativeCall.store(name, std::memory_order_relaxed);
+
+            // Published, because a native call is precisely the thing that
+            // faults. Crashpad SNAPSHOTS the context it was last given rather
+            // than reading these atomics while the process is dying, so
+            // anything not published before the fault is simply absent from
+            // the report - it does not arrive late, it never arrives.
+            PublishToCrashReporter();
         }
 
         void SetLastOperation(const char *description) noexcept {
             // DELIBERATELY DOES NOT PUBLISH. Unlike patches and hooks, which
             // happen a handful of times at startup, an operation wraps
             // individual calls and can be entered and left constantly. Storing
-            // a pointer is free; a Sentry round trip per call is not. The
-            // handler reads the value live, so a crash still reports it.
+            // a pointer is free; a Sentry round trip per call is not.
+            //
+            // The consequence is that an operation reaches the LOCAL report,
+            // which reads these atomics as it writes, but not a Sentry event,
+            // whose context was snapshotted at the last publish. Scope a
+            // VANTAMP_OPERATION around something that genuinely might fault and
+            // the local report is where it shows up.
             gLastOperation.store(description, std::memory_order_relaxed);
         }
 

@@ -21,6 +21,11 @@ int main(int argc, char **argv) {
     opts.bindPassword  = "";
     opts.enableSignals = true;
 
+    // Crash reporting, tagged net.role=server by the framework so server faults
+    // are separable from client ones in the same project.
+    opts.sentryDSN         = VantaMP::Shared::kSentryDSN;
+    opts.sentryEnvironment = VantaMP::Shared::kSentryEnvironment;
+
     // HOW OFTEN THE WORLD IS SENT, which is not how often it is drawn.
     //
     // The client interpolates between updates and the game animates from the

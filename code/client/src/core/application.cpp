@@ -210,6 +210,18 @@ namespace VantaMP::Core {
         options.modSlug     = Shared::kModSlug;
         options.modVersion  = Version::rel;
 
+        // Crash reporting. The module path is where crashpad_handler.exe sits,
+        // which is beside the client rather than beside the game - the process
+        // is gta_sa.exe, so the working directory is no guide.
+        options.sentryDSN         = Shared::kSentryDSN;
+        options.sentryModulePath  = gProjectPath;
+        options.sentryEnvironment = Shared::kSentryEnvironment;
+
+        // The log is what turns a stack trace into an explanation: it carries
+        // the pattern scan results and the startup sequence leading up to the
+        // fault.
+        options.sentryAttachments = {fmt::format("{}/logs/VantaMP.log", gProjectPath)};
+
         if (const auto result = gApplication->Init(options); !result) {
             Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->error("Failed to initialize the client: {}", result.GetError().message);
             gApplication.reset();

@@ -357,8 +357,22 @@ namespace VantaMP::Diagnostics {
 
     namespace CrashReport {
         void Install(const std::filesystem::path &directory) {
-            gDirectory      = directory;
-            gPreviousFilter = ::SetUnhandledExceptionFilter(&OnUnhandledException);
+            gDirectory = directory;
+
+            const auto displaced = ::SetUnhandledExceptionFilter(&OnUnhandledException);
+
+            // NEVER CHAIN TO OURSELVES. Install is called twice - once before
+            // patching, and again after sentry_init has layered crashpad on top
+            // - and if we were still the top filter the call above hands our own
+            // function straight back. Storing it would make the handler call
+            // itself forever while trying to report a crash.
+            //
+            // Keeping the first non-self filter is what preserves the chain to
+            // crashpad, so both the local report and the Sentry event are
+            // produced.
+            if (displaced != &OnUnhandledException) {
+                gPreviousFilter = displaced;
+            }
         }
 
         void Uninstall() {
