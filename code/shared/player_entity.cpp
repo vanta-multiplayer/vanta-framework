@@ -35,5 +35,8 @@ namespace VantaMP::Shared {
         fields.Field(weaponType);
         fields.Field(ammoClip);
         fields.Field(ammoTotal);
+
+        fields.Field(aimVertical);
+        fields.Field(aimHorizontal);
     }
 } // namespace VantaMP::Shared

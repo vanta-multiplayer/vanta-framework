@@ -76,19 +76,18 @@ namespace VantaMP::Shared {
         // against: arriving a tick late it would describe a different frame.
         float cameraRotation = 0.0f;
 
-        // VERTICAL AIM IS NOT HERE, DELIBERATELY.
+        // WHERE THE GUN IS POINTING, captured at CPedIK::PointGunInDirection.
         //
-        // MTA sends it as m_fArmDirectionY out of the ped's shot-sync data, and
-        // it is what pitches the torso and the weapon when a player looks up or
-        // down. It is missing here because there is nothing to read it from or
-        // write it to yet: plugin-sdk does not describe CShotSyncData, so the
-        // offset has to be derived first, and the horizontal case suggests it
-        // then needs the same treatment as cameraRotation - held per slot and
-        // swapped in around the ped's processing, because a value written to a
-        // ped directly is recomputed from the local camera on the next frame.
+        // cameraRotation above is what the stick is resolved against. These two
+        // are what the hands follow. They are not the same: the camera is
+        // snapped onto the wire at 10 Hz, and if the IK reads it directly the
+        // remote player's arms step around in tenths. MTA sends both arm
+        // directions and lerps them for that reason.
         //
-        // The field existed briefly with neither end wired up, which put four
-        // bytes of zeros on every tick and made aim look synced. Better absent.
+        // aimVertical existed once before with neither end wired up, and was
+        // removed for it. Both ends exist now.
+        float aimHorizontal = 0.0f;
+        float aimVertical   = 0.0f;
 
         // POSE, SENT AS STATE RATHER THAN DERIVED FROM THE INPUT.
         //
