@@ -1,6 +1,6 @@
 import type {JSX} from "solid-js";
 import {Show} from "solid-js";
-import {A, useLocation} from "@solidjs/router";
+import {A} from "@solidjs/router";
 import House from "lucide-solid/icons/house";
 import Server from "lucide-solid/icons/server";
 import Unplug from "lucide-solid/icons/unplug";
@@ -38,7 +38,6 @@ function NavLink(props: {
 }
 
 export function SideNav(): JSX.Element {
-    const location = useLocation();
     const busy = () => connecting();
 
     return (
@@ -77,11 +76,6 @@ export function SideNav(): JSX.Element {
                     <button type="button" title="Disconnect" class="nav-item" onClick={disconnect}>
                         <Unplug />
                     </button>
-                </Show>
-                <Show when={busy() || location.pathname === routes.connection}>
-                    <NavLink href={routes.connection} label="Connection">
-                        <Unplug />
-                    </NavLink>
                 </Show>
                 <NavLink href={routes.settings} label="Settings">
                     <Settings />

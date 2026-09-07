@@ -3,7 +3,6 @@ export const routes = {
     servers: "/servers",
     settings: "/settings",
     about: "/about",
-    connection: "/connection",
     pause: "/pause",
 } as const;
 

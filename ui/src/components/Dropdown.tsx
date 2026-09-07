@@ -12,6 +12,7 @@ export interface DropdownProps {
     options: DropdownOption[];
     value: string;
     disabled?: boolean;
+    unknownLabel?: string;
     onChange: (value: string) => void;
 }
 
@@ -88,7 +89,7 @@ export function Dropdown(props: DropdownProps): JSX.Element {
                        disabled:opacity-50"
                 onClick={toggle}
             >
-                <span>{selected()?.label ?? "Select"}</span>
+                <span>{selected()?.label ?? props.unknownLabel ?? "Select"}</span>
                 <ChevronDown class={`size-4 text-muted transition-transform ${open() ? "rotate-180" : ""}`} />
             </button>
 

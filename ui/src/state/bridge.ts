@@ -44,7 +44,16 @@ export interface Settings {
     readonly name?: string;
     readonly windowWidth?: number;
     readonly windowHeight?: number;
+    readonly borderless?: boolean;
+    readonly exclusive?: boolean;
     readonly fullscreen?: boolean;
+    readonly volumeMaster?: number;
+    readonly volumeSfx?: number;
+    readonly volumeRadio?: number;
+    readonly voiceInputDevice?: string;
+    readonly voiceOutputDevice?: string;
+    readonly voiceVolume?: number;
+    readonly voicePttKey?: number;
     readonly display?: number;
     readonly modes?: readonly { width: number; height: number; label: string }[];
     readonly displays?: readonly {

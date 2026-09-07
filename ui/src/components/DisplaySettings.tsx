@@ -1,6 +1,7 @@
 import type {JSX} from "solid-js";
 import { createMemo, createSignal, Show } from "solid-js";
 import { emit } from "../state/bridge";
+import { notifyDisplaySaved } from "../state/session";
 import { Dropdown, type DropdownOption } from "./Dropdown";
 import { Button } from "./form/Button";
 
@@ -25,33 +26,39 @@ export interface DisplaySettingsProps {
     displays: DisplayEntry[];
     windowWidth: number;
     windowHeight: number;
-    fullscreen: boolean;
+    borderless: boolean;
+    exclusive: boolean;
     display: number;
 }
 
 /**
- * Resolution, borderless and monitor selection.
+ * Resolution, borderless, exclusive fullscreen and monitor selection.
  *
- * WHY THE CHANGES SAY "ON NEXT LAUNCH"
- * The graphics device is created once during the game's own start-up, and
- * switching it live means resetting D3D9 while CEF's textures are live on it.
- * Telling the player plainly is better than a control that looks like it
- * worked and did not.
+ * Saved on Save. A live device Reset on this exe crashes, so a change
+ * writes VantaMP.json and asks the player to restart.
  */
 export function DisplaySettings(props: DisplaySettingsProps): JSX.Element {
     const [width, setWidth] = createSignal(props.windowWidth);
     const [height, setHeight] = createSignal(props.windowHeight);
-    const [fullscreen, setFullscreen] = createSignal(props.fullscreen);
+    const [borderless, setBorderless] = createSignal(props.borderless);
+    const [exclusive, setExclusive] = createSignal(props.exclusive);
     const [display, setDisplay] = createSignal(props.display);
     const [saved, setSaved] = createSignal(false);
 
     function save(): void {
         emit("settings:change", "windowWidth", width());
         emit("settings:change", "windowHeight", height());
-        emit("settings:change", "fullscreen", fullscreen());
+        emit("settings:change", "borderless", borderless());
+        emit("settings:change", "exclusive", exclusive());
         emit("settings:change", "display", display());
 
         setSaved(true);
+        notifyDisplaySaved({
+            windowWidth: width(),
+            windowHeight: height(),
+            borderless: borderless(),
+            exclusive: exclusive(),
+        });
     }
 
     const modeOptions = createMemo<DropdownOption[]>(() => [
@@ -86,10 +93,10 @@ export function DisplaySettings(props: DisplaySettingsProps): JSX.Element {
                 <Dropdown
                     options={modeOptions()}
                     value={`${width()}x${height()}`}
-                    disabled={fullscreen()}
+                    disabled={borderless() && !exclusive()}
                     onChange={chooseMode}
                 />
-                <Show when={fullscreen()}>
+                <Show when={borderless() && !exclusive()}>
                     <p class="mt-2 mb-0 text-[length:var(--text-label)] text-muted">
                         Borderless always fills the selected display.
                     </p>
@@ -114,13 +121,34 @@ export function DisplaySettings(props: DisplaySettingsProps): JSX.Element {
                 <input
                     type="checkbox"
                     class="size-4 accent-primary"
-                    checked={fullscreen()}
+                    checked={borderless() && !exclusive()}
                     onChange={(event) => {
-                        setFullscreen(event.currentTarget.checked);
+                        const on = event.currentTarget.checked;
+                        setBorderless(on);
+                        if (on) {
+                            setExclusive(false);
+                        }
                         setSaved(false);
                     }}
                 />
-                Borderless fullscreen
+                Borderless window
+            </label>
+
+            <label class="flex cursor-pointer items-center gap-3 text-[length:var(--text-body)]">
+                <input
+                    type="checkbox"
+                    class="size-4 accent-primary"
+                    checked={exclusive()}
+                    onChange={(event) => {
+                        const on = event.currentTarget.checked;
+                        setExclusive(on);
+                        if (on) {
+                            setBorderless(false);
+                        }
+                        setSaved(false);
+                    }}
+                />
+                Exclusive fullscreen
             </label>
 
             <div class="flex items-center gap-4">
@@ -129,7 +157,7 @@ export function DisplaySettings(props: DisplaySettingsProps): JSX.Element {
                 </Button>
                 <Show when={saved()}>
                     <span class="text-[length:var(--text-label)] text-success">
-                        Saved — applied the next time Vanta starts.
+                        Saved.
                     </span>
                 </Show>
             </div>

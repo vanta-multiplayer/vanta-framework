@@ -5,11 +5,12 @@ import {Transition} from "solid-transition-group";
 import {Console} from "./Console";
 import {Netgraph} from "./Netgraph";
 import {SideNav} from "./SideNav";
+import {Connecting} from "./modals/Connecting";
 import {ConnectionError} from "./modals/ConnectionError";
 import {DirectConnect} from "./modals/DirectConnect";
 import {ExitModal} from "./modals/ExitModal";
+import {RestartModal} from "./modals/RestartModal";
 import {About} from "./views/About";
-import {Connection} from "./views/Connection";
 import {Home} from "./views/Home";
 import {Pause} from "./views/Pause";
 import {Servers} from "./views/Servers";
@@ -21,9 +22,11 @@ import {
     bindNavigate,
     bindSession,
     connected,
+    connecting,
     directOpen,
     errorOpen,
     exitOpen,
+    restartOpen,
     handleEscape,
     menuOpen,
     ready,
@@ -104,6 +107,11 @@ function Shell(props: {children?: JSX.Element}): JSX.Element {
             </Transition>
 
             <Transition name="fade">
+                <Show when={connecting()}>
+                    <Connecting />
+                </Show>
+            </Transition>
+            <Transition name="fade">
                 <Show when={directOpen()}>
                     <DirectConnect />
                 </Show>
@@ -111,6 +119,11 @@ function Shell(props: {children?: JSX.Element}): JSX.Element {
             <Transition name="fade">
                 <Show when={exitOpen()}>
                     <ExitModal />
+                </Show>
+            </Transition>
+            <Transition name="fade">
+                <Show when={restartOpen()}>
+                    <RestartModal />
                 </Show>
             </Transition>
             <Transition name="fade">
@@ -132,7 +145,6 @@ export function App(): JSX.Element {
             <Route path={routes.servers} component={Servers} />
             <Route path={routes.settings} component={Settings} />
             <Route path={routes.about} component={About} />
-            <Route path={routes.connection} component={Connection} />
             <Route path={routes.pause} component={Pause} />
         </HashRouter>
     );
