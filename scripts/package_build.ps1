@@ -117,6 +117,12 @@ foreach ($name in $ServerFiles) {
 
 Copy-Item (Join-Path $ServerBin "resources") (Join-Path $ServerOut "resources") -Recurse
 
+$catalogSrc = Join-Path $ServerBin "catalog"
+if (-not (Test-Path $catalogSrc)) {
+    throw "Missing server catalog: $catalogSrc`nRebuild VantaMPServer so CMake copies data/catalog next to the exe."
+}
+Copy-Item $catalogSrc (Join-Path $ServerOut "catalog") -Recurse
+
 @'
 {
     "host": "0.0.0.0",
