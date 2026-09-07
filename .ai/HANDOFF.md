@@ -191,7 +191,10 @@ them. They are not "this session".
 ## Current state
 
 Two clients connect, see each other, walk, jump, crouch, swim, shoot, talk
-and share cars. Client and server both build.
+and share cars. Interior and dimension are on the snapshot (MTA-shaped).
+`player.interior` / `player.dimension` and the `Vehicles.*` helpers write
+them; a different dimension streams the ped and car out. Restart the
+server after this field append. Client and server both build.
 
 Version stamps `rel`, GitHub `branch` and `environment` (`test` on
 develop / features, `release` on `release` and `release/*`). Shown as
@@ -261,6 +264,8 @@ gun" note is stale.
   any pool-free.
 - `code/client/src/game/sync/player_sync.cpp` — send/apply, interpolation.
 - `code/shared/player_entity.{h,cpp}` — the wire format. **Append only.**
+  Interior and dimension are at the end. `shared/world_space.h`,
+  `shared/rpc/world_space.h`.
 
 ## Lessons worth keeping
 

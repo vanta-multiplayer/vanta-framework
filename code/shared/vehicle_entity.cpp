@@ -25,5 +25,8 @@ namespace VantaMP::Shared {
         fields.Field(lights);
         fields.Field(doorRatiosPacked);
         fields.Field(blown);
+
+        fields.Field(interior);
+        fields.Field(dimension);
     }
 } // namespace VantaMP::Shared

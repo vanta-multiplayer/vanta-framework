@@ -3,6 +3,7 @@
 #include "game/player_manager.h"
 #include "game/vehicle_manager.h"
 #include "shared/player_entity.h"
+#include "shared/vehicle_entity.h"
 
 #include <core_modules.h>
 #include <logging/logger.h>
@@ -34,13 +35,45 @@ namespace VantaMP::Scripting {
                 return;
             }
 
-            gPlayers->Spawn(player->ownerGUID, v8pp::from_v8<float>(isolate, info[0]), v8pp::from_v8<float>(isolate, info[1]), v8pp::from_v8<float>(isolate, info[2]));
+            const auto heading   = info.Length() > 3 ? v8pp::from_v8<float>(isolate, info[3]) : 0.0f;
+            const auto model     = info.Length() > 4 ? v8pp::from_v8<std::uint32_t>(isolate, info[4]) : 0u;
+            const auto health    = info.Length() > 5 ? v8pp::from_v8<float>(isolate, info[5]) : 100.0f;
+            const auto armour    = info.Length() > 6 ? v8pp::from_v8<float>(isolate, info[6]) : 0.0f;
+            const auto interior  = info.Length() > 7 ? v8pp::from_v8<std::uint8_t>(isolate, info[7]) : std::uint8_t {0};
+            const auto dimension = info.Length() > 8 ? v8pp::from_v8<std::uint16_t>(isolate, info[8]) : std::uint16_t {0};
+
+            gPlayers->Spawn(player->ownerGUID, v8pp::from_v8<float>(isolate, info[0]), v8pp::from_v8<float>(isolate, info[1]), v8pp::from_v8<float>(isolate, info[2]),
+                            heading, model, health, armour, interior, dimension);
         }
 
         std::string Nickname(Framework::Scripting::Builtins::Player &self) {
             auto *player = EntityOf(self);
 
             return player ? player->nickname : "";
+        }
+
+        std::uint8_t Interior(Framework::Scripting::Builtins::Player &self) {
+            auto *player = EntityOf(self);
+
+            return player ? player->interior : 0;
+        }
+
+        void SetInterior(Framework::Scripting::Builtins::Player &self, std::uint8_t interior) {
+            if (auto *player = EntityOf(self); player && gPlayers) {
+                gPlayers->SetInterior(*player, interior);
+            }
+        }
+
+        std::uint16_t Dimension(Framework::Scripting::Builtins::Player &self) {
+            auto *player = EntityOf(self);
+
+            return player ? player->dimension : 0;
+        }
+
+        void SetDimension(Framework::Scripting::Builtins::Player &self, std::uint16_t dimension) {
+            if (auto *player = EntityOf(self); player && gPlayers) {
+                gPlayers->SetDimension(*player, dimension);
+            }
         }
 
         void CreateVehicle(const v8::FunctionCallbackInfo<v8::Value> &info) {
@@ -55,11 +88,13 @@ namespace VantaMP::Scripting {
             const auto x       = v8pp::from_v8<float>(isolate, info[1]);
             const auto y       = v8pp::from_v8<float>(isolate, info[2]);
             const auto z       = v8pp::from_v8<float>(isolate, info[3]);
-            const auto heading = info.Length() > 4 ? v8pp::from_v8<float>(isolate, info[4]) : 0.0f;
-            const auto primary = info.Length() > 5 ? v8pp::from_v8<std::uint8_t>(isolate, info[5]) : std::uint8_t {0};
-            const auto secondary = info.Length() > 6 ? v8pp::from_v8<std::uint8_t>(isolate, info[6]) : std::uint8_t {0};
+            const auto heading    = info.Length() > 4 ? v8pp::from_v8<float>(isolate, info[4]) : 0.0f;
+            const auto primary    = info.Length() > 5 ? v8pp::from_v8<std::uint8_t>(isolate, info[5]) : std::uint8_t {0};
+            const auto secondary  = info.Length() > 6 ? v8pp::from_v8<std::uint8_t>(isolate, info[6]) : std::uint8_t {0};
+            const auto interior   = info.Length() > 7 ? v8pp::from_v8<std::uint8_t>(isolate, info[7]) : std::uint8_t {0};
+            const auto dimension  = info.Length() > 8 ? v8pp::from_v8<std::uint16_t>(isolate, info[8]) : std::uint16_t {0};
 
-            const auto id = gVehicles->Create(model, x, y, z, heading, primary, secondary);
+            const auto id = gVehicles->Create(model, x, y, z, heading, primary, secondary, interior, dimension);
 
             info.GetReturnValue().Set(v8::Number::New(isolate, static_cast<double>(id)));
         }
@@ -70,6 +105,46 @@ namespace VantaMP::Scripting {
             }
 
             gVehicles->Destroy(v8pp::from_v8<std::uint64_t>(info.GetIsolate(), info[0]));
+        }
+
+        void SetVehicleInterior(const v8::FunctionCallbackInfo<v8::Value> &info) {
+            if (!gVehicles || info.Length() < 2) {
+                return;
+            }
+
+            auto *isolate = info.GetIsolate();
+            auto *vehicle = gVehicles->Find(v8pp::from_v8<std::uint64_t>(isolate, info[0]));
+
+            if (vehicle) {
+                gVehicles->SetInterior(*vehicle, v8pp::from_v8<std::uint8_t>(isolate, info[1]));
+            }
+        }
+
+        void SetVehicleDimension(const v8::FunctionCallbackInfo<v8::Value> &info) {
+            if (!gVehicles || info.Length() < 2) {
+                return;
+            }
+
+            auto *isolate = info.GetIsolate();
+            auto *vehicle = gVehicles->Find(v8pp::from_v8<std::uint64_t>(isolate, info[0]));
+
+            if (vehicle) {
+                gVehicles->SetDimension(*vehicle, v8pp::from_v8<std::uint16_t>(isolate, info[1]));
+            }
+        }
+
+        void GetVehicleInterior(const v8::FunctionCallbackInfo<v8::Value> &info) {
+            auto *isolate = info.GetIsolate();
+            auto *vehicle = gVehicles && info.Length() >= 1 ? gVehicles->Find(v8pp::from_v8<std::uint64_t>(isolate, info[0])) : nullptr;
+
+            info.GetReturnValue().Set(v8::Integer::New(isolate, vehicle ? vehicle->interior : 0));
+        }
+
+        void GetVehicleDimension(const v8::FunctionCallbackInfo<v8::Value> &info) {
+            auto *isolate = info.GetIsolate();
+            auto *vehicle = gVehicles && info.Length() >= 1 ? gVehicles->Find(v8pp::from_v8<std::uint64_t>(isolate, info[0])) : nullptr;
+
+            info.GetReturnValue().Set(v8::Integer::New(isolate, vehicle ? vehicle->dimension : 0));
         }
     } // namespace
 
@@ -98,12 +173,18 @@ namespace VantaMP::Scripting {
 
         cls.function("spawn", &Spawn);
         cls.property("nickname", &Nickname);
+        cls.property("interior", &Interior, &SetInterior);
+        cls.property("dimension", &Dimension, &SetDimension);
 
         v8::Local<v8::Context> context = engine->GetContext();
         v8::Local<v8::Object> vehiclesObj = v8::Object::New(isolate);
 
         vehiclesObj->Set(context, v8pp::to_v8(isolate, "create"), v8::FunctionTemplate::New(isolate, &CreateVehicle)->GetFunction(context).ToLocalChecked()).Check();
         vehiclesObj->Set(context, v8pp::to_v8(isolate, "destroy"), v8::FunctionTemplate::New(isolate, &DestroyVehicle)->GetFunction(context).ToLocalChecked()).Check();
+        vehiclesObj->Set(context, v8pp::to_v8(isolate, "setInterior"), v8::FunctionTemplate::New(isolate, &SetVehicleInterior)->GetFunction(context).ToLocalChecked()).Check();
+        vehiclesObj->Set(context, v8pp::to_v8(isolate, "setDimension"), v8::FunctionTemplate::New(isolate, &SetVehicleDimension)->GetFunction(context).ToLocalChecked()).Check();
+        vehiclesObj->Set(context, v8pp::to_v8(isolate, "getInterior"), v8::FunctionTemplate::New(isolate, &GetVehicleInterior)->GetFunction(context).ToLocalChecked()).Check();
+        vehiclesObj->Set(context, v8pp::to_v8(isolate, "getDimension"), v8::FunctionTemplate::New(isolate, &GetVehicleDimension)->GetFunction(context).ToLocalChecked()).Check();
         context->Global()->Set(context, v8pp::to_v8(isolate, "Vehicles"), vehiclesObj).Check();
     }
 

@@ -44,7 +44,13 @@ namespace VantaMP::Game {
         // interest grid measures from that copy, so a player the server has not
         // positioned is invisible to everyone and sees nobody - which looks
         // like a streaming bug rather than a missing spawn.
-        bool Spawn(MafiaNet::PeerGuid guid, float x, float y, float z, float heading = 0.0f, std::uint32_t modelId = 0, float health = 100.0f, float armour = 0.0f);
+        bool Spawn(MafiaNet::PeerGuid guid, float x, float y, float z, float heading = 0.0f, std::uint32_t modelId = 0, float health = 100.0f, float armour = 0.0f,
+                   std::uint8_t interior = 0, std::uint16_t dimension = 0);
+
+        // Script setInterior / setDimension. Writes the replica and tells
+        // the owning client so the next snapshot echoes the new values.
+        void SetInterior(Shared::PlayerEntity &player, std::uint8_t interior);
+        void SetDimension(Shared::PlayerEntity &player, std::uint16_t dimension);
 
         [[nodiscard]] Shared::PlayerEntity *Find(MafiaNet::PeerGuid guid) const;
 

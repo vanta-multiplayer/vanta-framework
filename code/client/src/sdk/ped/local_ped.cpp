@@ -55,6 +55,8 @@ namespace VantaMP::SDK {
             state.vehicleModelIndex = ped->m_pVehicle->m_nModelIndex;
         }
 
+        state.interior = ped->m_nAreaCode;
+
         return state;
     }
 
@@ -94,5 +96,11 @@ namespace VantaMP::SDK {
 
         Internal::SetPedPosition(ped, x, y, z);
         Internal::SetPedRotation(ped, heading);
+    }
+
+    void SetLocalPedInterior(std::uint8_t interior) {
+        if (auto *ped = Internal::LocalPed()) {
+            ped->m_nAreaCode = interior;
+        }
     }
 } // namespace VantaMP::SDK

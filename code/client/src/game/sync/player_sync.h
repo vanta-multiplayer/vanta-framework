@@ -2,7 +2,15 @@
 
 #include <cstdint>
 
+namespace VantaMP::Shared::RPC {
+    struct WorldSpace;
+}
+
 namespace VantaMP::Game {
+    struct LocalWorldSpace {
+        std::uint8_t  interior  = 0;
+        std::uint16_t dimension = 0;
+    };
     // Keeps the game and the network in step, in both directions.
     //
     // Outbound: the local player's position, heading, health and input are
@@ -46,4 +54,13 @@ namespace VantaMP::Game {
 
     // This client's own replicated entity, or 0 before the first sync tick.
     [[nodiscard]] std::uint64_t LocalNetworkId();
+
+    // Interior from the local ped, dimension from the owned replica.
+    [[nodiscard]] LocalWorldSpace QueryLocalWorldSpace();
+
+    // Spawn / script: apply GTA area and copy the server's dimension onto
+    // the owned replica so the next snapshot does not send 0.
+    void ApplyOwnedWorldSpace(std::uint8_t interior, std::uint16_t dimension, std::uint8_t flags);
+
+    void ApplyWorldSpace(const Shared::RPC::WorldSpace &space);
 } // namespace VantaMP::Game

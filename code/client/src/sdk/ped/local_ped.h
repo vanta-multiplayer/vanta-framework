@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace VantaMP::SDK {
     // What the local player's ped currently is.
     //
@@ -39,6 +41,10 @@ namespace VantaMP::SDK {
         float velocityX = 0.0f;
         float velocityY = 0.0f;
         float velocityZ = 0.0f;
+
+        // CEntity::m_nAreaCode. 0 is outside. Walking through an enex
+        // writes this; the snapshot reports it so remotes can hide.
+        std::uint8_t interior = 0;
     };
 
     // What the local player is HOLDING is in sdk/ped/weapon.h, not here.
@@ -55,4 +61,8 @@ namespace VantaMP::SDK {
     // MTA spawnPlayer: SetInitialState, then health/armour/heading. Writing
     // health alone leaves the DIE task running and they stay on the ground.
     void ReviveLocalPed(float x, float y, float z, float heading, float health, float armour);
+
+    // Writes the local ped's area code. Pair with SetCurrentInterior when
+    // the change did not come from GTA itself.
+    void SetLocalPedInterior(std::uint8_t interior);
 } // namespace VantaMP::SDK

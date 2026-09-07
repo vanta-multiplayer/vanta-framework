@@ -63,9 +63,10 @@ Not everything is a replica field.
 1. **Unreliable snapshot** (`PlayerEntity`, `VehicleEntity`). Position, pad,
    health, colours, packed damage. Append-only. A late joiner must see a wreck
    and a nickname without waiting for a change that already happened.
-2. **Reliable RPC**. Enter, exit, shot, reload, death, bystander damage. These
-   are transitions that play once. As a flag they restart; as an unreliable
-   packet they can be missed.
+2. **Reliable RPC**. Enter, exit, shot, reload, death, bystander damage,
+   world-space. These are transitions that play once. As a flag they restart;
+   as an unreliable packet they can be missed. Dimension is server-authored
+   and would be stomped by the next owner snapshot without `WorldSpace`.
 3. **Nothing.** Some GTA flags are outputs (`bIsDucking`, `bIsStanding`,
    `m_fSteerAngle`). Writing them does nothing, or fights the task that owns
    them. Run the task or swap the pad instead.
@@ -76,9 +77,10 @@ positional. A mismatched pair deserializes garbage silently.
 ## Scripting
 
 Resources talk to C++ through `code/server/src/scripting/bindings.cpp`.
-`Vehicles.create` and `Player.spawn` are the ones freeroam uses. If a resource
-listens for `playerReady` or `playerDeath`, C++ does not also spawn — that is
-the resource's job.
+`Vehicles.create` and `Player.spawn` are the ones freeroam uses. Interior and
+dimension are properties on `Player` and functions on `Vehicles` — see
+[world space](world-space.md). If a resource listens for `playerReady` or
+`playerDeath`, C++ does not also spawn — that is the resource's job.
 
 The current freeroam spawn is the Los Santos waterfront so two clients start
 near water and a test Sultan. Grove Street is commented next to the numbers

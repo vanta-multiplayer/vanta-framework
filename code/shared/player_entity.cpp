@@ -49,6 +49,9 @@ namespace VantaMP::Shared {
 
         fields.Field(vehicleNetworkId);
         fields.Field(vehicleSeat);
+
+        fields.Field(interior);
+        fields.Field(dimension);
     }
 
     Framework::Networking::Replication::NetworkEntity *PlayerEntity::GetInterestDependency() {

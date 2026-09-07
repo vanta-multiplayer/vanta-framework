@@ -8,6 +8,7 @@
 #include "shared/player_entity.h"
 #include "shared/vehicle_entity.h"
 #include "shared/rpc/local_player_spawn.h"
+#include "shared/rpc/world_space.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/vehicle_damage_report.h"
@@ -57,7 +58,11 @@ namespace VantaMP::Core {
         // exists behind the fade; this is what belongs them and lifts it.
         if (auto *net = Framework::CoreModules::GetNetworkPeer()) {
             net->RegisterRPC<Shared::RPC::LocalPlayerSpawn>([](const Shared::RPC::LocalPlayerSpawn &spawn, MafiaNet::Packet *) {
-                Game::ApplyLocalSpawn(spawn.x, spawn.y, spawn.z, spawn.heading, spawn.health, spawn.armour);
+                Game::ApplyLocalSpawn(spawn.x, spawn.y, spawn.z, spawn.heading, spawn.health, spawn.armour, spawn.interior, spawn.dimension);
+            });
+
+            net->RegisterRPC<Shared::RPC::WorldSpace>([](const Shared::RPC::WorldSpace &space, MafiaNet::Packet *) {
+                Game::ApplyWorldSpace(space);
             });
 
             // Combat events, not snapshot fields. The server stamps the shooter

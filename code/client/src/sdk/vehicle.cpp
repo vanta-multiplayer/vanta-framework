@@ -660,6 +660,18 @@ namespace VantaMP::SDK {
         reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(vehicle, x, y, z);
     }
 
+    void SetVehicleInterior(void *handle, std::uint8_t interior) {
+        if (auto *vehicle = AsVehicle(handle)) {
+            vehicle->m_nAreaCode = interior;
+        }
+    }
+
+    std::uint8_t VehicleInterior(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        return vehicle ? vehicle->m_nAreaCode : 0;
+    }
+
     bool IsLocalPlayerDriving(const void *handle) {
         const auto *vehicle = AsVehicle(handle);
 

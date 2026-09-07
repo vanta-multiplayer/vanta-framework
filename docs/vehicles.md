@@ -142,7 +142,11 @@ not snap.
 
 ```js
 Vehicles.create(560, 2865.93, -1665.88, 10.88, 0);
+// optional: heading, primary, secondary, interior, dimension
 ```
+
+Interior and dimension ride the vehicle snapshot. See
+[world space](world-space.md).
 
 `CCarCtrl::CreateCarForScript` allocates from the pool, adds to the world
 and gives the car physics. Mission cleanup is off so the game never deletes

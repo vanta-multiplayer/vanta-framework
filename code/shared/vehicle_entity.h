@@ -98,6 +98,12 @@ namespace VantaMP::Shared {
         // A popped hood is almost always this, not a damage flag.
         std::uint64_t doorRatiosPacked = 0;
 
+        // Same pair as PlayerEntity. An empty car is server-owned, so a
+        // script write persists until a driver claims it. The driver then
+        // echoes dimension and reports interior from the GTA vehicle.
+        std::uint8_t  interior  = 0;
+        std::uint16_t dimension = 0;
+
         [[nodiscard]] bool IsBlown() const {
             return blown || health <= kWreckHealth;
         }

@@ -6,6 +6,8 @@
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/vehicle_damage_report.h"
 #include "shared/vehicle_entity.h"
+#include "shared/rpc/world_space.h"
+#include "shared/world_space.h"
 
 #include <core_modules.h>
 #include <logging/logger.h>
@@ -17,7 +19,8 @@
 namespace VantaMP::Game {
     VehicleManager::VehicleManager(PlayerManager &players) : _players(players) {}
 
-    std::uint64_t VehicleManager::Create(std::uint32_t modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour) {
+    std::uint64_t VehicleManager::Create(std::uint32_t modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour,
+                                         std::uint8_t interior, std::uint16_t dimension) {
         if (modelId < Shared::VehicleEntity::kFirstModel || modelId > Shared::VehicleEntity::kLastModel) {
             Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle model {}", modelId);
             return 0;
@@ -44,6 +47,8 @@ namespace VantaMP::Game {
         vehicle->health          = 1000.0f;
         vehicle->engineOn        = true;
         vehicle->blown           = false;
+        vehicle->interior        = interior;
+        vehicle->dimension       = dimension;
 
         const auto id = static_cast<std::uint64_t>(vehicle->GetNetworkID());
 
@@ -262,6 +267,42 @@ namespace VantaMP::Game {
         report.FromParameters(vehicleId, vehicle->damageEngine, vehicle->doorsPacked, vehicle->wheelsPacked, vehicle->panels, vehicle->lights, vehicle->doorRatiosPacked,
                               applyRatios && !hasDriver, vehicle->health);
         net->BroadcastRPC(report, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
+    }
+
+    void VehicleManager::SetInterior(Shared::VehicleEntity &vehicle, std::uint8_t interior) {
+        vehicle.interior = interior;
+
+        if (static_cast<std::uint64_t>(vehicle.ownerGUID) == 0 || !_players.Find(vehicle.ownerGUID)) {
+            return;
+        }
+
+        auto *net = Framework::CoreModules::GetNetworkPeer();
+
+        if (!net) {
+            return;
+        }
+
+        Shared::RPC::WorldSpace message;
+        message.FromParameters(static_cast<std::uint64_t>(vehicle.GetNetworkID()), interior, vehicle.dimension, Shared::kWorldSpaceInterior);
+        net->SendRPC(message, MafiaNet::ToGuid(vehicle.ownerGUID));
+    }
+
+    void VehicleManager::SetDimension(Shared::VehicleEntity &vehicle, std::uint16_t dimension) {
+        vehicle.dimension = dimension;
+
+        if (static_cast<std::uint64_t>(vehicle.ownerGUID) == 0 || !_players.Find(vehicle.ownerGUID)) {
+            return;
+        }
+
+        auto *net = Framework::CoreModules::GetNetworkPeer();
+
+        if (!net) {
+            return;
+        }
+
+        Shared::RPC::WorldSpace message;
+        message.FromParameters(static_cast<std::uint64_t>(vehicle.GetNetworkID()), vehicle.interior, dimension, Shared::kWorldSpaceDimension);
+        net->SendRPC(message, MafiaNet::ToGuid(vehicle.ownerGUID));
     }
 
     Shared::VehicleEntity *VehicleManager::Find(std::uint64_t networkId) const {

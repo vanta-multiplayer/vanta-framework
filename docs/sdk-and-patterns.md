@@ -10,7 +10,7 @@ sdk/patterns.{h,cpp}    the signature table
 sdk/game_build.{h,cpp}
 sdk/input.{h,cpp}       pad, local read, remote write          [plugin-sdk]
 sdk/camera.{h,cpp}      camera rotation, per slot
-sdk/streaming.{h,cpp}   model request / residency              [plugin-sdk]
+sdk/streaming.{h,cpp}   model request / residency / interiors  [plugin-sdk]
 sdk/draw.{h,cpp}        nametag font
 sdk/ped/access.h        INTERNAL raw ped access (incl. ReleaseRealTimeShadow)
 sdk/ped/local_ped.*                                            [plugin-sdk]

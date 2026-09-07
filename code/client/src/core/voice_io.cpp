@@ -6,6 +6,7 @@
 #include "game/sync/player_sync.h"
 #include "sdk/ped/remote_ped.h"
 #include "shared/player_entity.h"
+#include "shared/world_space.h"
 
 #include <utils/safe_win32.h>
 
@@ -112,6 +113,17 @@ namespace VantaMP::Core {
 
             if (!player || player->IsOwner()) {
                 return false;
+            }
+
+            const auto localWorld = Game::QueryLocalWorldSpace();
+
+            if (!Shared::SameWorld(localWorld.interior, localWorld.dimension, player->interior, player->dimension)) {
+                // Proximity still hears the last packet position if we
+                // refuse. A kilometre away is silence at 40 m.
+                gCachedLive   = {10000.0f, 10000.0f, 10000.0f};
+                gCachedLiveOk = true;
+                out           = gCachedLive;
+                return true;
             }
 
             const int slot = Game::SlotOfNetworkId(static_cast<std::uint64_t>(player->GetNetworkID()));

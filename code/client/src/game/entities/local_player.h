@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace VantaMP::Game {
     struct SpawnPoint {
         float x = 0.0f;
@@ -34,7 +36,7 @@ namespace VantaMP::Game {
     //
     // THE SERVER DECIDES WHERE A PLAYER BELONGS. Later calls move an existing
     // ped (a respawn). The fade only lifts when the world is currently hidden.
-    void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour);
+    void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour, std::uint8_t interior = 0, std::uint16_t dimension = 0);
 
     // Black screen for the connect menu. The next ApplyLocalSpawn fades back in.
     void ConcealWorld();

@@ -39,14 +39,19 @@ namespace VantaMP::Shared::RPC {
         float health = 100.0f;
         float armour = 0.0f;
 
-        void FromParameters(float posX, float posY, float posZ, float facing, std::uint32_t model, float hp, float armor) {
-            x       = posX;
-            y       = posY;
-            z       = posZ;
-            heading = facing;
-            modelId = model;
-            health  = hp;
-            armour  = armor;
+        std::uint8_t  interior  = 0;
+        std::uint16_t dimension = 0;
+
+        void FromParameters(float posX, float posY, float posZ, float facing, std::uint32_t model, float hp, float armor, std::uint8_t area = 0, std::uint16_t world = 0) {
+            x         = posX;
+            y         = posY;
+            z         = posZ;
+            heading   = facing;
+            modelId   = model;
+            health    = hp;
+            armour    = armor;
+            interior  = area;
+            dimension = world;
         }
 
         void Serialize(MafiaNet::BitStream *bs, bool write) {
@@ -57,6 +62,8 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, modelId);
             bs->Serialize(write, health);
             bs->Serialize(write, armour);
+            bs->Serialize(write, interior);
+            bs->Serialize(write, dimension);
         }
     };
 } // namespace VantaMP::Shared::RPC

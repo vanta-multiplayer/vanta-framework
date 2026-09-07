@@ -409,4 +409,10 @@ namespace VantaMP::SDK {
 
         ped->bUsesCollision = enabled;
     }
+
+    void SetRemotePedInterior(int slot, std::uint8_t interior) {
+        if (auto *ped = PedAt(slot)) {
+            ped->m_nAreaCode = interior;
+        }
+    }
 } // namespace VantaMP::SDK

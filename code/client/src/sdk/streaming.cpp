@@ -52,4 +52,15 @@ namespace VantaMP::SDK {
         // Unarmed has an info record but no model, which is not a failure.
         return info ? info->m_nModelId : 0;
     }
+
+    std::uint8_t CurrentInterior() {
+        return static_cast<std::uint8_t>(*reinterpret_cast<const int *>(gPatterns.CGame__CurrArea));
+    }
+
+    void SetCurrentInterior(std::uint8_t interior) {
+        const int area = static_cast<int>(interior);
+
+        *reinterpret_cast<int *>(gPatterns.CGame__CurrArea) = area;
+        reinterpret_cast<void(__cdecl *)(int)>(gPatterns.CStreaming__RemoveBuildingsNotInArea)(area);
+    }
 } // namespace VantaMP::SDK

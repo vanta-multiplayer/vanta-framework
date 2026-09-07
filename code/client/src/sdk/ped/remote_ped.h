@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <glm/gtc/quaternion.hpp>
 
 namespace VantaMP::SDK {
@@ -105,6 +107,10 @@ namespace VantaMP::SDK {
 
     // Off while a remote ped is in a car so they do not shove it around.
     void SetRemotePedCollision(int slot, bool enabled);
+
+    // CEntity::m_nAreaCode. GTA hides entities whose area is not currArea,
+    // which is how a remote player in a shop disappears from the street.
+    void SetRemotePedInterior(int slot, std::uint8_t interior);
 
     // What a remote player HOLDS is in sdk/ped/weapon.h, not here.
 } // namespace VantaMP::SDK

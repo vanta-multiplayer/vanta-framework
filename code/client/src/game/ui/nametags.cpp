@@ -4,6 +4,7 @@
 #include "sdk/draw.h"
 #include "sdk/game.h"
 #include "shared/player_entity.h"
+#include "shared/world_space.h"
 
 #include <core_modules.h>
 #include <networking/replication/replication_manager.h>
@@ -36,6 +37,12 @@ namespace VantaMP::Game {
             auto *player = dynamic_cast<Shared::PlayerEntity *>(entity);
 
             if (!player || player->IsOwner()) {
+                return;
+            }
+
+            const auto localWorld = QueryLocalWorldSpace();
+
+            if (!Shared::SameWorld(localWorld.interior, localWorld.dimension, player->interior, player->dimension)) {
                 return;
             }
 

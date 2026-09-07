@@ -20,6 +20,10 @@ the ped. When seated, both positions are the ped.
 `InvalidateVoiceSpeakerCache` runs before each publish so a player who
 just entered or left a car is not still mixed as if they were on foot.
 
+Speakers in another interior or dimension are placed a kilometre away so
+the 40 m proximity mix is silence. Destroying their ped is not enough —
+the last packet position would still be heard.
+
 ## Mic test
 
 Hear-yourself loopback on the chosen endpoints. It works from the menu

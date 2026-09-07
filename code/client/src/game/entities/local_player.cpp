@@ -5,7 +5,9 @@
 #include "core/diagnostics/breadcrumbs.h"
 #include "sdk/patterns.h"
 #include "game/sync/death.h"
+#include "game/sync/player_sync.h"
 #include "sdk/ped/local_ped.h"
+#include "shared/world_space.h"
 #include "sdk/ped/weapon.h"
 #include "sdk/vehicle_occupancy.h"
 #include "shared/spawn_points.h"
@@ -127,7 +129,7 @@ namespace VantaMP::Game {
         gSpawnPoint = point;
     }
 
-    void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour) {
+    void ApplyLocalSpawn(float x, float y, float z, float heading, float health, float armour, std::uint8_t interior, std::uint16_t dimension) {
         CreateLocalPlayer();
 
         if (!FindLocalPed()) {
@@ -142,6 +144,7 @@ namespace VantaMP::Game {
         // dead on the ground at the new coordinates. Revive first, then
         // stream the area, then arm them - SetInitialState strips weapons.
         SDK::ReviveLocalPed(x, y, z, heading, health, armour);
+        ApplyOwnedWorldSpace(interior, dimension, Shared::kWorldSpaceInterior | Shared::kWorldSpaceDimension);
         ClearLocalDeathReport();
 
         const float position[3] = {x, y, z};

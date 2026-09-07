@@ -75,6 +75,10 @@ namespace VantaMP::SDK {
 
     void SetVehiclePose(void *vehicle, float x, float y, float z, const glm::quat &rotation);
 
+    // CEntity::m_nAreaCode on the car. Same visibility rule as peds.
+    void SetVehicleInterior(void *vehicle, std::uint8_t interior);
+    [[nodiscard]] std::uint8_t VehicleInterior(const void *vehicle);
+
     [[nodiscard]] bool IsLocalPlayerDriving(const void *vehicle);
     [[nodiscard]] bool VehicleHasDriver(const void *vehicle);
 

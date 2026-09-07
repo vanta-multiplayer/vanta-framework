@@ -382,6 +382,14 @@ namespace VantaMP::SDK {
         uintptr_t CStreaming__LoadAllRequestedModels = 0;
         uintptr_t CStreaming__HasModelLoaded        = 0;
 
+        // Which GTA interior the local player is in. currArea is a global
+        // (CGame::currArea); RemoveBuildingsNotInArea is what actually
+        // unloads the other area's buildings. Both are what MTA's
+        // CWorldSA::SetCurrentArea writes / calls. An area-code write on
+        // the ped alone leaves the street loaded over a shop.
+        uintptr_t CGame__CurrArea                         = 0;
+        uintptr_t CStreaming__RemoveBuildingsNotInArea    = 0;
+
         // Which model a weapon is worn as. A table lookup in the exe rather than
         // one repeated here, since it also depends on skill level.
         uintptr_t CWeaponInfo__GetWeaponInfo = 0;

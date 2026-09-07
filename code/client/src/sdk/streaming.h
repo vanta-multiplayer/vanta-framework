@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace VantaMP::SDK {
     // Getting models into memory.
     //
@@ -41,4 +43,12 @@ namespace VantaMP::SDK {
     // Which model a weapon is held as, or 0 if the type has none - which is a
     // real answer for unarmed, and for anything the game does not recognise.
     [[nodiscard]] int WeaponModelId(unsigned int weaponType);
+
+    // GTA's current interior (CGame::currArea). 0 is outside.
+    [[nodiscard]] std::uint8_t CurrentInterior();
+
+    // Writes currArea and unloads buildings that do not belong there.
+    // Walking through an enex already does this; script spawn / setInterior
+    // does not, and leaving the street loaded over a shop is the result.
+    void SetCurrentInterior(std::uint8_t interior);
 } // namespace VantaMP::SDK

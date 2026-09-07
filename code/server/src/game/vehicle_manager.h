@@ -18,7 +18,11 @@ namespace VantaMP::Game {
         explicit VehicleManager(PlayerManager &players);
 
         // heading is radians, matching Player.spawn.
-        std::uint64_t Create(std::uint32_t modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour);
+        std::uint64_t Create(std::uint32_t modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour,
+                             std::uint8_t interior = 0, std::uint16_t dimension = 0);
+
+        void SetInterior(Shared::VehicleEntity &vehicle, std::uint8_t interior);
+        void SetDimension(Shared::VehicleEntity &vehicle, std::uint16_t dimension);
 
         bool Destroy(std::uint64_t networkId);
 

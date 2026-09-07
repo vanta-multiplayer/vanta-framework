@@ -260,6 +260,10 @@ namespace VantaMP::SDK {
         gPatterns.CStreaming__LoadAllRequestedModels = Resolve("E9 ? ? ? ? 56 33 F6 84 C0 0F"); // 0x0040EA10
         gPatterns.CStreaming__HasModelLoaded         = Resolve("8B 44 24 04 8D 04 80 8A 14 85 D0"); // 0x004044C0
 
+        // mov ecx, [CGame::currArea]; test ecx, ecx
+        gPatterns.CGame__CurrArea = OperandAt(hook::get_pattern("8B 0D ? ? ? ? 85 C9 8B 54"), 2); // site 0x0040471F -> 0x00B72914
+        gPatterns.CStreaming__RemoveBuildingsNotInArea = Resolve("53 55 8B 6C 24 0C 56 57 8B 3D"); // 0x004094B0
+
         gPatterns.CWeaponInfo__GetWeaponInfo = Resolve("8A 4C 24 08 84 C9 E9"); // 0x00743C60
 
         // --- Where a ped points its gun -----------------------------------------

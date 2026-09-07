@@ -4,6 +4,7 @@
 #include "sdk/game.h"
 #include "sdk/streaming.h"
 #include "shared/player_entity.h"
+#include "shared/world_space.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/vehicle_damage_report.h"
@@ -231,6 +232,8 @@ namespace VantaMP::Game {
                 entity->lights           = state.lights;
                 entity->doorRatiosPacked = state.doorRatiosPacked;
             }
+
+            entity->interior = SDK::VehicleInterior(remote.handle);
         }
 
         bool DamageWorseThan(const SDK::VehicleState &local, const Shared::VehicleEntity &entity) {
@@ -527,6 +530,7 @@ namespace VantaMP::Game {
             }
 
             SDK::KeepScriptVehicle(remote.handle);
+            SDK::SetVehicleInterior(remote.handle, entity->interior);
 
             remote.velocity = entity->velocity;
             remote.angular  = entity->angularVelocity;
@@ -565,6 +569,8 @@ namespace VantaMP::Game {
             if (!remote.handle || SDK::IsLocalPlayerDriving(remote.handle)) {
                 return;
             }
+
+            SDK::SetVehicleInterior(remote.handle, entity->interior);
 
             const std::uint32_t now     = GetTickCount();
             const bool          changed = !remote.aimed || remote.aimedPosition != entity->position || remote.aimedRotation != entity->rotation;
@@ -693,6 +699,10 @@ namespace VantaMP::Game {
             }
 
             const auto id = static_cast<std::uint64_t>(vehicle->GetNetworkID());
+
+            if (!Shared::SameDimension(QueryLocalWorldSpace().dimension, vehicle->dimension)) {
+                return;
+            }
 
             seen.insert(id);
 
@@ -966,5 +976,41 @@ namespace VantaMP::Game {
         // Walk, not warp. WatchLocalOccupancy sends the same enter RPC
         // the F path uses, so G and F cannot disagree about the climb.
         SDK::EnterVehicle(0, nearest, seat, false);
+    }
+
+    void ApplyOwnedVehicleWorldSpace(std::uint64_t networkId, std::uint8_t interior, std::uint16_t dimension, std::uint8_t flags) {
+        auto *replication = Framework::CoreModules::GetReplication();
+
+        if (!replication || networkId == 0) {
+            return;
+        }
+
+        Shared::VehicleEntity *vehicle = nullptr;
+
+        replication->ForEachEntity([&](Replication::NetworkEntity *entity) {
+            auto *candidate = dynamic_cast<Shared::VehicleEntity *>(entity);
+
+            if (candidate && candidate->IsOwner() && static_cast<std::uint64_t>(candidate->GetNetworkID()) == networkId) {
+                vehicle = candidate;
+            }
+        });
+
+        if (!vehicle) {
+            return;
+        }
+
+        if ((flags & Shared::kWorldSpaceInterior) != 0) {
+            vehicle->interior = interior;
+
+            const auto found = gVehicles.find(networkId);
+
+            if (found != gVehicles.end() && found->second.handle) {
+                SDK::SetVehicleInterior(found->second.handle, interior);
+            }
+        }
+
+        if ((flags & Shared::kWorldSpaceDimension) != 0) {
+            vehicle->dimension = dimension;
+        }
     }
 } // namespace VantaMP::Game

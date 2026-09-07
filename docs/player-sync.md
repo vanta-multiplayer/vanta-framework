@@ -35,6 +35,8 @@ by the on-foot interpolator.
 | `isInAir` | Sent to **gate velocity**, not written onto the ped. The game recomputes it |
 | Weapon + ammo + `isReloading` | A held weapon is a model. Reloading is a task — writing ammo during the anim is MTA's #4503 |
 | `vehicleNetworkId` / `vehicleSeat` | Late joiners warp into the seat. Live enter/exit is an RPC |
+| `interior` | GTA area code. The owner reads it off the ped. Script sets send `WorldSpace` so `currArea` changes too |
+| `dimension` | Virtual world. Server-authoritative; the owner echoes, it does not invent |
 
 Position, velocity and rotation live on `NetworkEntity`, not on `PlayerEntity`.
 Re-declaring them would put the same numbers on the wire twice.

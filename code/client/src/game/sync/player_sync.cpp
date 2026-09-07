@@ -7,7 +7,10 @@
 #include "game/entities/remote_players.h"
 #include "sdk/game.h"
 #include "shared/player_entity.h"
+#include "shared/rpc/world_space.h"
 #include "shared/sync_rates.h"
+#include "shared/vehicle_entity.h"
+#include "shared/world_space.h"
 
 #include <utils/safe_win32.h>
 
@@ -33,6 +36,25 @@ namespace VantaMP::Game {
         // reused, and a stale pointer would silently match the wrong player.
         std::unordered_map<std::uint64_t, int> gSlotByNetworkId;
         std::uint64_t gLocalNetworkId = 0;
+        LocalWorldSpace gLocalWorld {};
+
+        Shared::PlayerEntity *OwnedPlayer(Replication::ReplicationManager *replication) {
+            Shared::PlayerEntity *owned = nullptr;
+
+            if (!replication) {
+                return nullptr;
+            }
+
+            replication->ForEachEntity([&owned](Replication::NetworkEntity *entity) {
+                auto *player = dynamic_cast<Shared::PlayerEntity *>(entity);
+
+                if (player && player->IsOwner()) {
+                    owned = player;
+                }
+            });
+
+            return owned;
+        }
 
         // One per remote ped.
         //
@@ -385,6 +407,12 @@ namespace VantaMP::Game {
                 entity->vehicleSeat      = 0;
             }
 
+            // Area code is a GTA fact. Dimension is not — leave the replica
+            // alone so a script write the owner was told about survives.
+            entity->interior     = local.interior;
+            gLocalWorld.interior  = local.interior;
+            gLocalWorld.dimension = entity->dimension;
+
             // TEMPORARY TELEMETRY - remove once the desync is closed.
             static std::uint32_t lastSendReportMs = 0;
 
@@ -463,6 +491,7 @@ namespace VantaMP::Game {
                 // recompute. Analog is lerped across the send interval so
                 // a turn is a ramp, not a 100ms snap of the cabin.
                 WriteLerpedRemotePad(slot, gAimedBySlot[slot], entity);
+                SDK::SetRemotePedInterior(slot, entity->interior);
                 return;
             }
 
@@ -653,6 +682,8 @@ namespace VantaMP::Game {
             if (entity->isInWater && SDK::StartRemotePedSwimming(slot)) {
                 ++telemetry.swimStarts;
             }
+
+            SDK::SetRemotePedInterior(slot, entity->interior);
         }
     } // namespace
 
@@ -681,6 +712,12 @@ namespace VantaMP::Game {
                 gLocalNetworkId = static_cast<std::uint64_t>(player->GetNetworkID());
                 PushLocalState(player);
                 CheckLocalDeath();
+                return;
+            }
+
+            // Other dimension: leave them out of `seen` so the stream-out
+            // path below destroys a ped that was already here.
+            if (!Shared::SameDimension(gLocalWorld.dimension, player->dimension)) {
                 return;
             }
 
@@ -853,5 +890,48 @@ namespace VantaMP::Game {
 
     std::uint64_t LocalNetworkId() {
         return gLocalNetworkId;
+    }
+
+    LocalWorldSpace QueryLocalWorldSpace() {
+        return gLocalWorld;
+    }
+
+    void ApplyOwnedWorldSpace(std::uint8_t interior, std::uint16_t dimension, std::uint8_t flags) {
+        if ((flags & Shared::kWorldSpaceInterior) != 0) {
+            SDK::SetCurrentInterior(interior);
+            SDK::SetLocalPedInterior(interior);
+            gLocalWorld.interior = interior;
+        }
+
+        if ((flags & Shared::kWorldSpaceDimension) != 0) {
+            gLocalWorld.dimension = dimension;
+        }
+
+        if (auto *player = OwnedPlayer(Framework::CoreModules::GetReplication())) {
+            if ((flags & Shared::kWorldSpaceInterior) != 0) {
+                player->interior = interior;
+            }
+
+            if ((flags & Shared::kWorldSpaceDimension) != 0) {
+                player->dimension = dimension;
+            }
+        }
+    }
+
+    void ApplyWorldSpace(const Shared::RPC::WorldSpace &space) {
+        ApplyOwnedVehicleWorldSpace(space.networkId, space.interior, space.dimension, space.flags);
+
+        auto *replication = Framework::CoreModules::GetReplication();
+        auto *player      = OwnedPlayer(replication);
+
+        if (!player || static_cast<std::uint64_t>(player->GetNetworkID()) != space.networkId) {
+            if (space.networkId == 0 || space.networkId == gLocalNetworkId) {
+                ApplyOwnedWorldSpace(space.interior, space.dimension, space.flags);
+            }
+
+            return;
+        }
+
+        ApplyOwnedWorldSpace(space.interior, space.dimension, space.flags);
     }
 } // namespace VantaMP::Game

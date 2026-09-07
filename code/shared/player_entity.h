@@ -138,6 +138,18 @@ namespace VantaMP::Shared {
         std::uint64_t vehicleNetworkId = 0;
         std::uint8_t  vehicleSeat      = 0;
 
+        // GTA area code. 0 is outside. The owner reads this off their ped
+        // (walking through a door is a GTA fact). Script sets send a
+        // WorldSpace RPC so the owner applies CGame::currArea as well —
+        // otherwise the next snapshot reports the old area and undoes it.
+        std::uint8_t interior = 0;
+
+        // Virtual world. Not a GTA field. Server-authoritative: the owner
+        // echoes whatever is already on the replica and never invents a
+        // value. Script writes go out as WorldSpace so that echo is the
+        // new number, not 0.
+        std::uint16_t dimension = 0;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
 
