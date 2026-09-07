@@ -15,6 +15,7 @@
 #include <logging/logger.h>
 #include <networking/network_peer.h>
 #include <networking/replication/entity_registry.h>
+#include <voice/server/voice_server.h>
 
 namespace VantaMP {
     namespace Replication = Framework::Networking::Replication;
@@ -26,6 +27,10 @@ namespace VantaMP {
         // a number.
         Replication::EntityRegistry::Get().Register<Shared::PlayerEntity>(Shared::PlayerEntity::kTypeName);
         Replication::EntityRegistry::Get().Register<Shared::VehicleEntity>(Shared::VehicleEntity::kTypeName);
+
+        if (auto *voice = Framework::CoreModules::GetVoiceServer()) {
+            voice->SetProximityRange(40.0f);
+        }
 
         // Combat events: the client that fired cannot name itself. The GUID
         // on the packet is the connection; the entity id is what remotes
