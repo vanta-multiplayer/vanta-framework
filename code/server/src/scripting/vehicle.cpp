@@ -1,19 +1,27 @@
 #include "vehicle.h"
 
 #include "game/vehicle_manager.h"
+#include "scripting/player.h"
 #include "shared/catalog/model_catalog.h"
 #include "shared/vehicle/colors.h"
+#include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
 #include "shared/vehicle/upgrades.h"
 
+#include <core_modules.h>
+#include <logging/logger.h>
 #include <scripting/builtins/color.h>
 #include <scripting/builtins/entity.h>
 #include <scripting/builtins/vector3.h>
+#include <scripting/engine.h>
+#include <scripting/module.h>
+#include <scripting/resource/resource_manager.h>
 #include <scripting/scripting_catalog.h>
 #include <v8pp/convert.hpp>
 
 #include <algorithm>
 #include <cstdint>
+#include <vector>
 
 namespace VantaMP::Scripting {
     namespace {
@@ -178,6 +186,99 @@ namespace VantaMP::Scripting {
     void Vehicle::RemoveAllUpgrades() {
         if (auto *vehicle = ResolveVehicle(); vehicle && gVehicles) {
             gVehicles->RemoveAllUpgrades(*vehicle);
+        }
+    }
+
+    float Vehicle::GetHealth() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? vehicle->health : 0.0f;
+    }
+
+    void Vehicle::SetHealth(float health) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->health = std::clamp(health, 0.0f, 10000.0f);
+            vehicle->blown  = false;
+
+            if (vehicle->health <= Shared::VehicleEntity::kWreckHealth) {
+                vehicle->LatchBlown();
+            }
+        }
+    }
+
+    bool Vehicle::GetEngine() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->engineOn;
+    }
+
+    void Vehicle::SetEngine(bool on) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->engineOn = on;
+        }
+    }
+
+    bool Vehicle::GetSiren() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->sirenOn;
+    }
+
+    void Vehicle::SetSiren(bool on) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->sirenOn = on;
+        }
+    }
+
+    bool Vehicle::GetLocked() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->locked;
+    }
+
+    void Vehicle::SetLocked(bool locked) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->locked = locked;
+        }
+    }
+
+    std::uint8_t Vehicle::GetOverrideLights() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? vehicle->overrideLights : 0;
+    }
+
+    void Vehicle::SetOverrideLights(std::uint8_t mode) {
+        if (auto *vehicle = ResolveVehicle(); mode <= 2) {
+            vehicle->overrideLights = mode;
+        }
+    }
+
+    Framework::Scripting::Builtins::Vector3 Vehicle::GetVelocity() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? Framework::Scripting::Builtins::Vector3(vehicle->velocity.x, vehicle->velocity.y, vehicle->velocity.z)
+                       : Framework::Scripting::Builtins::Vector3(0, 0, 0);
+    }
+
+    void Vehicle::SetVelocity(const Framework::Scripting::Builtins::Vector3 &velocity) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->velocity = velocity.vec();
+            vehicle->ForceState();
+        }
+    }
+
+    Framework::Scripting::Builtins::Vector3 Vehicle::GetTurnVelocity() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? Framework::Scripting::Builtins::Vector3(vehicle->angularVelocity.x, vehicle->angularVelocity.y, vehicle->angularVelocity.z)
+                       : Framework::Scripting::Builtins::Vector3(0, 0, 0);
+    }
+
+    void Vehicle::SetTurnVelocity(const Framework::Scripting::Builtins::Vector3 &velocity) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->angularVelocity = velocity.vec();
+            vehicle->ForceState();
         }
     }
 
@@ -377,9 +478,32 @@ namespace VantaMP::Scripting {
             .property("color4", &Vehicle::GetColor4, &Vehicle::SetColor4)
             .property("paintjob", &Vehicle::GetPaintjob, &Vehicle::SetPaintjob)
             .property("interior", &Vehicle::GetInterior, &Vehicle::SetInterior)
-            .property("dimension", &Vehicle::GetDimension, &Vehicle::SetDimension);
+            .property("dimension", &Vehicle::GetDimension, &Vehicle::SetDimension)
+            .property("health", &Vehicle::GetHealth, &Vehicle::SetHealth)
+            .property("engine", &Vehicle::GetEngine, &Vehicle::SetEngine)
+            .property("siren", &Vehicle::GetSiren, &Vehicle::SetSiren)
+            .property("locked", &Vehicle::GetLocked, &Vehicle::SetLocked)
+            .property("overrideLights", &Vehicle::GetOverrideLights, &Vehicle::SetOverrideLights)
+            .property("velocity", &Vehicle::GetVelocity, &Vehicle::SetVelocity)
+            .property("turnVelocity", &Vehicle::GetTurnVelocity, &Vehicle::SetTurnVelocity);
 
         cls->prototype_function("setColor", &Vehicle::JS_SetColor);
+        cls->prototype_function("getOccupant", [](const v8::FunctionCallbackInfo<v8::Value> &info) {
+            auto *isolate = info.GetIsolate();
+            auto *self    = v8pp::class_<Vehicle>::unwrap_object(isolate, info.This());
+            auto *vehicle = self ? self->ResolveVehicle() : nullptr;
+
+            if (!vehicle || !gVehicles) {
+                return;
+            }
+
+            const auto seat     = info.Length() >= 1 ? v8pp::from_v8<std::uint8_t>(isolate, info[0]) : std::uint8_t {0};
+            auto      *occupant = gVehicles->OccupantOf(static_cast<std::uint64_t>(vehicle->GetNetworkID()), seat);
+
+            if (occupant) {
+                info.GetReturnValue().Set(Player::Wrap(isolate, static_cast<std::uint64_t>(occupant->GetNetworkID())));
+            }
+        });
 
         return *cls;
     }
@@ -462,5 +586,120 @@ namespace VantaMP::Scripting {
                           .ToLocalChecked())
             .Check();
         global->Set(ctx, v8pp::to_v8(isolate, "Vehicles"), vehicles).Check();
+    }
+
+    namespace {
+        struct OccupancyEmit {
+            Framework::Scripting::Engine          *engine    = nullptr;
+            Framework::Scripting::ResourceManager *resources = nullptr;
+            v8::Isolate                           *isolate   = nullptr;
+            v8::Local<v8::Context>                 context;
+            bool                                   ok = false;
+        };
+
+        OccupancyEmit OpenOccupancyEmit() {
+            OccupancyEmit scope;
+
+            auto *module = Framework::CoreModules::GetScriptingModule();
+
+            if (!module) {
+                return scope;
+            }
+
+            scope.engine    = module->GetScriptingEngine();
+            scope.resources = module->GetResourceManager();
+
+            if (!scope.engine || !scope.resources || !scope.engine->IsInitialized()) {
+                return scope;
+            }
+
+            scope.isolate = scope.engine->GetIsolate();
+            scope.context = scope.engine->GetContext();
+            scope.ok      = true;
+            return scope;
+        }
+    } // namespace
+
+    bool Vehicle::EmitStartEnter(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat, bool jacked, std::uint8_t door) {
+        auto scope = OpenOccupancyEmit();
+
+        if (!scope.ok || scope.resources->GetEvents().GetListenerCount("vehicleStartEnter") == 0) {
+            return true;
+        }
+
+        v8::Locker locker(scope.isolate);
+        v8::Isolate::Scope isolateScope(scope.isolate);
+        v8::HandleScope handleScope(scope.isolate);
+        v8::Context::Scope contextScope(scope.context);
+
+        std::vector<v8::Local<v8::Value>> args;
+        args.push_back(Player::Wrap(scope.isolate, playerId));
+        args.push_back(Wrap(scope.isolate, vehicleId));
+        args.push_back(v8pp::to_v8(scope.isolate, seat));
+        args.push_back(v8pp::to_v8(scope.isolate, jacked));
+        args.push_back(v8pp::to_v8(scope.isolate, door));
+
+        return scope.resources->GetEvents().EmitReservedSync(scope.isolate, scope.context, "vehicleStartEnter", args);
+    }
+
+    void Vehicle::EmitEnter(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat) {
+        auto scope = OpenOccupancyEmit();
+
+        if (!scope.ok || scope.resources->GetEvents().GetListenerCount("vehicleEnter") == 0) {
+            return;
+        }
+
+        v8::Locker locker(scope.isolate);
+        v8::Isolate::Scope isolateScope(scope.isolate);
+        v8::HandleScope handleScope(scope.isolate);
+        v8::Context::Scope contextScope(scope.context);
+
+        std::vector<v8::Local<v8::Value>> args;
+        args.push_back(Player::Wrap(scope.isolate, playerId));
+        args.push_back(Wrap(scope.isolate, vehicleId));
+        args.push_back(v8pp::to_v8(scope.isolate, seat));
+
+        scope.resources->GetEvents().EmitReserved(scope.isolate, scope.context, "vehicleEnter", args);
+    }
+
+    bool Vehicle::EmitStartExit(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat, std::uint8_t door) {
+        auto scope = OpenOccupancyEmit();
+
+        if (!scope.ok || scope.resources->GetEvents().GetListenerCount("vehicleStartExit") == 0) {
+            return true;
+        }
+
+        v8::Locker locker(scope.isolate);
+        v8::Isolate::Scope isolateScope(scope.isolate);
+        v8::HandleScope handleScope(scope.isolate);
+        v8::Context::Scope contextScope(scope.context);
+
+        std::vector<v8::Local<v8::Value>> args;
+        args.push_back(Player::Wrap(scope.isolate, playerId));
+        args.push_back(Wrap(scope.isolate, vehicleId));
+        args.push_back(v8pp::to_v8(scope.isolate, seat));
+        args.push_back(v8pp::to_v8(scope.isolate, door));
+
+        return scope.resources->GetEvents().EmitReservedSync(scope.isolate, scope.context, "vehicleStartExit", args);
+    }
+
+    void Vehicle::EmitExit(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat) {
+        auto scope = OpenOccupancyEmit();
+
+        if (!scope.ok || scope.resources->GetEvents().GetListenerCount("vehicleExit") == 0) {
+            return;
+        }
+
+        v8::Locker locker(scope.isolate);
+        v8::Isolate::Scope isolateScope(scope.isolate);
+        v8::HandleScope handleScope(scope.isolate);
+        v8::Context::Scope contextScope(scope.context);
+
+        std::vector<v8::Local<v8::Value>> args;
+        args.push_back(Player::Wrap(scope.isolate, playerId));
+        args.push_back(Wrap(scope.isolate, vehicleId));
+        args.push_back(v8pp::to_v8(scope.isolate, seat));
+
+        scope.resources->GetEvents().EmitReserved(scope.isolate, scope.context, "vehicleExit", args);
     }
 } // namespace VantaMP::Scripting

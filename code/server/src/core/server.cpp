@@ -112,7 +112,7 @@ namespace VantaMP {
                     return;
                 }
 
-                _vehicles.HandleExit(*player, incoming.warp, incoming.door);
+                _vehicles.HandleExit(*player, incoming.warp, incoming.door, incoming.abortEnter);
             });
 
             net->RegisterRPC<Shared::RPC::VehicleDamageReport>([this](const Shared::RPC::VehicleDamageReport &incoming, MafiaNet::Packet *packet) {

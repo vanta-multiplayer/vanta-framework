@@ -37,4 +37,20 @@ namespace VantaMP::Scripting {
     bool EmitPlayerDeath(std::uint64_t networkId, std::uint64_t killerId, std::uint32_t weaponType) {
         return Player::EmitDeath(networkId, killerId, weaponType);
     }
+
+    bool EmitVehicleStartEnter(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat, bool jacked, std::uint8_t door) {
+        return Vehicle::EmitStartEnter(playerId, vehicleId, seat, jacked, door);
+    }
+
+    void EmitVehicleEnter(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat) {
+        Vehicle::EmitEnter(playerId, vehicleId, seat);
+    }
+
+    bool EmitVehicleStartExit(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat, std::uint8_t door) {
+        return Vehicle::EmitStartExit(playerId, vehicleId, seat, door);
+    }
+
+    void EmitVehicleExit(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat) {
+        Vehicle::EmitExit(playerId, vehicleId, seat);
+    }
 } // namespace VantaMP::Scripting

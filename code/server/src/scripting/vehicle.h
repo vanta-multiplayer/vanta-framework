@@ -2,6 +2,7 @@
 
 #include <scripting/builtins/color.h>
 #include <scripting/builtins/entity.h>
+#include <scripting/builtins/vector3.h>
 
 #include <cstdint>
 #include <memory>
@@ -54,6 +55,27 @@ namespace VantaMP::Scripting {
         bool RemoveUpgrade(std::uint16_t upgradeId);
         void RemoveAllUpgrades();
 
+        float GetHealth() const;
+        void SetHealth(float health);
+
+        bool GetEngine() const;
+        void SetEngine(bool on);
+
+        bool GetSiren() const;
+        void SetSiren(bool on);
+
+        bool GetLocked() const;
+        void SetLocked(bool locked);
+
+        std::uint8_t GetOverrideLights() const;
+        void SetOverrideLights(std::uint8_t mode);
+
+        Framework::Scripting::Builtins::Vector3 GetVelocity() const;
+        void SetVelocity(const Framework::Scripting::Builtins::Vector3 &velocity);
+
+        Framework::Scripting::Builtins::Vector3 GetTurnVelocity() const;
+        void SetTurnVelocity(const Framework::Scripting::Builtins::Vector3 &velocity);
+
         void Destroy();
 
         static void Bind(Game::VehicleManager &vehicles);
@@ -63,6 +85,11 @@ namespace VantaMP::Scripting {
         static v8::Local<v8::Object> Wrap(v8::Isolate *isolate, std::uint64_t networkId);
         static void Create(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void DestroyById(const v8::FunctionCallbackInfo<v8::Value> &info);
+
+        static bool EmitStartEnter(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat, bool jacked, std::uint8_t door);
+        static void EmitEnter(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat);
+        static bool EmitStartExit(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat, std::uint8_t door);
+        static void EmitExit(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat);
 
       private:
         static void JS_SetColor(const v8::FunctionCallbackInfo<v8::Value> &info);

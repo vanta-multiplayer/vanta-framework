@@ -1,9 +1,11 @@
 #include "vehicle_manager.h"
 
 #include "game/player_manager.h"
+#include "scripting/bindings.h"
 #include "shared/entity/player_entity.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
+#include "shared/rpc/player_occupancy_abort.h"
 #include "shared/rpc/vehicle_damage_report.h"
 #include "shared/catalog/model_catalog.h"
 #include "shared/entity/vehicle_entity.h"
@@ -19,6 +21,20 @@
 #include <glm/gtc/quaternion.hpp>
 
 namespace VantaMP::Game {
+    namespace {
+        void BroadcastAbort(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t kind, std::uint8_t seat, std::uint8_t door) {
+            auto *net = Framework::CoreModules::GetNetworkPeer();
+
+            if (!net) {
+                return;
+            }
+
+            Shared::RPC::PlayerOccupancyAbort abort;
+            abort.FromParameters(playerId, vehicleId, kind, seat, door);
+            net->BroadcastRPC(abort, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
+        }
+    } // namespace
+
     VehicleManager::VehicleManager(PlayerManager &players) : _players(players) {}
 
     std::uint64_t VehicleManager::Create(std::uint32_t modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour,
@@ -109,6 +125,10 @@ namespace VantaMP::Game {
         return Shared::RPC::PlayerEnterVehicle::kMaxSeat + 1;
     }
 
+    Shared::PlayerEntity *VehicleManager::OccupantOf(std::uint64_t vehicleId, std::uint8_t seat) const {
+        return FindOccupant(vehicleId, seat, 0);
+    }
+
     Shared::PlayerEntity *VehicleManager::FindOccupant(std::uint64_t vehicleId, std::uint8_t seat, std::uint64_t exceptId) const {
         Shared::PlayerEntity *occupant = nullptr;
 
@@ -142,6 +162,22 @@ namespace VantaMP::Game {
 
         if (!net) {
             return;
+        }
+
+        if (vehicle->locked && player.vehicleNetworkId != vehicleId) {
+            BroadcastAbort(playerId, vehicleId, Shared::RPC::PlayerOccupancyAbort::kEnter, seat, door);
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->debug("Refusing enter — vehicle {} is locked", vehicleId);
+            return;
+        }
+
+        const bool jacked = seat == 0 && FindOccupant(vehicleId, 0, playerId) != nullptr;
+
+        if (!warp) {
+            if (!Scripting::EmitVehicleStartEnter(playerId, vehicleId, seat, jacked, door)) {
+                BroadcastAbort(playerId, vehicleId, Shared::RPC::PlayerOccupancyAbort::kEnter, seat, door);
+                Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->debug("vehicleStartEnter vetoed {} into {} seat {}", playerId, vehicleId, seat);
+                return;
+            }
         }
 
         // MTA VEHICLE_REQUEST_JACK: F always asks for seat 0. If that
@@ -188,11 +224,25 @@ namespace VantaMP::Game {
         enter.FromParameters(playerId, vehicleId, assigned, warp, door);
         net->BroadcastRPC(enter, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
 
+        if (warp) {
+            Scripting::EmitVehicleEnter(playerId, vehicleId, assigned);
+        }
+
         Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->debug("Player {} entered vehicle {} seat {} (asked {})", playerId, vehicleId, assigned, seat);
     }
 
-    void VehicleManager::HandleExit(Shared::PlayerEntity &player, bool warp, std::uint8_t door) {
-        const auto playerId = static_cast<std::uint64_t>(player.GetNetworkID());
+    void VehicleManager::HandleExit(Shared::PlayerEntity &player, bool warp, std::uint8_t door, bool abortEnter) {
+        const auto playerId  = static_cast<std::uint64_t>(player.GetNetworkID());
+        const auto vehicleId = player.vehicleNetworkId;
+        const auto seat      = player.vehicleSeat;
+
+        if (!abortEnter && vehicleId != 0 && !warp) {
+            if (!Scripting::EmitVehicleStartExit(playerId, vehicleId, seat, door)) {
+                BroadcastAbort(playerId, vehicleId, Shared::RPC::PlayerOccupancyAbort::kExit, seat, door);
+                Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->debug("vehicleStartExit vetoed {} from {} seat {}", playerId, vehicleId, seat);
+                return;
+            }
+        }
 
         Vacate(player);
 
@@ -205,8 +255,12 @@ namespace VantaMP::Game {
         // Broadcast even when they were not seated. A jack walk never
         // took the seat; remotes still have to abort the enter task.
         Shared::RPC::PlayerExitVehicle exit;
-        exit.FromParameters(playerId, warp, door);
+        exit.FromParameters(playerId, warp, door, abortEnter);
         net->BroadcastRPC(exit, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
+
+        if (!abortEnter && vehicleId != 0) {
+            Scripting::EmitVehicleExit(playerId, vehicleId, seat);
+        }
     }
 
     void VehicleManager::HandleDisconnect(MafiaNet::PeerGuid guid) {
@@ -217,7 +271,19 @@ namespace VantaMP::Game {
         }
 
         if (player->vehicleNetworkId != 0) {
-            HandleExit(*player, true, 0xFF);
+            const auto playerId = static_cast<std::uint64_t>(player->GetNetworkID());
+            const auto vehicleId = player->vehicleNetworkId;
+            const auto seat      = player->vehicleSeat;
+
+            Vacate(*player);
+
+            if (auto *net = Framework::CoreModules::GetNetworkPeer()) {
+                Shared::RPC::PlayerExitVehicle exit;
+                exit.FromParameters(playerId, true, 0xFF, false);
+                net->BroadcastRPC(exit, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
+            }
+
+            Scripting::EmitVehicleExit(playerId, vehicleId, seat);
         }
 
         for (auto &[id, vehicle] : _vehicles) {
