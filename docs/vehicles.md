@@ -12,6 +12,11 @@ Puresync never seats anyone. A flag that said "entering" would restart the
 door animation every tick; an unreliable packet can be missed and leave a
 player standing beside a car everyone else sees them driving.
 
+A new stick press or a jump while walking in cancels the enter task.
+GTA will not drop `CTaskComplexEnterCar` on its own just because you
+moved. The local client aborts, then sends `PlayerExitVehicle` with
+`abortEnter` so remotes stop walking and scripts do not see a leave.
+
 ## Keys
 
 | Key | Meaning |
@@ -152,6 +157,31 @@ car.setColor(Color.fromRGB(20, 200, 40), Color.fromRGB(8, 8, 8));
 car.color3 = Color.fromRGB(255, 16, 64);
 car.addUpgrade(1074); // wheels, ids 1000–1193
 car.paintjob = 0;
+car.engine = false;
+car.locked = true;
+car.overrideLights = 2; // 0 none, 1 force off, 2 force on
+car.velocity = new Vector3(0, 0, 0);
+car.turnVelocity = new Vector3(0, 0, 0);
+```
+
+`return false` from `vehicleStartEnter` / `vehicleStartExit` vetoes the
+climb or the leave. The server then sends `PlayerOccupancyAbort` so the
+player who asked is stood back up (or put back in the seat). Walking
+away mid-enter aborts the GTA task and tells remotes; that path does
+**not** fire `vehicleStartExit`.
+
+```js
+Events.on('vehicleStartEnter', (player, vehicle, seat, jacked, door) => {
+    if (vehicle.locked) {
+        return false;
+    }
+});
+
+Events.on('vehicleStartExit', (player, vehicle, seat, door) => {
+    if (vehicle.id === lockedCarId) {
+        return false;
+    }
+});
 ```
 
 `setColor` takes one to four `Color`s, or 3 / 6 / 9 / 12 RGB bytes
