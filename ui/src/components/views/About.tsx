@@ -1,5 +1,5 @@
 import type {JSX} from "solid-js";
-import {version} from "../../state/session";
+import {buildLabel} from "../../state/session";
 import {Logo, Wordmark} from "../Brand";
 
 export function About(): JSX.Element {
@@ -10,7 +10,7 @@ export function About(): JSX.Element {
                     <Logo class="size-12" alt="" />
                     <div>
                         <Wordmark class="text-2xl" />
-                        <p class="m-0 mt-1 text-xs font-semibold text-muted">{version()}</p>
+                        <p class="m-0 mt-1 text-xs font-semibold text-muted">{buildLabel()}</p>
                     </div>
                 </div>
             </header>
@@ -25,7 +25,7 @@ export function About(): JSX.Element {
                         and is not responsible for player-made content.
                     </p>
                     <p class="m-0 text-xs font-semibold uppercase tracking-[.16em] text-muted">
-                        Esc / F1 menu · F8 console
+                        Esc menu · F8 console
                     </p>
                 </div>
             </div>

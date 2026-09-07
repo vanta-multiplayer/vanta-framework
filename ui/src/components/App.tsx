@@ -35,7 +35,6 @@ import {
     handleEscape,
     menuOpen,
     ready,
-    showMenu,
 } from "../state/session";
 
 function Shell(props: {children?: JSX.Element}): JSX.Element {
@@ -50,12 +49,6 @@ function Shell(props: {children?: JSX.Element}): JSX.Element {
             // In the client these keys are taken by the window hook so they
             // still work after the menu closes (CEF then has no focus).
             if (inGame()) {
-                return;
-            }
-
-            if (event.key === "F1") {
-                event.preventDefault();
-                showMenu(!menuOpen());
                 return;
             }
 

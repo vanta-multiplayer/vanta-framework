@@ -45,7 +45,7 @@ namespace {
 static InitFunction init(
     []() {
         const auto logger = Framework::Logging::GetLogger("ModInit");
-        logger->info("VantaMP client {} attached, project path {}", VantaMP::Version::rel, VantaMP::Core::gProjectPath);
+        logger->info("VantaMP client {} attached, project path {}", VantaMP::Version::Label(), VantaMP::Core::gProjectPath);
         logger->info("Players array relocated to {}", VantaMP::Game::PlayerInfoAt(0));
 
         AddVectoredExceptionHandler(1, ReportFirstChanceFault);

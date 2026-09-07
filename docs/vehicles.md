@@ -148,3 +148,7 @@ Vehicles.create(560, 2865.93, -1665.88, 10.88, 0);
 and gives the car physics. Mission cleanup is off so the game never deletes
 a Vanta car behind us. Request the model and retry next tick if it is not
 resident — a blocking load from inside the streamer hangs.
+
+Vanta's own delete does not run `~CPhysical`. Release the realtime shadow
+(`Internal::ReleaseRealTimeShadow`) before the pool-free or disconnect
+crashes a frame later. Same rule for remote peds.

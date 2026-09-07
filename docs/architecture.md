@@ -19,11 +19,16 @@ data/resources/freeroam            —        spawn + the dock Sultan
 game/patches     one-shot changes to the running game (keys, population, boot)
 game/entities    player slots, local player, remote player lifecycle
 game/sync        the per-tick loop: read local, apply remote
-core/ui          CEF view. Page lives in the DLL at http://vanta/ui.html
+core/nui         CEF view. Page lives in the DLL at http://vanta/ui.html
+core/voice_io    WASAPI devices, mic test, PTT latch
 sdk/             GTA pointers, tasks, pads, vehicles
 shared/          the same structs the server serializes
 ui/              Solid source for that page (not shipped as files)
 ```
+
+`core/nui/` is split by job (`nui.cpp` is the public API; settings, console,
+launch, netgraph and handlers are their own files). See [Interface](ui.md).
+Proximity voice is [Voice](voice.md).
 
 `code/client/CMakeLists.txt` is the wall. `VANTAMP_CLIENT_SDK_FILES` is the
 only list that gets plugin-sdk include directories. A file not on that list

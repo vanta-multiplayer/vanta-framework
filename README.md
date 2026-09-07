@@ -3,9 +3,10 @@
 A MafiaHub Framework multiplayer modification for **Grand Theft Auto: San Andreas**, targeting the
 build distributed by the Rockstar Games Launcher.
 
-Two clients connect, see each other, walk, jump, crouch, swim, shoot, and share cars. Remote
+Two clients connect, see each other, walk, jump, crouch, swim, shoot, talk, and share cars. Remote
 players are input replay — GTA walks them from the owner's pad. Cars are occupancy RPCs plus
-owner motion plus a pad swap for steering. **F** is driver / jack; **G** is passenger.
+owner motion plus a pad swap for steering. **F** is driver / jack; **G** is passenger. Voice is
+proximity on the same RakNet UDP. **V** is push-to-talk.
 
 How that is put together, and the rules that keep it from fighting itself, live in
 [`docs/`](docs/README.md). New clone: [`docs/setup.md`](docs/setup.md). Agents
@@ -37,8 +38,8 @@ server. Full notes: [`docs/setup.md`](docs/setup.md).
 | `code/server` | `VantaMPServer` | 64-bit | Replicas, reliable RPCs, scripting |
 | `code/shared` | — | — | Entities, RPCs and rates compiled into both sides |
 | `code/client/src/sdk` | — | — | The only place game types exist. Signatures, not addresses |
-| `docs/` | — | — | Architecture, player sync, vehicles, SDK, building, interface |
-| `ui/` | — | — | Solid connect menu. Built into one HTML file and compiled into the client |
+| `docs/` | — | — | Architecture, player sync, vehicles, voice, SDK, building, interface |
+| `ui/` | — | — | Solid menu. Built into one HTML file and compiled into the client |
 | `data/resources/freeroam` | — | — | Waterfront spawn and the dock Sultan |
 | `vendors/plugin-sdk` | — | — | DK22Pac's plugin-sdk, for San Andreas **structure layouts** |
 
@@ -79,6 +80,15 @@ The launcher maps the game, the client attaches inside it, and two players can s
 - **In cars.** Script-spawned vehicles, F / G enter and exit, jacking the driver (including
   through the passenger door), door open ratios, damage from bystanders, steering from a pad
   swap rather than a written `m_fSteerAngle`.
+- **Voice.** 40 m proximity on the game UDP. Devices, output gain and PTT live in Settings
+  and `VantaMP.json`. Mic test is loopback on those endpoints and pauses the live session
+  so the same WASAPI device can open twice.
+- **Menu.** Solid page compiled into the DLL (`http://vanta/ui.html`). Tokens and logo
+  match the public site. **Esc** closes it in-world; offline it stays up.
+  **F8** / **~** is the console. Built-in commands (`help`, `connect`, `netgraph`, …)
+  run in C++. `vanta://connect/host:port` and `--connect` open an invite card.
+  Display changes save only — a live `Reset` on this exe crashes; the next launch
+  creates the device.
 - **Freeroam.** Waterfront spawn at `2899.41, -1672.64, 12.89` and a Sultan on the dock at
   `2865.93, -1665.88, 10.88`. Grove Street is commented beside the numbers for when the
   waterfront has been watched long enough.

@@ -55,7 +55,7 @@ export function claimFocus(owner: string, keyboard: boolean, mouse: boolean): vo
     lastKeyboard = wantsKeyboard;
     lastMouse = wantsMouse;
 
-    // The client uses this for the cursor. Menu mouse = F1 menu is up.
+    // The client uses this for the cursor. Menu mouse = the pause menu is up.
     emit("ui:toggle", wantsMouse);
 }
 

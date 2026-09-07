@@ -17,6 +17,7 @@ const [connecting, setConnecting] = createSignal(false);
 const [download, setDownload] = createSignal<ConnectionProgress | null>(null);
 const [version, setVersion] = createSignal("0.0.0");
 const [branch, setBranch] = createSignal("develop");
+const [environment, setEnvironment] = createSignal("test");
 const [directOpen, setDirectOpen] = createSignal(false);
 const [joinOpen, setJoinOpen] = createSignal(false);
 const [joinServer, setJoinServer] = createSignal<ServerEntry | null>(null);
@@ -52,6 +53,7 @@ export {
     download,
     version,
     branch,
+    environment,
     directOpen,
     joinOpen,
     joinServer,
@@ -75,6 +77,10 @@ export {
     setRestartOpen,
     setErrorOpen,
 };
+
+export function buildLabel(): string {
+    return [version(), environment(), branch()].filter((part) => part !== "").join(" · ");
+}
 
 export function netgraphEnabled(): boolean {
     return settings()?.netgraph === true;
@@ -272,9 +278,12 @@ export function bindSession(): () => void {
     const stops = [
         on("ui:ready", () => setReady(true)),
         on("version:ready", () => setReady(true)),
-        on("version:update", (rel: string, nextBranch: string) => {
+        on("version:update", (rel: string, nextBranch: string, nextEnvironment?: string) => {
             setVersion(rel);
             setBranch(nextBranch);
+            if (typeof nextEnvironment === "string" && nextEnvironment !== "") {
+                setEnvironment(nextEnvironment);
+            }
         }),
         on("settings:devices:update", (data: {input?: {id: string; name: string; isDefault?: boolean}[]; output?: {id: string; name: string; isDefault?: boolean}[]}) => {
             setVoiceDevices({

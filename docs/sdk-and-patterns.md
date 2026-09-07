@@ -12,7 +12,7 @@ sdk/input.{h,cpp}       pad, local read, remote write          [plugin-sdk]
 sdk/camera.{h,cpp}      camera rotation, per slot
 sdk/streaming.{h,cpp}   model request / residency              [plugin-sdk]
 sdk/draw.{h,cpp}        nametag font
-sdk/ped/access.h        INTERNAL raw ped access
+sdk/ped/access.h        INTERNAL raw ped access (incl. ReleaseRealTimeShadow)
 sdk/ped/local_ped.*                                            [plugin-sdk]
 sdk/ped/remote_ped.*                                           [plugin-sdk]
 sdk/ped/weapon.*                                               [plugin-sdk]
@@ -25,6 +25,12 @@ sdk/vehicle_occupancy.* enter / exit / jack tasks              [plugin-sdk]
 `sdk/ped/` rather than `sdk/entities/`: `game/entities/` already exists
 above the boundary and already has a `local_player.cpp`. The names would
 collide for a reader and for object files.
+
+Vanta pool-deletes peds and vehicles without running `~CPhysical`. That
+destructor is what returns a realtime shadow to the manager. Call
+`Internal::ReleaseRealTimeShadow` **before** the pool-free or the manager
+keeps `m_pOwner` and the next `ReturnRealTimeShadow` writes through a
+freed pointer (AV at `0x705B3B` a beat after disconnect).
 
 ## Adding a game call
 

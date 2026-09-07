@@ -140,7 +140,7 @@ namespace VantaMP::Diagnostics {
             report.Write("VantaMP Client Crash\n");
             report.Write("============================================================\n\n");
 
-            report.Writef("VantaMP: %s\n", Version::rel);
+            report.Writef("VantaMP: %s\n", Version::Label());
             report.Writef("Game:    %s\n\n", Shared::kGameVersion);
 
             report.Writef("Exception:\n0x%08X %s\n\n", record->ExceptionCode, ExceptionName(record->ExceptionCode));

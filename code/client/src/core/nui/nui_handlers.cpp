@@ -16,7 +16,7 @@ namespace VantaMP::Nui::Internal {
         void PushStartup() {
             RegisterLaunchProtocol();
             gNetgraphOn = Core::GetClientConfig().netgraph;
-            Emit(Event::kVersionUpdate, nlohmann::json::array({Version::rel, "develop", "", false, false}));
+            Emit(Event::kVersionUpdate, nlohmann::json::array({Version::rel, Version::branch, Version::environment, "", false, false}));
             EmitAudioDevices();
             Emit(Event::kSettingsUpdate, nlohmann::json::array({CurrentSettings()}));
             EmitCommandCatalog();

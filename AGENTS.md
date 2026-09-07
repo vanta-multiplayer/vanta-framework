@@ -131,5 +131,8 @@ Kill `VantaMPLauncher`, `gta_sa`, `cef_subprocess` before a client link
 | Layers, ownership, channels | [`docs/architecture.md`](docs/architecture.md) |
 | Walk / aim / shoot / duck / swim | [`docs/player-sync.md`](docs/player-sync.md) |
 | Cars, F/G, jack, doors, steer | [`docs/vehicles.md`](docs/vehicles.md) |
+| Voice, PTT, mic test | [`docs/voice.md`](docs/voice.md) |
+| Menu, console, `vanta://` | [`docs/ui.md`](docs/ui.md) |
+| Core <-> page events | [`docs/events.md`](docs/events.md) |
 | New GTA call or signature | [`docs/sdk-and-patterns.md`](docs/sdk-and-patterns.md) |
 | Build and two-client run | [`docs/building.md`](docs/building.md) |

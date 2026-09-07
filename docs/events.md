@@ -6,7 +6,7 @@ VantaNui, no JS the host evaluates.
 
 ```
 UI  vanta.emit(name, ...args)   →  POST /emit
-Core AddEventListener(name)     ←
+Core On(name)                   ←
 
 Core Emit(name, [args...])      →  queue
 UI  GET /events                 ←
@@ -23,39 +23,48 @@ Resource views still use `Web.emit` / `Web.on` on their own CEF views.
 
 | Event | Arguments | When |
 |-------|-----------|------|
-| `version:update` | `version, branch, lastIp, debug, earlyLoad` | After `loaded` |
+| `version:update` | `version, branch, environment, lastIp, debug, earlyLoad` | After `loaded`. `environment` is `test` or `release` |
 | `version:ready` | | After version/settings/servers |
 | `settings:update` | `data` | After `loaded`; later on change |
+| `settings:devices:update` | `{ input, output }` | After `loaded`; on reload |
+| `settings:currentVolume:update` | `level` | Mic test or local talk meter |
+| `settings:currentVolume:running` | `running` | Mic test started or stopped |
 | `servers:update` | `servers` | After `loaded`; empty until a masterlist exists |
 | `servers:recent:update` | `servers` | After `loaded` |
 | `servers:favorite:update` | `servers` | After `loaded` |
 | `ui:ready` | | Game startup finished (frontend bypassed) |
-| `ui:toggle` | `state?` | Core wants the F1 menu open or shut |
+| `ui:toggle` | `state?` | Core wants the pause menu open or shut |
+| `hotkey:escape` | | Esc while the menu is already open |
 | `connection:setServer` | `serverName` | Connect started |
-| `connection:invite` | `server` | Launched with `vanta://` or `--connect`; UI shows the invite card |
+| `connection:invite` | `server` | Launched with `vanta://` or `--connect` |
 | `connection:connecting` | `serverName?` | TCP connect |
 | `connection:connected` | `serverId?` | Accepted |
 | `connection:failed` | `message, allowReconnect?` | Could not reach |
 | `connection:disconnected` | `message` | Dropped |
 | `connection:progress` | `{ phase, downloading, progress, filesDownloaded, filesTotal, bytesDownloaded, bytesTotal, currentFile }` | Handshake / resource download |
 | `console:push` | `{ level, category, message, timestamp }` | A log line (launcher/client backlog, then live) |
-| `console:open` | `state` | Echo of `console:setState` |
-| `netgraph:update` | `sample` | Extra HUD sample |
+| `console:clear` | | `clear` / `cls` |
+| `console:open` | `state` | Echo of `console:setState` / F8 |
+| `console:commands` | `commands` | Built-in catalog for suggestions |
+| `netgraph:update` | `{ fps, rtt, tx, rx, connected }` | Once a second while the HUD is on |
 
 ### UI -> Core
 
 | Event | Arguments | What Core does |
 |-------|-----------|----------------|
-| `loaded` | | Pushes version, settings, servers, then `version:ready` |
+| `loaded` | | Version, devices, settings, command catalog, servers, invite, then `version:ready` |
 | `connection:connect` | `host, port, cdn, auth, password, id, name, applyTheme` | Join |
-| `connection:abort` | | Logged; disconnect not wired yet |
-| `console:execute` | `command` | Runs a built-in client command |
-| `console:commands` | `commands` | Built-in command catalog for suggestions |
-| `console:setState` | `state` | Echo `console:open` |
+| `connection:abort` | | `RequestDisconnect` |
+| `connection:disconnect` | | `RequestDisconnect` |
+| `console:execute` | `command` | Run a built-in client command |
+| `console:setState` | `state` | Echo `console:open` and refocus CEF |
 | `servers:reload` | | `servers:update` with `[]` |
-| `settings:change` | `key, value` | Save display keys |
-| `ui:toggle` | `state?` | Cursor / menu focus |
-| `netgraph:enable` | `visible` | Start or stop netgraph samples |
+| `settings:change` | `key, value` | Save; volume/voice apply live, display waits for next launch |
+| `settings:devices:reload` | | Re-enumerate WASAPI endpoints |
+| `settings:currentVolume:toggle` | `on` | Start or stop mic-test loopback |
+| `settings:talk:toggle` | `on` | Latch PTT from the menu and close it |
+| `ui:toggle` | `state?` | Cursor / menu focus. Offline, forced open |
+| `netgraph:enable` | `visible` | Start or stop samples (does not persist; `settings:change` / `netgraph` does) |
 | `exit` | | `PostQuitMessage` |
 
 ## Reserved (not implemented)
@@ -67,25 +76,29 @@ Connection stages: `connection:idle`, `joining`, `startingResources`,
 `validatingAdditionalResources`, `requestPermissions`,
 `connection:accept`, `connection:deny`, `connection:reconnect`.
 
-Console: `console:end`, `console:reset`, `console:clear`,
-`console:forceTransparent`, `console:openLogFile`.
+Console: `console:end`, `console:reset`, `console:forceTransparent`,
+`console:openLogFile`.
 
 Servers: `servers:updateError`, `servers:setPing`, `serverData:*`,
-`servers:favorite:add/remove`.
+`servers:favorite:add/remove`. A masterlist is not wired; the browser
+is an empty list.
 
-Misc: `settings:devices:*`, `settings:currentVolume:*`, `version:setRss`,
-`version:setManifest`, `ui:startupProgress`, `ui:setWatermarkPosition`,
-`ui:setEarlyAuthState`, `ui:customLocales`, `ui:resetSkin`, `keydown`.
+Misc: `version:setRss`, `version:setManifest`, `ui:startupProgress`,
+`ui:setWatermarkPosition`, `ui:setEarlyAuthState`, `ui:customLocales`,
+`ui:resetSkin`, `keydown`.
 
 ## Example flow
 
 ```
 UI  emit loaded
-Core emit version:update  "0.1.0", "develop", "", false, false
-Core emit settings:update { nickname, lastServer, ... }
-Core emit servers:update  []
+Core emit version:update         "0.1.0", "develop", "test", "", false, false
+Core emit settings:devices:update { input: [...], output: [...] }
+Core emit settings:update         { nickname, lastServer, netgraph, ... }
+Core emit console:commands        [{ name, usage, hint, aliases, args }, ...]
+Core emit servers:update          []
+Core emit connection:invite       { address, name, ... }   (only if launched that way)
 Core emit version:ready
-Core emit ui:ready                    (game finished starting)
+Core emit ui:ready                                          (game finished starting)
 
 UI  emit connection:connect  "127.0.0.1", 22005, "", "", "", "", "Player", false
 Core emit connection:setServer        "127.0.0.1"

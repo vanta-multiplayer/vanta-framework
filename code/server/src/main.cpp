@@ -45,6 +45,8 @@ int main(int argc, char **argv) {
     opts.argc = argc;
     opts.argv = argv;
 
+    Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("VantaMP server {}", VantaMP::Version::Label());
+
     VantaMP::Server server;
     if (const auto result = server.Init(opts); !result) {
         Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->error("Failed to start server: {}", result.GetError().message);

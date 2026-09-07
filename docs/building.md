@@ -11,6 +11,25 @@ scripts\build.bat server
 scripts\build.bat ui
 ```
 
+## Version, branch, environment
+
+CMake stamps `VERSION` plus the GitHub branch and the channel into
+`Version::rel` / `branch` / `environment`. Local builds read `git rev-parse
+--abbrev-ref HEAD`. `develop` and feature branches are **test**; `release`
+and `release/*` are **release**.
+
+CI can pin them before configure:
+
+```bat
+set GITHUB_REF_NAME=develop
+set VANTAMP_ENVIRONMENT=test
+```
+
+or pass `-DVANTAMP_GIT_BRANCH=develop -DVANTAMP_ENVIRONMENT=test` to the
+CMake configure. The page shows `0.1.0 · test · develop`. The wire still
+uses `rel` only, so a test and release build with the same number can
+still talk.
+
 The game is a 32-bit binary, so the client and launcher live in the 32-bit
 tree and the server in the 64-bit one. Those trees are still the framework's:
 
@@ -67,6 +86,7 @@ See [SDK and patterns](sdk-and-patterns.md).
 
 The page is compiled into the client. There is no `ui/` folder next to the
 DLL and nothing to copy after a link. CEF opens `http://vanta/ui.html`.
+**Esc** closes the menu, **F8** / **~** is the console, **V** is push-to-talk.
 
 ```
 scripts\build.bat ui                # from this repo; needs node
@@ -87,3 +107,5 @@ Details: [Interface](ui.md).
 5. F on an occupied driver seat jacks. G does not.
 6. The driver can close a door. It stays shut, and it does not slam on a
    beat.
+7. Hold **V** near the other player. They hear you. Forty metres away they
+   do not. **F8**, type `help`, then `netgraph on`.

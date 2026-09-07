@@ -72,11 +72,9 @@ namespace VantaMP::Core {
         // same thing getting different results.
         std::uint32_t frameLimit = 60;
 
-        // Where to connect, and as whom.
-        //
-        // A fixed address for now: the connect menu that would ask for one does
-        // not exist yet, and hardcoding it in the client would mean a rebuild to
-        // point at a different server.
+        // Last server the player joined, and the name they announced as.
+        // Written on connect so the next start and `reconnect` use the same
+        // identity instead of the compile-time default.
         std::string serverHost = "127.0.0.1";
         std::uint32_t serverPort = 27015;
         std::string nickname = "Player";

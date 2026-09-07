@@ -1,7 +1,7 @@
 import type {JSX} from "solid-js";
 import {Show} from "solid-js";
 import {Logo} from "./Brand";
-import {branch, connected, menuOpen, version} from "../state/session";
+import {buildLabel, connected, menuOpen} from "../state/session";
 
 export function Watermark(): JSX.Element {
     return (
@@ -10,13 +10,7 @@ export function Watermark(): JSX.Element {
                 <Logo class="watermark__mark" alt="" />
                 <div>
                     <div class="watermark__name">vanta.mp</div>
-                    <div class="watermark__meta">
-                        {version()}
-                        <Show when={branch()}>
-                            {" · "}
-                            {branch()}
-                        </Show>
-                    </div>
+                    <div class="watermark__meta">{buildLabel()}</div>
                 </div>
             </div>
         </Show>

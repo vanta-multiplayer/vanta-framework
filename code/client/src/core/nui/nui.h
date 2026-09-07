@@ -18,7 +18,7 @@ namespace VantaMP::Nui {
     // ProcessKeyboardEvent drops every key when the view is unfocused.
     void EnsureViewFocus();
 
-    // Window-proc hotkeys. CEF drops keys once the view loses focus, so F1 / Esc
+    // Window-proc hotkeys. CEF drops keys once the view loses focus, so Esc
     // / F8 / ~ have to be handled here or they die the moment the menu closes.
     void ToggleMenu();
     void HandleEscape();

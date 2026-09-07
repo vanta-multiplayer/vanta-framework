@@ -17,6 +17,9 @@ GTA:SA multiplayer client + server ("VantaMP"), built on the MafiaHub Framework.
 
 ## Build and run
 
+From this repo: `scripts\build.bat client` / `server` / `ui`. That
+forwards into the Framework tree. Details: `docs/building.md`.
+
 ```powershell
 cd new
 cmd /c "builds\build.bat VantaMPClient 32"    # client DLL
@@ -119,7 +122,10 @@ corrects where that walk has drifted.
 - One log file per client instance, keyed by pid — two clients on one machine is
   the normal way to test anything.
 
-## Completed this session
+## Earlier: player sync (still true)
+
+The notes below are from the heading / duck / swim work. Do not relitigate
+them. They are not "this session".
 
 - Finished the **duck-as-a-task** work the previous session was cut off mid-way
   through. `bIsDucking` is an *output* the game recomputes, so writing it does
@@ -184,64 +190,77 @@ corrects where that walk has drifted.
 
 ## Current state
 
-Committed and clean at `Shared: Spawn at the waterfront while swimming is being
-watched`. Two clients connect, see each other, walk, jump, crouch and swim.
-Position error 0.00–0.16 with `warp 0/s`; turning is smooth in and out of water.
+Two clients connect, see each other, walk, jump, crouch, swim, shoot, talk
+and share cars. Client and server both build.
 
-No crashes. Client and server both build clean.
+Version stamps `rel`, GitHub `branch` and `environment` (`test` on
+develop / features, `release` on `release` and `release/*`). Shown as
+`0.1.0 · test · develop`. The wire still uses `rel` only.
 
-**The spawn is a testing spawn**, at the Los Santos waterfront so both players
-start within walking distance of deep water. Grove Street is commented directly
-beside it in `shared/spawn_points.h` and should go back once remote players in
-water have been watched for long enough.
+**Menu / console.** Solid page compiled into the DLL. Esc closes the
+menu, F8/~ console, V talk. Commands run in C++ (`nui_console.cpp`). `vanta://` and
+`--connect` open an invite card. Netgraph is off until asked and saved
+in `VantaMP.json`. Display changes save only — live Reset crashes.
 
-**Temporary telemetry is still in `player_sync.cpp`** — a `Telemetry` struct,
-`ReportTelemetry()`, and a `SEND`/`RECV` line per second under the `SyncDbg`
-logger. It was what found the 90° bug. Remove it once the visual result is
-confirmed; it is marked `TEMPORARY TELEMETRY` at each site.
+**Voice.** 40 m proximity on the game UDP. Devices and PTT persist.
+Mic test pauses the live session. In a car the listener stays on the
+ped, not the chase cam.
+
+**Disconnect.** Remote ped / vehicle pool-free must call
+`ReleaseRealTimeShadow` first or the next shadow return AVs.
+
+**The spawn is still a testing spawn** at the Los Santos waterfront so
+both players start near deep water. Grove Street is commented in
+`shared/spawn_points.h`.
+
+**Temporary telemetry may still be in `player_sync.cpp`** (`TEMPORARY
+TELEMETRY`). Strip it once sync has been watched long enough.
+
+Human map: `docs/`. Prefer that folder when this file and the code
+disagree.
 
 ## Known issues / not yet verified
 
-- A remote player's **held weapon is invisible** — weapon type and ammo are not
-  on the wire at all. This is the largest remaining gap.
-- **Camera rotation is still snapped** at 10Hz, the way heading used to be. MTA
-  lerps it in the same window as rotation and we do not. It was left alone only
-  because it is applied in a different phase — before the ped is processed, in
-  `ApplyRemoteState`, not after it in `CorrectRemotePlayer` — so it needs its
-  own lerp rather than joining the heading one. First suspect if any turning
-  seam remains.
+- **Camera rotation is still snapped** at 10Hz, the way heading used to
+  be. MTA lerps it in the same window as rotation and we do not. It is
+  applied in `ApplyRemoteState`, not after `CorrectRemotePlayer`, so it
+  needs its own lerp. First suspect if a turning seam remains.
+- Masterlist / server browser is empty. Recent and favorites are
+  emitted as `[]`.
 - `isInAir` is sent and deliberately not applied — see the TODOs.
+
+Weapons, ammo and reload **are** on the wire now. The old "invisible
+gun" note is stale.
 
 ## TODOs, roughly in order
 
-1. Weapon type + ammo on the wire, so a remote player's weapon is visible.
-2. Strip the `SyncDbg` telemetry from `player_sync.cpp` once sync has been
-   watched for long enough, and put the Grove Street spawn back.
-3. Vertical aim. Needs `CShotSyncData::m_fArmDirectionY`, whose offset must be
-   derived (plugin-sdk does not describe it), and it will likely need the same
-   treatment as `cameraRotation` — held per slot and swapped in around the ped's
-   processing, since a value written to a ped directly is recomputed from the
-   local camera on the next frame.
-4. Ledge-grab, if it turns out to look wrong. Ordinary climbs ride the jump
-   button and need nothing; only *hanging* needs seeding, via MTA's
-   `hangingDuringClimb` flag → `CTaskSimpleClimb` at `CLIMB_GRAB`
-   (`0x67A110`, with `TestForClimb` at `0x6803A0`). Costs a wire bit.
-5. `isInAir` is intentionally not applied to the ped — it is an output the game
-   recomputes, and MTA does not apply its equivalent either. It exists only to
-   gate velocity. Leave it that way.
+1. Strip the `SyncDbg` telemetry from `player_sync.cpp` once sync has
+   been watched for long enough, and put the Grove Street spawn back.
+2. Vertical aim. Needs `CShotSyncData::m_fArmDirectionY`, whose offset
+   must be derived (plugin-sdk does not describe it), and it will likely
+   need the same treatment as `cameraRotation` — held per slot and
+   swapped in around the ped's processing.
+3. Ledge-grab, if it turns out to look wrong. Ordinary climbs ride the
+   jump button; only *hanging* needs seeding (`hangingDuringClimb` →
+   `CTaskSimpleClimb` at `CLIMB_GRAB`). Costs a wire bit.
+4. A real server browser / masterlist. The UI is ready; core emits `[]`.
+5. `isInAir` is intentionally not applied to the ped — it is an output
+   the game recomputes. It exists only to gate velocity. Leave it that
+   way.
 
 ## Files currently in play
 
-- `code/client/src/game/sync/player_sync.cpp` — send/apply, interpolation, warp,
-  telemetry. Most of the active work is here.
-- `code/client/src/sdk/ped/` — `access.h` holds `HeadingOf` and `SetPedRotation`;
-  `remote_ped.cpp` holds `SetRemotePedDucked` and the ped lifecycle.
-- `code/client/src/sdk/input.cpp` — `WriteRemoteInput` and its pad edge handling.
-- `code/client/src/sdk/patterns.cpp` / `patterns.h` — the signature table.
-- `code/client/src/game/entities/remote_players.cpp` — context swap + correction hook.
-- `code/client/src/game/patches/input.cpp` / `input.h` — focus and input suppression.
+- `code/client/src/core/nui/` — public API in `nui.cpp`; settings,
+  console, launch, netgraph, handlers are separate TUs.
+- `ui/src/` — Solid menu. Tokens in `tailwind.css`. Commands in
+  `lib/commands.ts` (suggestions only).
+- `code/client/src/core/voice_io.*` — devices, mic test, PTT.
+- `code/client/src/core/client_config.*` — `VantaMP.json`, including
+  `netgraph`.
+- `code/client/src/sdk/ped/access.h` — `ReleaseRealTimeShadow` before
+  any pool-free.
+- `code/client/src/game/sync/player_sync.cpp` — send/apply, interpolation.
 - `code/shared/player_entity.{h,cpp}` — the wire format. **Append only.**
-- `code/shared/sync_rates.h` — tick rate and warp threshold constants.
 
 ## Lessons worth keeping
 

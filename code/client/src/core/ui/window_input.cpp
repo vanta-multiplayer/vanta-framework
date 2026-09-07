@@ -26,12 +26,9 @@ namespace VantaMP::UI {
         }
 
         // CEF only receives keys while the view has focus. Closing the menu
-        // unfocuses it, so F1 / Esc / F8 / ~ have to be taken here.
+        // unfocuses it, so Esc / F8 / ~ have to be taken here.
         bool HandleHotkey(WPARAM wParam) {
             switch (wParam) {
-            case VK_F1:
-                VantaMP::Nui::ToggleMenu();
-                return true;
             case VK_ESCAPE:
                 VantaMP::Nui::HandleEscape();
                 return true;

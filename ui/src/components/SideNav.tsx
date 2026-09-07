@@ -10,7 +10,7 @@ import {Show} from "solid-js";
 import {Logo} from "./Brand";
 import {cn} from "../lib/cn";
 import {routes} from "../routes";
-import {branch, connected, connecting, disconnect, setDirectOpen, setExitOpen} from "../state/session";
+import {branch, connected, connecting, disconnect, environment, setDirectOpen, setExitOpen} from "../state/session";
 
 function NavLink(props: {
     href: string;
@@ -44,8 +44,13 @@ export function SideNav(): JSX.Element {
     return (
         <nav class="nav">
             <div class="nav__group">
-                <Show when={branch() !== "release"}>
-                    <div class="nav__branch">{branch()}</div>
+                <Show when={environment() !== "release"}>
+                    <div class="nav__branch">
+                        {environment()}
+                        <Show when={branch() && branch() !== environment()}>
+                            {` · ${branch()}`}
+                        </Show>
+                    </div>
                 </Show>
                 <div class="nav__logo">
                     <Logo class="size-full" alt="Vanta" />

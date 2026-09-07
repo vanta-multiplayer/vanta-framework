@@ -433,7 +433,7 @@ namespace VantaMP::Nui::Internal {
 
         if (name == "status") {
             const auto &config = Core::GetClientConfig();
-            Reply("info", std::string("Vanta ") + Version::rel + " develop");
+            Reply("info", std::string("Vanta ") + Version::Label());
             Reply("info", std::string("Name ") + config.nickname);
             Reply("info", "Server " + LastServerAddress());
             Reply("info", gInWorld ? "In world" : "Not connected");
@@ -442,7 +442,7 @@ namespace VantaMP::Nui::Internal {
         }
 
         if (name == "version") {
-            Reply("info", std::string("Vanta ") + Version::rel + " develop");
+            Reply("info", std::string("Vanta ") + Version::Label());
         }
     }
 }
