@@ -119,6 +119,11 @@ namespace VantaMP::Shared {
         // construction bytes stay as a late-join fallback.
         std::array<std::uint32_t, kVehicleColorCount> colours {};
 
+        // Script lights / lock. Owner never reads these back from GTA.
+        // overrideLights: 0 none, 1 force off, 2 force on — GTA's own field.
+        std::uint8_t overrideLights = 0;
+        bool         locked         = false;
+
         void SetColours(std::uint32_t c1, std::uint32_t c2, std::uint32_t c3, std::uint32_t c4) {
             colours[0] = TweakVehicleRgb(c1);
             colours[1] = TweakVehicleRgb(c2);

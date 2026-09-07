@@ -43,6 +43,9 @@ namespace VantaMP::Shared {
         for (auto &colour : colours) {
             fields.Field(colour);
         }
+
+        fields.Field(overrideLights);
+        fields.Field(locked);
     }
 
     void VehicleEntity::OnStateForced() {
