@@ -14,6 +14,7 @@ namespace VantaMP::Core {
     class Application: public Framework::Integrations::Client::Instance {
       public:
         void PostInit() override;
+        void Update() override;
         void PostUpdate() override;
         void PreShutdown() override;
 
@@ -38,6 +39,8 @@ namespace VantaMP::Core {
         }
 
       private:
+        void PublishVoice();
+
         // Where the player asked to go, once they have asked. Empty until then:
         // the client no longer connects on its own.
         std::string _pendingHost;
@@ -66,4 +69,9 @@ namespace VantaMP::Core {
     void TickApplication();
     void OnDeviceLost();
     void OnDeviceReset();
+
+    // Queued from the page thread. Applied from CGame::Process, outside
+    // every D3D method. Reset from BeginScene or Present is INVALIDCALL.
+    void RequestDisplayApply();
+    void FlushDisplayApply(IDirect3DDevice9 *device, HWND window);
 } // namespace VantaMP::Core

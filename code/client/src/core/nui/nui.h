@@ -5,12 +5,14 @@
 
 namespace VantaMP::Nui {
     void BringUpInterface(int width, int height);
+    void ResizeInterface(int width, int height);
     void SetInterfaceVisible(bool visible);
 
     [[nodiscard]] bool IsInterfaceVisible();
     [[nodiscard]] bool IsMenuOpen();
     [[nodiscard]] bool IsInWorld();
     [[nodiscard]] bool IsCapturingInput();
+    void ReleaseVoiceFocus();
 
     // Re-assert CEF focus while the menu or console owns the keyboard.
     // ProcessKeyboardEvent drops every key when the view is unfocused.
@@ -22,6 +24,8 @@ namespace VantaMP::Nui {
     void HandleEscape();
     void ToggleConsole();
     void TickNetgraph();
+    void RefreshSettings();
+    void TickMicTest();
 
     void ReportConnected(const std::string &serverName);
     void ReportConnectionState(const std::string &state, const std::string &detail);

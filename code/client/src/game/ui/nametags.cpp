@@ -7,6 +7,7 @@
 
 #include <core_modules.h>
 #include <networking/replication/replication_manager.h>
+#include <voice/client/voice_client.h>
 
 #include <algorithm>
 #include <cmath>
@@ -62,14 +63,25 @@ namespace VantaMP::Game {
             }
 
             const char *name = player->nickname.empty() ? "Player" : player->nickname.c_str();
+            bool talking     = false;
 
-            char label[80];
-            std::snprintf(label, sizeof(label), "%s (%llu)", name, static_cast<unsigned long long>(networkId));
+            if (auto *voice = Framework::CoreModules::GetVoiceClient()) {
+                const auto guid = static_cast<std::uint64_t>(player->ownerGUID);
+                talking         = guid != 0 && voice->GetSpeakerLevel(guid) > 0.02f;
+            }
+
+            char label[96];
+            if (talking) {
+                std::snprintf(label, sizeof(label), "%s  (voice)", name);
+            }
+            else {
+                std::snprintf(label, sizeof(label), "%s (%llu)", name, static_cast<unsigned long long>(networkId));
+            }
 
             const float fadeStart = 35.0f;
             const float alpha     = distance <= fadeStart ? 1.0f : std::clamp(1.0f - (distance - fadeStart) / (50.0f - fadeStart), 0.0f, 1.0f);
 
-            SDK::DrawNametag(screen.x, screen.y, label, player->health, player->armour, alpha);
+            SDK::DrawNametag(screen.x, screen.y, label, player->health, player->armour, alpha, talking);
         });
     }
 } // namespace VantaMP::Game

@@ -261,7 +261,7 @@ namespace VantaMP::SDK {
             return true;
         }
 
-        void DrawTahoma(float x, float y, const char *text, float alpha) {
+        void DrawTahoma(float x, float y, const char *text, float alpha, std::uint8_t red, std::uint8_t green, std::uint8_t blue) {
             int width  = 0;
             int height = 0;
 
@@ -275,7 +275,7 @@ namespace VantaMP::SDK {
             const float bottom = top + static_cast<float>(height);
             const float u      = static_cast<float>(width) / static_cast<float>(gTextTexWidth);
             const float v      = static_cast<float>(height) / static_cast<float>(gTextTexHeight);
-            const D3DCOLOR tint = WithAlpha(255, 255, 255, alpha);
+            const D3DCOLOR tint = WithAlpha(red, green, blue, alpha);
 
             RhwTexVertex verts[4] = {
                 {left, top, 0.0f, 1.0f, tint, 0.0f, 0.0f},
@@ -327,7 +327,7 @@ namespace VantaMP::SDK {
         DestroyTextTexture();
     }
 
-    void DrawNametag(float x, float y, const char *label, float health, float armour, float alpha) {
+    void DrawNametag(float x, float y, const char *label, float health, float armour, float alpha, bool talking) {
         if (!gDevice || !label || !label[0] || alpha <= 0.0f) {
             return;
         }
@@ -343,7 +343,13 @@ namespace VantaMP::SDK {
             return;
         }
 
-        DrawTahoma(x, y, label, alpha);
+        if (talking) {
+            DrawTahoma(x, y, label, alpha, 255, 186, 72);
+            FillRect(x - 31.0f, y - 4.0f, x + 31.0f, y - 2.0f, WithAlpha(255, 186, 72, alpha));
+        }
+        else {
+            DrawTahoma(x, y, label, alpha, 255, 255, 255);
+        }
 
         // GTA HUD bars: black well, then the fill. Armour above health when
         // there is any, same stack the top-right HUD uses.

@@ -68,10 +68,20 @@ Copy-Item (Join-Path $ClientBin "locales") (Join-Path $ClientOut "locales") -Rec
 
 @'
 {
+    "display_adapter": 0,
     "display_borderless": false,
+    "display_exclusive": false,
     "display_height": 0,
+    "display_setup_done": false,
     "display_width": 0,
     "frame_limit": 60,
+    "volume_master": 1.0,
+    "volume_sfx": 1.0,
+    "volume_radio": 1.0,
+    "voice_input_device": "default",
+    "voice_output_device": "default",
+    "voice_volume": 1.0,
+    "voice_ptt_key": 86,
     "nickname": "Player",
     "server_host": "127.0.0.1",
     "server_port": 27015

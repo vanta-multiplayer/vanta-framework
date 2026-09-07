@@ -1,6 +1,7 @@
 #include "game/patches/boot.h"
 
 #include "core/diagnostics/breadcrumbs.h"
+#include "game/patches/audio.h"
 #include "game/patches/display.h"
 #include "game/patches/input.h"
 #include "sdk/patterns.h"
@@ -59,6 +60,11 @@ namespace VantaMP::Game {
             gEngineInitialised.store(true, std::memory_order_release);
             Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::WaitingForWorld);
 
+            // Camera exists now. CameraSize would have sized it to GTA's
+            // exclusive video mode, which is why the world sat in the
+            // top-left of a larger window.
+            RefreshGameView();
+
             Framework::Logging::GetLogger("Boot")->info("Game engine initialised; the world exists");
         }
 
@@ -104,6 +110,9 @@ namespace VantaMP::Game {
                 // settings load overwrites it; applied every frame it is a
                 // write into a global before anything guarantees it resolved.
                 SetFrameLimit(gFrameLimit);
+                RefreshGameView();
+                ApplySavedWindowStyle();
+                ApplyGameVolumes();
 
                 Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::FrontendReady);
 

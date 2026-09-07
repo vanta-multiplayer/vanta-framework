@@ -3,6 +3,9 @@
 #include "core/application.h"
 #include "core/client_config.h"
 #include "core/globals.h"
+#include "core/voice_io.h"
+#include "game/patches/audio.h"
+#include "game/patches/display.h"
 #include "core/nui/embedded_ui.h"
 #include "core/nui/events.h"
 #include "core/nui/page_events.h"
@@ -21,10 +24,12 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <ctime>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -78,6 +83,64 @@ namespace VantaMP::Nui {
             }
         }
 
+        nlohmann::json VideoModes() {
+            nlohmann::json modes = nlohmann::json::array();
+            std::set<std::pair<unsigned, unsigned>> seen;
+
+            DEVMODEW mode {};
+            mode.dmSize = sizeof(mode);
+
+            for (DWORD index = 0; EnumDisplaySettingsW(nullptr, index, &mode); ++index) {
+                if (mode.dmBitsPerPel != 32 || mode.dmPelsWidth < 800 || mode.dmPelsHeight < 600) {
+                    continue;
+                }
+
+                if (!seen.emplace(mode.dmPelsWidth, mode.dmPelsHeight).second) {
+                    continue;
+                }
+
+                modes.push_back({
+                    {"width", mode.dmPelsWidth},
+                    {"height", mode.dmPelsHeight},
+                    {"label", std::to_string(mode.dmPelsWidth) + "\xC3\x97" + std::to_string(mode.dmPelsHeight)},
+                });
+            }
+
+            std::sort(modes.begin(), modes.end(), [](const nlohmann::json &left, const nlohmann::json &right) {
+                const auto leftWidth  = left["width"].get<unsigned>();
+                const auto rightWidth = right["width"].get<unsigned>();
+
+                if (leftWidth != rightWidth) {
+                    return leftWidth > rightWidth;
+                }
+
+                return left["height"].get<unsigned>() > right["height"].get<unsigned>();
+            });
+
+            return modes;
+        }
+
+        nlohmann::json EndpointsJson(bool capture) {
+            nlohmann::json list = nlohmann::json::array();
+
+            for (const auto &endpoint : capture ? Core::ListVoiceInputs() : Core::ListVoiceOutputs()) {
+                list.push_back({
+                    {"id", endpoint.id},
+                    {"name", endpoint.name},
+                    {"isDefault", endpoint.isDefault},
+                });
+            }
+
+            return list;
+        }
+
+        void EmitAudioDevices() {
+            nlohmann::json data;
+            data["input"]  = EndpointsJson(true);
+            data["output"] = EndpointsJson(false);
+            Emit(Event::kSettingsDevicesUpdate, nlohmann::json::array({data}));
+        }
+
         nlohmann::json CurrentSettings() {
             const auto &config = Core::GetClientConfig();
 
@@ -86,9 +149,18 @@ namespace VantaMP::Nui {
             settings["lastServer"]   = config.serverHost + ":" + std::to_string(config.serverPort);
             settings["windowWidth"]  = config.displayWidth;
             settings["windowHeight"] = config.displayHeight;
+            settings["borderless"]   = config.displayBorderless;
+            settings["exclusive"]    = config.displayExclusive;
             settings["fullscreen"]   = config.displayBorderless;
+            settings["volumeMaster"] = config.volumeMaster;
+            settings["volumeSfx"]    = config.volumeSfx;
+            settings["volumeRadio"]  = config.volumeRadio;
+            settings["voiceInputDevice"]  = config.voiceInputDevice;
+            settings["voiceOutputDevice"] = config.voiceOutputDevice;
+            settings["voiceVolume"]       = config.voiceVolume;
+            settings["voicePttKey"]       = config.voicePttKey;
             settings["display"]      = 0;
-            settings["modes"]        = nlohmann::json::array();
+            settings["modes"]        = VideoModes();
             settings["displays"]     = nlohmann::json::array();
             return settings;
         }
@@ -243,6 +315,7 @@ namespace VantaMP::Nui {
 
         void PushStartup() {
             Emit(Event::kVersionUpdate, nlohmann::json::array({Version::rel, "develop", "", false, false}));
+            EmitAudioDevices();
             Emit(Event::kSettingsUpdate, nlohmann::json::array({CurrentSettings()}));
             Emit(Event::kServersRecent, nlohmann::json::array({nlohmann::json::array()}));
             Emit(Event::kServersFav, nlohmann::json::array({nlohmann::json::array()}));
@@ -263,6 +336,11 @@ namespace VantaMP::Nui {
             }
 
             gMenuOpen = open;
+
+            if (open) {
+                Core::SetTalkLatched(false);
+            }
+
             ApplyViewFocus();
             Emit(Event::kUiToggle, nlohmann::json::array({open}));
         }
@@ -320,8 +398,35 @@ namespace VantaMP::Nui {
                 const auto key   = !args.empty() && args[0].is_string() ? args[0].get<std::string>() : "";
                 const auto value = args.size() > 1 ? args[1] : nlohmann::json();
 
-                static unsigned width = 0, height = 0;
-                static bool fullscreen = false;
+                const auto &config = Core::GetClientConfig();
+
+                static unsigned width      = 0;
+                static unsigned height     = 0;
+                static bool     borderless = false;
+                static bool     exclusive  = false;
+                static float        master     = 1.0f;
+                static float        sfx        = 1.0f;
+                static float        radio      = 1.0f;
+                static std::string  voiceIn    = "default";
+                static std::string  voiceOut   = "default";
+                static float        voiceVol   = 1.0f;
+                static int          pttKey     = 0x56;
+                static bool         primed     = false;
+
+                if (!primed) {
+                    width      = config.displayWidth;
+                    height     = config.displayHeight;
+                    borderless = config.displayBorderless;
+                    exclusive  = config.displayExclusive;
+                    master     = config.volumeMaster;
+                    sfx        = config.volumeSfx;
+                    radio      = config.volumeRadio;
+                    voiceIn    = config.voiceInputDevice;
+                    voiceOut   = config.voiceOutputDevice;
+                    voiceVol   = config.voiceVolume;
+                    pttKey     = config.voicePttKey;
+                    primed     = true;
+                }
 
                 if (key == "windowWidth" && value.is_number()) {
                     width = value.get<unsigned>();
@@ -329,19 +434,97 @@ namespace VantaMP::Nui {
                 else if (key == "windowHeight" && value.is_number()) {
                     height = value.get<unsigned>();
                 }
-                else if (key == "fullscreen" && value.is_boolean()) {
-                    fullscreen = value.get<bool>();
+                else if ((key == "borderless" || key == "fullscreen") && value.is_boolean()) {
+                    borderless = value.get<bool>();
+                }
+                else if (key == "exclusive" && value.is_boolean()) {
+                    exclusive = value.get<bool>();
+                }
+
+                if (key == "volumeMaster" && value.is_number()) {
+                    master = std::clamp(value.get<float>(), 0.0f, 1.0f);
+                }
+                else if (key == "volumeSfx" && value.is_number()) {
+                    sfx = std::clamp(value.get<float>(), 0.0f, 1.0f);
+                }
+                else if (key == "volumeRadio" && value.is_number()) {
+                    radio = std::clamp(value.get<float>(), 0.0f, 1.0f);
+                }
+                else if (key == "voiceInputDevice" && value.is_string()) {
+                    voiceIn = value.get<std::string>();
+                }
+                else if (key == "voiceOutputDevice" && value.is_string()) {
+                    voiceOut = value.get<std::string>();
+                }
+                else if (key == "voiceVolume" && value.is_number()) {
+                    voiceVol = std::clamp(value.get<float>(), 0.0f, 2.0f);
+                }
+                else if (key == "voicePttKey" && value.is_number()) {
+                    pttKey = value.get<int>();
                 }
 
                 if (key == "nickname" && value.is_string()) {
-                    const auto &config = Core::GetClientConfig();
                     Core::SaveConnectSettings(config.serverHost, config.serverPort, value.get<std::string>());
                 }
 
-                if (key == "windowWidth" || key == "windowHeight" || key == "fullscreen") {
-                    const auto &config = Core::GetClientConfig();
-                    Core::SaveDisplaySettings(width ? width : config.displayWidth, height ? height : config.displayHeight, fullscreen);
+                // Saved only. SetVideoMode and a homemade Reset both crash
+                // on this exe when the back-buffer size changes. The next
+                // launch reads VantaMP.json and creates the device there.
+                if (key == "windowWidth" || key == "windowHeight" || key == "borderless" || key == "fullscreen" || key == "exclusive") {
+                    Core::SaveDisplaySettings(width, height, borderless, exclusive);
                 }
+
+                if (key == "volumeMaster" || key == "volumeSfx" || key == "volumeRadio") {
+                    Core::SaveVolumeSettings(master, sfx, radio);
+                    Game::SetVolumeSettings(master, sfx, radio);
+                    Emit(Event::kSettingsUpdate, nlohmann::json::array({CurrentSettings()}));
+                }
+
+                if (key == "voiceInputDevice" || key == "voiceOutputDevice" || key == "voiceVolume" || key == "voicePttKey") {
+                    Core::SaveVoiceSettings(voiceIn, voiceOut, voiceVol, pttKey);
+                    Core::ApplyVoiceSettings();
+
+                    if (Core::IsMicTestRunning()) {
+                        Core::StartMicTest(Core::GetClientConfig().voiceInputDevice, Core::GetClientConfig().voiceOutputDevice);
+                    }
+
+                    Emit(Event::kSettingsUpdate, nlohmann::json::array({CurrentSettings()}));
+                }
+            });
+
+            On(Event::kSettingsDevicesReload, [](const std::string &) {
+                EmitAudioDevices();
+            });
+
+            On(Event::kSettingsMicToggle, [](const std::string &payload) {
+                const auto args = ParseArgs(payload);
+                const bool on   = !args.empty() && args[0].is_boolean() && args[0].get<bool>();
+                const auto &config = Core::GetClientConfig();
+
+                if (on) {
+                    if (gInWorld) {
+                        return;
+                    }
+
+                    Core::StartMicTest(config.voiceInputDevice, config.voiceOutputDevice);
+                }
+                else {
+                    Core::StopMicTest();
+                    Emit(Event::kSettingsMicLevel, nlohmann::json::array({0}));
+                }
+            });
+
+            On(Event::kSettingsTalkToggle, [](const std::string &payload) {
+                const auto args = ParseArgs(payload);
+                const bool on   = !args.empty() && args[0].is_boolean() && args[0].get<bool>();
+
+                if (!on || !gInWorld) {
+                    Core::SetTalkLatched(false);
+                    return;
+                }
+
+                Core::SetTalkLatched(true);
+                SetMenuOpen(false);
             });
 
             On(Event::kUiToggle, [](const std::string &payload) {
@@ -395,7 +578,10 @@ namespace VantaMP::Nui {
         RegisterEmbeddedInterface(*manager);
         BindCoreHandlers();
 
-        gViewId = manager->CreateView(kEmbeddedUiUrl, width, height);
+        // 0x0 = fill the viewport and follow WM_SIZE. A fixed size here
+        // is why the page stayed at the launch resolution after a live
+        // apply: Manager::Resize only moves auto-resize views.
+        gViewId = manager->CreateView(kEmbeddedUiUrl, 0, 0);
 
         if (gViewId < 0) {
             Framework::Logging::GetLogger("NUI")->error("The interface view could not be created");
@@ -408,9 +594,28 @@ namespace VantaMP::Nui {
             return;
         }
 
+        view->SetAutoResize(true);
         view->Display(false);
 
         Framework::Logging::GetLogger("NUI")->info("Interface up at {}x{} ({})", width, height, kEmbeddedUiUrl);
+    }
+
+    void ResizeInterface(int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        auto *manager = Framework::CoreModules::GetWebManager();
+
+        if (!manager || !manager->IsInitialized()) {
+            return;
+        }
+
+        manager->SetViewportConfiguration({width, height});
+
+        if (auto *view = FindView()) {
+            view->Resize(width, height);
+        }
     }
 
     void SetInterfaceVisible(bool visible) {
@@ -440,6 +645,12 @@ namespace VantaMP::Nui {
 
     bool IsCapturingInput() {
         return gVisible && (gMenuOpen || gConsoleOpen);
+    }
+
+    void ReleaseVoiceFocus() {
+        if (auto *target = FindView()) {
+            target->Focus(false);
+        }
     }
 
     void EnsureViewFocus() {
@@ -498,7 +709,8 @@ namespace VantaMP::Nui {
     void TickNetgraph() {
         static LARGE_INTEGER frequency {};
         static LARGE_INTEGER last {};
-        static bool clockReady = false;
+        static double        emitWait  = 0.0;
+        static bool          clockReady = false;
 
         if (!clockReady) {
             QueryPerformanceFrequency(&frequency);
@@ -518,8 +730,21 @@ namespace VantaMP::Nui {
         }
 
         if (!gNetgraphOn || !gVisible) {
+            emitWait = 0.0;
             return;
         }
+
+        // FPS is sampled every frame. The page only needs a reading
+        // once a second - tx/rx are already last-second totals, and
+        // pushing a sample every PostUpdate is what made the corner
+        // flicker.
+        emitWait += dt;
+
+        if (emitWait < 1.0) {
+            return;
+        }
+
+        emitWait = 0.0;
 
         int rtt     = 0;
         double tx   = 0.0;
@@ -549,6 +774,24 @@ namespace VantaMP::Nui {
         Emit(Event::kNetgraphUpdate, nlohmann::json::array({sample}));
     }
 
+    void RefreshSettings() {
+        Emit(Event::kSettingsUpdate, nlohmann::json::array({CurrentSettings()}));
+    }
+
+    void TickMicTest() {
+        if (Core::IsMicTestRunning()) {
+            Emit(Event::kSettingsMicLevel, nlohmann::json::array({static_cast<int>(Core::MicTestLevel() + 0.5f)}));
+            return;
+        }
+
+        if (!Core::gApplication) {
+            return;
+        }
+
+        const auto level = Core::gApplication->GetVoiceClient().GetLocalLevel();
+        Emit(Event::kSettingsMicLevel, nlohmann::json::array({static_cast<int>(level * 100.0f + 0.5f)}));
+    }
+
     void ReportConnected(const std::string &serverName) {
         gInWorld  = true;
         gMenuOpen = false;
@@ -575,6 +818,7 @@ namespace VantaMP::Nui {
         if (state == "disconnected") {
             gInWorld  = false;
             gMenuOpen = true;
+            Core::SetTalkLatched(false);
             ApplyViewFocus();
             Emit(Event::kConnectionDisconnected, nlohmann::json::array({detail.empty() ? "Disconnected" : detail}));
             Emit(Event::kUiToggle, nlohmann::json::array({true}));

@@ -4,6 +4,7 @@
 #include "core/diagnostics/breadcrumbs.h"
 #include "game/entities/player_slots.h"
 #include "game/entities/remote_players.h"
+#include "game/patches/audio.h"
 #include "game/patches/boot.h"
 #include "game/patches/display.h"
 #include "game/patches/gameplay.h"
@@ -31,7 +32,7 @@ namespace VantaMP::Game {
         // Before anything draws. The display module is consulted from the
         // CreateDevice hook, which the game can reach as soon as its first
         // frame - there is no later point that is still early enough.
-        SetDisplaySettings({config.displayWidth, config.displayHeight, config.displayBorderless});
+        SetDisplaySettings({config.displayWidth, config.displayHeight, config.displayBorderless, config.displayExclusive});
 
         // Recorded rather than enforced: the scans below decide whether this
         // executable is usable, and they say so loudly if it is not. Knowing
@@ -64,6 +65,7 @@ namespace VantaMP::Game {
         // call sites the game has not reached yet.
         SetFrameLimitOnStart(static_cast<int>(config.frameLimit));
         Apply("boot", ApplyBootPatches);
+        Apply("audio", ApplyAudioPatches);
 
         // Last of the startup patches: this one disables the mission script
         // and takes over its per-frame call, which is where the local player
@@ -92,6 +94,11 @@ namespace VantaMP::Game {
         // Unlocks the wider modes. The projection itself is corrected later,
         // once there is a window whose shape can be measured.
         Apply("widescreen", ApplyWidescreenPatches);
+
+        // Before WinMain reaches RW engine init. psSelectDevice is what
+        // pops GTA's Device Selection dialog; the hook has to be in
+        // before that call or first setup never sees it.
+        Apply("device selection", InstallDeviceSelectionHook);
 
         Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::WaitingForFrontend);
     }

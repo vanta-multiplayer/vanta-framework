@@ -16,7 +16,26 @@ namespace {
         const auto code = info->ExceptionRecord->ExceptionCode;
         if (code == EXCEPTION_ACCESS_VIOLATION || code == EXCEPTION_PRIV_INSTRUCTION || code == EXCEPTION_ILLEGAL_INSTRUCTION) {
             const auto logger = Framework::Logging::GetLogger("Fault");
-            logger->error("First-chance {:08X} at {} (eip {:08X}, esp {:08X})", code, info->ExceptionRecord->ExceptionAddress, info->ContextRecord->Eip, info->ContextRecord->Esp);
+            const auto address = info->ExceptionRecord->ExceptionAddress;
+
+            HMODULE module = nullptr;
+            char moduleName[MAX_PATH] {};
+            const bool haveModule = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, static_cast<LPCWSTR>(address), &module) != FALSE;
+
+            if (haveModule && GetModuleFileNameA(module, moduleName, MAX_PATH)) {
+                logger->error(
+                    "First-chance {:08X} at {} (eip {:08X}, esp {:08X}, module {}+{:08X})",
+                    code,
+                    address,
+                    info->ContextRecord->Eip,
+                    info->ContextRecord->Esp,
+                    moduleName,
+                    static_cast<unsigned>(reinterpret_cast<uintptr_t>(address) - reinterpret_cast<uintptr_t>(module)));
+            }
+            else {
+                logger->error("First-chance {:08X} at {} (eip {:08X}, esp {:08X})", code, address, info->ContextRecord->Eip, info->ContextRecord->Esp);
+            }
+
             logger->flush();
         }
         return EXCEPTION_CONTINUE_SEARCH;

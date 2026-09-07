@@ -32,6 +32,11 @@ namespace VantaMP::Nui {
 
         inline constexpr const char *kSettingsUpdate = "settings:update";
         inline constexpr const char *kSettingsChange = "settings:change";
+        inline constexpr const char *kSettingsDevicesUpdate = "settings:devices:update";
+        inline constexpr const char *kSettingsDevicesReload = "settings:devices:reload";
+        inline constexpr const char *kSettingsMicLevel      = "settings:currentVolume:update";
+        inline constexpr const char *kSettingsMicToggle     = "settings:currentVolume:toggle";
+        inline constexpr const char *kSettingsTalkToggle    = "settings:talk:toggle";
 
         inline constexpr const char *kVersionUpdate = "version:update";
         inline constexpr const char *kVersionReady  = "version:ready";

@@ -4,6 +4,7 @@
 
 struct HWND__;
 using HWND = HWND__ *;
+struct IDirect3DDevice9;
 struct _D3DPRESENT_PARAMETERS_;
 using D3DPRESENT_PARAMETERS = _D3DPRESENT_PARAMETERS_;
 
@@ -16,19 +17,57 @@ namespace VantaMP::Game {
 
         // Borderless covering the monitor, rather than a window with a frame.
         bool borderless = true;
+
+        // Exclusive fullscreen. Takes the display mode; applied at CreateDevice.
+        bool exclusive = false;
     };
 
     void SetDisplaySettings(const DisplaySettings &settings);
     [[nodiscard]] const DisplaySettings &GetDisplaySettings();
 
+    // Unused. A live size change on this exe crashes, whether we call
+    // SetVideoMode or Reset ourselves. Settings write the file and ask
+    // for a restart.
+    [[nodiscard]] bool ApplyLiveDisplay(IDirect3DDevice9 *device, HWND window);
+
+    // True while SetVideoMode is on the stack. Reset then belongs to
+    // the game; rewriting D3DPRESENT_PARAMETERS would undo it.
+    [[nodiscard]] bool IsGameChangingVideoMode();
+
+    // WM_SIZE / WM_SIZING would rebuild camera and post-FX rasters on the
+    // still-old device. Hoodlum's raster-list restore then dies at
+    // 0x674AD06F. Hold those rebuilds until after RW Reset.
+    void HoldRastersForLiveApply();
+    [[nodiscard]] bool IsRasterHoldActive();
+    [[nodiscard]] bool ShouldSkipHoodlumRasterRestore();
+    void NoteLiveDeviceReset();
+    void PulseRasterHold();
+
+    // After RW restore: CameraSize to the new RsGlobal, then force a new
+    // pRasterFrontBuffer. SetupBackBufferVertex rounds to 2^n, so 1280
+    // and 1600 share 2048x1024 and it will not recreate on its own.
+    [[nodiscard]] bool FinishLiveDisplayResetIfNeeded();
+
+    // Rebuilds the game camera rasters after a live resize. CameraSize
+    // (plugin-sdk / 0x72FC70) is what DoRWStuffStartOfFrame eventually
+    // calls; doing it here means the next present is already at the new
+    // size instead of flashing the old (now destroyed) surfaces.
+    // Not safe on the game's first Reset — the camera has no raster yet.
+    void RefreshGameView();
+
+    // GTA restyles its window after a Reset. Hold the player's chrome
+    // for a few hundred frames, then stop so SetWindowPos and WM_SIZE
+    // do not feed each other.
+    void HoldWindowStyle(int frames);
+    void PulseWindowStyle(HWND window);
+
     // Rewrites the parameters GTA is about to create its device with.
     //
-    // WINDOWED, ALWAYS. Exclusive fullscreen on this engine regularly takes the
-    // display mode and then never presents, which is indistinguishable from a
-    // hang; and alt-tabbing between two clients - which is most of what testing
-    // a multiplayer platform consists of - either fails or costs a device
-    // reset each way. A borderless window covering the monitor looks the same
-    // to a player and has neither problem.
+    // Size comes from VantaMP.json, not GTA's leftover dialog. Windowed
+    // unless the player asked for exclusive fullscreen. Exclusive takes
+    // the display mode and costs a Reset on every alt-tab; borderless
+    // covering the monitor is the default because it looks the same and
+    // does not.
     //
     // Done HERE rather than by replacing the game's device selection. GTA picks
     // its mode through RenderWare, which means RenderWare types, which means
@@ -51,6 +90,18 @@ namespace VantaMP::Game {
     // what makes the setting stick; it is a no-op once the style already
     // matches, so the cost is a comparison per frame.
     void ApplyWindowStyle(HWND window);
+
+    // After the copyright screen. Until this runs the HWND stays a
+    // normal windowed frame, even if the player asked for borderless.
+    void ApplySavedWindowStyle();
+
+    // GTA's Device Selection dialog, first setup only.
+    //
+    // Vanilla shows it only when there is more than one GPU. MTA hooks
+    // the same compare and then persists a "device selection enabled"
+    // flag. We show it until VantaMP.json says the player has confirmed
+    // a display, then never again — the file is what CreateDevice reads.
+    void InstallDeviceSelectionHook();
 
     // Unlocks the game's widescreen modes and projects at the real aspect ratio.
     //

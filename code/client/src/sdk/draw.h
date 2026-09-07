@@ -13,5 +13,6 @@ namespace VantaMP::SDK {
     void OnWorldOverlayDeviceReset(IDirect3DDevice9 *device);
 
     // One nametag: Tahoma "name (id)", then GTA-style armour and health bars.
-    void DrawNametag(float x, float y, const char *label, float health, float armour, float alpha);
+    // talking paints the name gold so a player on voice is obvious.
+    void DrawNametag(float x, float y, const char *label, float health, float armour, float alpha, bool talking = false);
 } // namespace VantaMP::SDK

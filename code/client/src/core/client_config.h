@@ -19,18 +19,50 @@ namespace VantaMP::Core {
         std::uint32_t displayWidth  = 0;
         std::uint32_t displayHeight = 0;
 
-        // BORDERLESS BY DEFAULT, and never exclusive fullscreen.
-        //
-        // Exclusive fullscreen on this engine regularly takes the display mode
-        // and then never presents, which is indistinguishable from a hang. It
-        // also costs a device reset on every alt-tab, and alt-tabbing between
-        // two clients is most of what testing a multiplayer platform consists
-        // of. A borderless window covering the monitor looks the same to a
-        // player and has neither problem.
+        // BORDERLESS BY DEFAULT. Exclusive fullscreen is opt-in: it takes
+        // the display mode and costs a device Reset on every alt-tab, which
+        // two clients on one machine do constantly. A borderless window
+        // covering the monitor looks the same and has neither problem.
         //
         // Set false for a conventional window with a title bar, which is what
         // running two clients side by side wants.
         bool displayBorderless = true;
+
+        // Exclusive fullscreen. Takes the selected resolution as the display
+        // mode. Applied at the next launch; a live Reset on this exe crashes.
+        bool displayExclusive = false;
+
+        // D3D adapter the Device Selection dialog last confirmed. 0 is the
+        // default GPU; a machine with an iGPU and a dGPU needs this remembered
+        // or the next launch silently goes back to whichever RW enumerates
+        // first.
+        std::uint32_t displayAdapter = 0;
+
+        // False until the player has confirmed a display, either through
+        // GTA's Device Selection dialog or by saving in Settings.
+        //
+        // A missing VantaMP.json is written with defaults on the first
+        // launch, so "the file exists" is not first-run. This flag is.
+        // An older file that never had the key is treated as already
+        // set up, otherwise existing installs would see the dialog again.
+        bool displaySetupDone = false;
+
+        // 0-1. Master scales the two GTA channels before they are written
+        // as 0-64. Changing them is live; the file is only so the next
+        // launch opens at the same mix.
+        float volumeMaster = 1.0f;
+        float volumeSfx    = 1.0f;
+        float volumeRadio  = 1.0f;
+
+        // Voice endpoints. "default" is whatever the OS currently prefers.
+        std::string voiceInputDevice  = "default";
+        std::string voiceOutputDevice = "default";
+
+        // Playback gain for other players. 1 is unity; 2 is the slider's top.
+        float voiceVolume = 1.0f;
+
+        // Win32 virtual-key code. V is the framework default.
+        int voicePttKey = 0x56;
 
         // Frames per second, or 0 for no cap.
         //
@@ -65,10 +97,17 @@ namespace VantaMP::Core {
     // The player picked it in the menu, so it has to outlive the session -
     // otherwise choosing a resolution appears to work and is forgotten on the
     // next start.
-    void SaveDisplaySettings(std::uint32_t width, std::uint32_t height, bool borderless);
+    // UINT32_MAX keeps the adapter already in the file. Anything else is
+    // the GPU the Device Selection dialog just confirmed.
+    void SaveDisplaySettings(std::uint32_t width, std::uint32_t height, bool borderless, bool exclusive, std::uint32_t adapter = 0xFFFFFFFFu);
+
+    [[nodiscard]] bool IsDisplaySetupDone();
 
     // Last server and the name this client will announce as. Written when the
     // player asks to connect, so the next start opens on the same identity
     // rather than the compile-time default.
     void SaveConnectSettings(const std::string &host, std::uint32_t port, const std::string &nickname);
+
+    void SaveVolumeSettings(float master, float sfx, float radio);
+    void SaveVoiceSettings(const std::string &inputDevice, const std::string &outputDevice, float volume, int pttKey);
 } // namespace VantaMP::Core

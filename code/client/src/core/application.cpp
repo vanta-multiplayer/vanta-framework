@@ -18,6 +18,7 @@
 #include "core/diagnostics/breadcrumbs.h"
 #include "core/globals.h"
 #include "core/nui/nui.h"
+#include "core/voice_io.h"
 #include "core/ui/window_input.h"
 #include "core/ui/ped_debug_ui.h"
 #include "game/patches/boot.h"
@@ -30,10 +31,15 @@
 #include "game/camera.h"
 #include "game/entities/local_player.h"
 #include "game/entities/remote_players.h"
+#include "game/patches/display.h"
 #include "game/patches/script.h"
+#include "sdk/camera.h"
+#include "sdk/ped/local_ped.h"
 #include "sdk/vehicle.h"
 #include "shared/constants.h"
 #include "shared/version.h"
+
+#include <atomic>
 
 namespace VantaMP::Core {
     std::unique_ptr<Application> gApplication = nullptr;
@@ -78,6 +84,7 @@ namespace VantaMP::Core {
         }
 
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client initialized");
+        ApplyVoiceSettings();
     }
 
     void Application::OnConnectionFinalized(float serverTickRate) {
@@ -91,6 +98,9 @@ namespace VantaMP::Core {
         // just joined a server wants.
         Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::InGame);
 
+        StopMicTest();
+        ApplyVoiceSettings();
+
         Nui::ReportConnected(GetClientConfig().serverHost);
         Nui::ReportConnectionState("connected", "");
 
@@ -100,6 +110,9 @@ namespace VantaMP::Core {
     }
 
     void Application::OnConnectionClosed() {
+        StopMicTest();
+        SetTalkLatched(false);
+
         const auto reason      = GetLastDisconnectionReason();
         const bool reachedWorld = Nui::IsInWorld();
 
@@ -216,6 +229,51 @@ namespace VantaMP::Core {
         gApplication->RequestConnectTo(host, port, nickname);
     }
 
+    void Application::PublishVoice() {
+        auto &voice = GetVoiceClient();
+
+        DWORD foregroundPid = 0;
+        GetWindowThreadProcessId(GetForegroundWindow(), &foregroundPid);
+        const bool focused   = foregroundPid == GetCurrentProcessId();
+        const bool capturing = Nui::IsCapturingInput();
+        const bool latched   = IsTalkLatched();
+        const bool held      = (GetAsyncKeyState(voice.GetPushToTalkKey()) & 0x8000) != 0;
+        const bool talking   = focused && (latched || held);
+
+        if (!capturing) {
+            Nui::ReleaseVoiceFocus();
+        }
+
+        voice.SetPushToTalk(talking);
+        voice.SetTransmitBlocked(!talking && (!focused || capturing));
+
+        if (!Nui::IsInWorld()) {
+            return;
+        }
+
+        const auto camera = SDK::ReadListenerCamera();
+        if (!camera.valid) {
+            return;
+        }
+
+        Framework::Voice::ListenerTransform listener;
+        listener.position = {camera.x, camera.y, camera.z};
+        listener.forward  = {camera.forwardX, camera.forwardY, camera.forwardZ};
+        listener.up       = {camera.upX, camera.upY, camera.upZ};
+
+        const auto ped = SDK::QueryLocalPed();
+        if (ped.valid) {
+            listener.attenuationPosition = {ped.x, ped.y, ped.z};
+        }
+
+        voice.SetListenerTransform(listener);
+    }
+
+    void Application::Update() {
+        PublishVoice();
+        Framework::Integrations::Client::Instance::Update();
+    }
+
     void Application::PostUpdate() {
         // The menu waits for the game's own startup to finish.
         //
@@ -229,6 +287,7 @@ namespace VantaMP::Core {
         }
 
         Nui::TickNetgraph();
+        Nui::TickMicTest();
 
         // THE CURSOR BELONGS TO WHOEVER HAS FOCUS, EVERY FRAME.
         //
@@ -324,6 +383,8 @@ namespace VantaMP::Core {
     }
 
     void Application::PreShutdown() {
+        StopMicTest();
+        SetTalkLatched(false);
         Nui::ShutdownInterface();
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client shutting down");
     }
@@ -447,5 +508,28 @@ namespace VantaMP::Core {
                 }
             }
         }
+    }
+
+    namespace {
+        std::atomic_bool gDisplayApply {false};
+    }
+
+    void RequestDisplayApply() {
+        gDisplayApply.store(true, std::memory_order_release);
+    }
+
+    void FlushDisplayApply(IDirect3DDevice9 *device, HWND window) {
+        if (!gDisplayApply.exchange(false, std::memory_order_acq_rel)) {
+            return;
+        }
+
+        if (!Game::ApplyLiveDisplay(device, window)) {
+            return;
+        }
+
+        RECT client {};
+        GetClientRect(window, &client);
+        Nui::ResizeInterface(client.right - client.left, client.bottom - client.top);
+        Nui::RefreshSettings();
     }
 } // namespace VantaMP::Core

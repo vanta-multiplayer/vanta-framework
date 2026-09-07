@@ -1,6 +1,13 @@
 "83 EC 0C 53 56 57 E8"  // Core::CGame_Process @ 0x0053BEE0
 "39 1D 18 21 C9 00"  // Entry::FullscreenCheck @ 0x0074887B
 "A1 FC 20 C9 00 83"  // Entry::SelectDevice @ 0x00746190
+"A1 ? ? ? ? BF 01 00 00 00 3B C7 7E"  // Entry::SelectDeviceHook @ 0x00746219
+"68 ? ? ? ? 55 6A 68 53 FF 15"  // Entry::VidModeDialogFuncPush @ 0x00746238
+"75 29 E8 ? ? ? ? 8B 0D ? ? ? ? 83 3C 88 00"  // Entry::SavedVideoMode @ 0x00BA6820 (site 0x0074629A, operand +9)
+"89 0D ? ? ? ? 8B 15 ? ? ? ? 52 8D 44 24 18"  // Entry::GcurSelVM @ 0x008D6220 (site 0x007462BF, operand +2)
+"8B 44 24 08 8B 0D ? ? ? ? 56 8B 74 24 08 50 6A 00 56 83 C1 10 6A 06"  // Entry::RwEngineGetVideoModeInfo @ 0x007F2CF0
+"51 8B 0D ? ? ? ? 6A 00 8D 44 24 04 6A 00 50 83 C1 10 6A 05"  // Entry::RwEngineGetNumVideoModes @ 0x007F2CC0
+"8B 44 24 04 50 E8 ? ? ? ? 83 C4 04 E8 ? ? ? ? A1"  // Entry::SetVideoMode @ 0x00745C70
 "89 35 C0 D4 C8 00"  // Entry::GameStateResetToZero @ 0x00747483
 "E8 ? ? ? ? E8 2B 15"  // Entry::CopyrightScreenCall @ 0x00748C2B
 "E8 ? ? ? ? E8 80 58"  // Entry::LoadingScreenAudioCall @ 0x00748CF6

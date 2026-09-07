@@ -94,6 +94,7 @@ namespace VantaMP::UI {
                         lastHeight = height;
 
                         manager->Resize(width, height);
+                        UpdateCursorClip(window);
                     }
                 }
             }
@@ -125,6 +126,7 @@ namespace VantaMP::UI {
 
     void UpdateCursorClip(HWND window) {
         static bool clipped = false;
+        static RECT lastClip {};
 
         if (!window) {
             return;
@@ -132,14 +134,13 @@ namespace VantaMP::UI {
 
         const bool focused = GetForegroundWindow() == window;
 
-        if (focused == clipped) {
-            return;
-        }
-
-        clipped = focused;
-
         if (!focused) {
-            ClipCursor(nullptr);
+            if (clipped) {
+                ClipCursor(nullptr);
+                clipped  = false;
+                lastClip = {};
+            }
+
             return;
         }
 
@@ -155,6 +156,16 @@ namespace VantaMP::UI {
         ClientToScreen(window, &bottomRight);
 
         const RECT screen {topLeft.x, topLeft.y, bottomRight.x, bottomRight.y};
+
+        // Focus alone is not enough: a live resize or a title-bar drag
+        // leaves the lock on the old box, so the pointer either stops
+        // short of the new edge or escapes into the desktop.
+        if (clipped && lastClip.left == screen.left && lastClip.top == screen.top && lastClip.right == screen.right && lastClip.bottom == screen.bottom) {
+            return;
+        }
+
+        lastClip = screen;
+        clipped  = true;
         ClipCursor(&screen);
     }
 

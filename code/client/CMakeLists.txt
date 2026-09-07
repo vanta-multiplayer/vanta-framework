@@ -33,9 +33,12 @@ set(VANTAMP_CLIENT_FILES
     src/core/nui/page_events.cpp
     src/core/ui/ped_debug_ui.cpp
     src/core/ui/window_input.cpp
+    src/core/voice_io.cpp
 
     # Changes to the game itself, applied once at startup.
     src/game/startup.cpp
+    src/game/patches/audio.cpp
+    src/game/patches/audio_output.cpp
     src/game/patches/boot.cpp
     src/game/patches/display.cpp
     src/game/patches/gameplay.cpp

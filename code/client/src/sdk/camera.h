@@ -31,4 +31,25 @@ namespace VantaMP::SDK {
     };
 
     [[nodiscard]] ScreenPoint WorldToScreen(float x, float y, float z);
+
+    // Where the player is listening from this frame: camera source for pan,
+    // camera front/up for stereo. GTA is Z-up; the mixer needs that, not the
+    // +Y default.
+    struct ListenerCamera {
+        bool valid = false;
+
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+
+        float forwardX = 0.0f;
+        float forwardY = 0.0f;
+        float forwardZ = -1.0f;
+
+        float upX = 0.0f;
+        float upY = 0.0f;
+        float upZ = 1.0f;
+    };
+
+    [[nodiscard]] ListenerCamera ReadListenerCamera();
 } // namespace VantaMP::SDK
