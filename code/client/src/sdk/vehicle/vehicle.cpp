@@ -803,6 +803,19 @@ namespace VantaMP::SDK {
         }
     }
 
+    void ApplyVehicleScriptState(void *handle, bool engineOn, bool sirenOn, std::uint8_t overrideLights, bool locked) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle) {
+            return;
+        }
+
+        vehicle->bEngineOn      = engineOn;
+        vehicle->bSirenOrAlarm  = sirenOn;
+        vehicle->m_nOverrideLights = overrideLights <= 2 ? overrideLights : 0;
+        vehicle->m_eDoorLock    = locked ? DOORLOCK_LOCKED : DOORLOCK_UNLOCKED;
+    }
+
     bool IsLocalPlayerDriving(const void *handle) {
         const auto *vehicle = AsVehicle(handle);
 

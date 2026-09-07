@@ -32,6 +32,15 @@ namespace VantaMP::SDK {
     bool EnterVehicle(int slot, void *vehicle, std::uint8_t seat, bool warp, std::uint8_t door = kInvalidDoor);
     void ExitVehicle(int slot, bool warp, std::uint8_t door = kInvalidDoor);
 
+    // Drop an enter walk and stand them back up. Movement cancel and a
+    // script veto both land here — GTA will not abort CTaskComplexEnterCar
+    // just because the stick moved.
+    void AbortVehicleEnter(int slot);
+
+    // Stop a leave and keep the seat. If they already stepped out, warp
+    // them back so a refused vehicleStartExit does not dump them on the road.
+    void AbortVehicleExit(int slot, void *vehicle, std::uint8_t seat);
+
     // MTA / old Vanta passenger reach. Measured from the nearest passenger
     // door, not the vehicle centre - standing at the back of a bus is close
     // to a door and far from the middle.

@@ -531,6 +531,42 @@ namespace VantaMP::SDK {
         SetPrimaryTask(ped, task);
     }
 
+    void AbortVehicleEnter(int slot) {
+        auto *ped = PedFor(slot);
+
+        if (!ped || !ped->m_pIntelligence) {
+            return;
+        }
+
+        if (!PedIsEntering(ped) && !PedIsShuffling(ped)) {
+            return;
+        }
+
+        ClearPrimaryTask(ped);
+        GiveDefaultPrimary(ped);
+    }
+
+    void AbortVehicleExit(int slot, void *handle, std::uint8_t seat) {
+        auto *ped     = PedFor(slot);
+        auto *vehicle = static_cast<CVehicle *>(handle);
+
+        if (!ped || !ped->m_pIntelligence) {
+            return;
+        }
+
+        if (OccupiedVehicleOf(ped) == vehicle && vehicle) {
+            if (PedIsLeaving(ped)) {
+                ClearPrimaryTask(ped);
+            }
+
+            return;
+        }
+
+        if (vehicle) {
+            EnterVehicle(slot, vehicle, seat, true);
+        }
+    }
+
     void CancelEntriesInto(void *handle) {
         auto *vehicle = static_cast<CVehicle *>(handle);
 

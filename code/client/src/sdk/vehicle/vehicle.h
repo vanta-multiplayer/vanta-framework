@@ -89,6 +89,10 @@ namespace VantaMP::SDK {
     // paintjob 3 is none. upgrades is 17 slots, 0 empty, else 1000–1193.
     void ApplyVehicleCosmetics(void *vehicle, std::uint8_t paintjob, const std::uint16_t *upgrades, int upgradeSlots);
 
+    // Script-owned switches. Owner applies these, then reads GTA back —
+    // writing engine here is what makes car.engine = false stick.
+    void ApplyVehicleScriptState(void *vehicle, bool engineOn, bool sirenOn, std::uint8_t overrideLights, bool locked);
+
     [[nodiscard]] bool IsLocalPlayerDriving(const void *vehicle);
     [[nodiscard]] bool VehicleHasDriver(const void *vehicle);
 

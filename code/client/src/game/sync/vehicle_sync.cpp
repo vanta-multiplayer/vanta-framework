@@ -2,11 +2,13 @@
 
 #include "game/sync/player_sync.h"
 #include "sdk/game.h"
+#include "sdk/input/input.h"
 #include "sdk/world/streaming.h"
 #include "shared/entity/player_entity.h"
 #include "shared/world/world_space.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
+#include "shared/rpc/player_occupancy_abort.h"
 #include "shared/rpc/vehicle_damage_report.h"
 #include "shared/sync_rates.h"
 #include "shared/vehicle/colors.h"
@@ -72,6 +74,12 @@ namespace VantaMP::Game {
             std::array<std::uint32_t, Shared::kVehicleColorCount> lastColours {};
             bool haveColours = false;
             std::array<std::uint16_t, Shared::kUpgradeSlots> lastUpgrades {};
+
+            bool         haveScriptState     = false;
+            bool         lastEngineOn        = true;
+            bool         lastSirenOn         = false;
+            std::uint8_t lastOverrideLights  = 0;
+            bool         lastLocked          = false;
         };
 
         std::unordered_map<std::uint64_t, RemoteVehicle> gVehicles;
@@ -104,6 +112,77 @@ namespace VantaMP::Game {
         // door is the passenger side.
         bool gAwaitEnterDoor = false;
 
+        // Stick held when the climb started must not cancel it — that is
+        // just walking up to the door. A new press, a jump, or a release
+        // then press is the player changing their mind.
+        bool gEnterStickHeld         = false;
+        bool gEnterJumpHeld          = false;
+        bool gBlockEnterUntilRelease = false;
+        bool gBlockExitUntilRelease  = false;
+
+        constexpr float kAbortStick = 48.0f;
+
+        [[nodiscard]] float StickMagnitude(const SDK::ControllerInput &input) {
+            const auto x = static_cast<float>(input.leftStickX);
+            const auto y = static_cast<float>(input.leftStickY);
+
+            return std::sqrt(x * x + y * y);
+        }
+
+        void RememberEnterInput() {
+            const auto input = SDK::ReadLocalInput();
+
+            gEnterStickHeld = StickMagnitude(input) > kAbortStick;
+            gEnterJumpHeld  = (input.buttons & SDK::Button::Jump) != 0;
+        }
+
+        [[nodiscard]] bool LocalWantsToAbortEnter() {
+            const auto input    = SDK::ReadLocalInput();
+            const bool jump     = (input.buttons & SDK::Button::Jump) != 0;
+            const bool jumpEdge = jump && !gEnterJumpHeld;
+
+            gEnterJumpHeld = jump;
+
+            if (jumpEdge) {
+                return true;
+            }
+
+            if (StickMagnitude(input) > kAbortStick) {
+                return !gEnterStickHeld;
+            }
+
+            gEnterStickHeld = false;
+            return false;
+        }
+
+        [[nodiscard]] bool OccupancyInputIdle() {
+            const auto input = SDK::ReadLocalInput();
+
+            return (input.buttons & SDK::Button::EnterExit) == 0 && (input.buttons & SDK::Button::Jump) == 0 && StickMagnitude(input) <= kAbortStick;
+        }
+
+        void PulseOccupancyBlocks(const SDK::PedOccupancy &occupancy) {
+            if (gBlockEnterUntilRelease) {
+                if (occupancy.entering) {
+                    SDK::AbortVehicleEnter(0);
+                }
+
+                if (OccupancyInputIdle()) {
+                    gBlockEnterUntilRelease = false;
+                }
+            }
+
+            if (gBlockExitUntilRelease) {
+                if (occupancy.leaving) {
+                    SDK::AbortVehicleExit(0, occupancy.vehicle, occupancy.seat);
+                }
+
+                if (OccupancyInputIdle()) {
+                    gBlockExitUntilRelease = false;
+                }
+            }
+        }
+
         void *HandleOf(std::uint64_t vehicleId) {
             const auto found = gVehicles.find(vehicleId);
 
@@ -124,7 +203,7 @@ namespace VantaMP::Game {
             Framework::Logging::GetLogger("Vehicle")->debug("local enter vehicle {} seat {} door {} warp {}", vehicleId, seat, door, warp);
         }
 
-        void SendLocalExit(bool warp, std::uint8_t door) {
+        void SendLocalExit(bool warp, std::uint8_t door, bool abortEnter = false) {
             auto *net = Framework::CoreModules::GetNetworkPeer();
 
             if (!net) {
@@ -132,18 +211,25 @@ namespace VantaMP::Game {
             }
 
             Shared::RPC::PlayerExitVehicle exit;
-            exit.FromParameters(0, warp, door);
+            exit.FromParameters(0, warp, door, abortEnter);
             net->BroadcastRPC(exit);
 
-            Framework::Logging::GetLogger("Vehicle")->debug("local exit door {} warp {}", door, warp);
+            Framework::Logging::GetLogger("Vehicle")->debug("local exit door {} warp {} abortEnter {}", door, warp, abortEnter);
         }
 
         void WatchLocalOccupancy() {
             const auto occupancy = SDK::QueryPedOccupancy(0);
             const auto vehicleId = VehicleNetworkIdOf(occupancy.vehicle);
 
+            PulseOccupancyBlocks(occupancy);
+
             switch (gLocalRide) {
             case LocalRide::OnFoot:
+                if (gBlockEnterUntilRelease) {
+                    gAwaitEnterDoor = false;
+                    break;
+                }
+
                 if (occupancy.seated && vehicleId != 0) {
                     gAwaitEnterDoor = false;
                     SendLocalEnter(vehicleId, occupancy.seat, true, occupancy.door);
@@ -156,6 +242,7 @@ namespace VantaMP::Game {
                     }
 
                     gAwaitEnterDoor = false;
+                    RememberEnterInput();
                     SendLocalEnter(vehicleId, occupancy.seat, false, occupancy.door);
                     gLocalRide = LocalRide::Entering;
                 }
@@ -178,12 +265,22 @@ namespace VantaMP::Game {
                     gLocalRide = LocalRide::Seated;
                 }
                 else if (!occupancy.entering) {
-                    SendLocalExit(false, occupancy.door);
+                    SendLocalExit(false, occupancy.door, true);
                     gLocalRide = LocalRide::OnFoot;
+                }
+                else if (LocalWantsToAbortEnter()) {
+                    SDK::AbortVehicleEnter(0);
+                    SendLocalExit(false, occupancy.door, true);
+                    gBlockEnterUntilRelease = true;
+                    gLocalRide              = LocalRide::OnFoot;
                 }
                 break;
 
             case LocalRide::Seated:
+                if (gBlockExitUntilRelease) {
+                    break;
+                }
+
                 if (occupancy.leaving) {
                     SendLocalExit(false, occupancy.door);
                     gLocalRide = LocalRide::Leaving;
@@ -268,6 +365,24 @@ namespace VantaMP::Game {
                 remote.lastPaintjob  = entity->paintjob;
                 remote.lastUpgrades  = entity->upgrades;
             }
+        }
+
+        void ApplyScriptState(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
+            if (!remote.handle) {
+                return;
+            }
+
+            if (remote.haveScriptState && remote.lastEngineOn == entity->engineOn && remote.lastSirenOn == entity->sirenOn &&
+                remote.lastOverrideLights == entity->overrideLights && remote.lastLocked == entity->locked) {
+                return;
+            }
+
+            SDK::ApplyVehicleScriptState(remote.handle, entity->engineOn, entity->sirenOn, entity->overrideLights, entity->locked);
+            remote.lastEngineOn       = entity->engineOn;
+            remote.lastSirenOn        = entity->sirenOn;
+            remote.lastOverrideLights = entity->overrideLights;
+            remote.lastLocked         = entity->locked;
+            remote.haveScriptState    = true;
         }
 
         bool DamageWorseThan(const SDK::VehicleState &local, const Shared::VehicleEntity &entity) {
@@ -566,6 +681,7 @@ namespace VantaMP::Game {
             SDK::KeepScriptVehicle(remote.handle);
             SDK::SetVehicleInterior(remote.handle, entity->interior);
             ApplyCosmetics(entity, remote);
+            ApplyScriptState(entity, remote);
 
             remote.velocity = entity->velocity;
             remote.angular  = entity->angularVelocity;
@@ -607,6 +723,7 @@ namespace VantaMP::Game {
 
             SDK::SetVehicleInterior(remote.handle, entity->interior);
             ApplyCosmetics(entity, remote);
+            ApplyScriptState(entity, remote);
 
             const std::uint32_t now     = GetTickCount();
             const bool          changed = !remote.aimed || remote.aimedPosition != entity->position || remote.aimedRotation != entity->rotation;
@@ -753,6 +870,7 @@ namespace VantaMP::Game {
 
             if (vehicle->IsOwner()) {
                 ApplyCosmetics(vehicle, remote);
+                ApplyScriptState(vehicle, remote);
                 MergeOwnerDamage(vehicle, remote);
                 PushOwnedVehicle(vehicle, remote);
                 return;
@@ -906,6 +1024,41 @@ namespace VantaMP::Game {
         SDK::ExitVehicle(slot, warp, door);
 
         if (!SDK::IsPedInVehicle(slot)) {
+            SDK::SetRemotePedCollision(slot, true);
+        }
+    }
+
+    void ApplyOccupancyAbort(std::uint64_t networkId, std::uint64_t vehicleId, std::uint8_t kind, std::uint8_t seat, std::uint8_t door) {
+        (void)door;
+
+        const bool local = networkId != 0 && networkId == LocalNetworkId();
+        const int  slot  = local ? 0 : SlotOfNetworkId(networkId);
+
+        if (!local && slot < 0) {
+            return;
+        }
+
+        auto *handle = HandleOf(vehicleId);
+
+        if (kind == Shared::RPC::PlayerOccupancyAbort::kExit) {
+            SDK::AbortVehicleExit(slot, handle, seat);
+
+            if (local) {
+                gBlockExitUntilRelease = true;
+                gLocalRide             = LocalRide::Seated;
+            }
+
+            return;
+        }
+
+        SDK::AbortVehicleEnter(slot);
+        ForgetLateJoin(slot);
+
+        if (local) {
+            gBlockEnterUntilRelease = true;
+            gLocalRide              = LocalRide::OnFoot;
+        }
+        else if (!SDK::IsPedInVehicle(slot)) {
             SDK::SetRemotePedCollision(slot, true);
         }
     }

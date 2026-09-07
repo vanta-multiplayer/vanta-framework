@@ -11,6 +11,7 @@ namespace VantaMP::Game {
 
     void ApplyRemoteEnterVehicle(std::uint64_t networkId, std::uint64_t vehicleId, std::uint8_t seat, bool warp, std::uint8_t door);
     void ApplyRemoteExitVehicle(std::uint64_t networkId, bool warp, std::uint8_t door);
+    void ApplyOccupancyAbort(std::uint64_t networkId, std::uint64_t vehicleId, std::uint8_t kind, std::uint8_t seat, std::uint8_t door);
     void ApplyRemoteVehicleDamage(std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panels, std::uint32_t lights,
                                   std::uint64_t doorRatios, bool applyRatios, float health);
 

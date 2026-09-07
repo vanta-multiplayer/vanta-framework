@@ -11,6 +11,7 @@
 #include "shared/rpc/world_space.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
+#include "shared/rpc/player_occupancy_abort.h"
 #include "shared/rpc/vehicle_damage_report.h"
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
@@ -81,6 +82,10 @@ namespace VantaMP::Core {
 
             net->RegisterRPC<Shared::RPC::PlayerExitVehicle>([](const Shared::RPC::PlayerExitVehicle &exit, MafiaNet::Packet *) {
                 Game::ApplyRemoteExitVehicle(exit.networkId, exit.warp, exit.door);
+            });
+
+            net->RegisterRPC<Shared::RPC::PlayerOccupancyAbort>([](const Shared::RPC::PlayerOccupancyAbort &abort, MafiaNet::Packet *) {
+                Game::ApplyOccupancyAbort(abort.networkId, abort.vehicleId, abort.kind, abort.seat, abort.door);
             });
 
             net->RegisterRPC<Shared::RPC::VehicleDamageReport>([](const Shared::RPC::VehicleDamageReport &report, MafiaNet::Packet *) {
