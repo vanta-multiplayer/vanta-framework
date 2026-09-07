@@ -1,6 +1,6 @@
 #include "draw.h"
 
-#include "patterns.h"
+#include "sdk/patterns.h"
 
 #include <utils/safe_win32.h>
 

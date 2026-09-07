@@ -2,14 +2,16 @@
 
 #include "game/sync/player_sync.h"
 #include "sdk/game.h"
-#include "sdk/streaming.h"
-#include "shared/player_entity.h"
-#include "shared/world_space.h"
+#include "sdk/world/streaming.h"
+#include "shared/entity/player_entity.h"
+#include "shared/world/world_space.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/vehicle_damage_report.h"
 #include "shared/sync_rates.h"
-#include "shared/vehicle_entity.h"
+#include "shared/vehicle/colors.h"
+#include "shared/entity/vehicle_entity.h"
+#include "shared/vehicle/upgrades.h"
 
 #include <utils/safe_win32.h>
 
@@ -20,6 +22,7 @@
 #include <utils/interpolator.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <unordered_map>
 #include <unordered_set>
@@ -64,6 +67,11 @@ namespace VantaMP::Game {
             std::uint32_t lastDamageReportMs = 0;
             std::uint32_t lastRatioReportMs  = 0;
             std::uint64_t lastSentRatios     = 0;
+
+            std::uint8_t  lastPaintjob  = 255;
+            std::array<std::uint32_t, Shared::kVehicleColorCount> lastColours {};
+            bool haveColours = false;
+            std::array<std::uint16_t, Shared::kUpgradeSlots> lastUpgrades {};
         };
 
         std::unordered_map<std::uint64_t, RemoteVehicle> gVehicles;
@@ -234,6 +242,32 @@ namespace VantaMP::Game {
             }
 
             entity->interior = SDK::VehicleInterior(remote.handle);
+        }
+
+        void ApplyCosmetics(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
+            if (!remote.handle) {
+                return;
+            }
+
+            const bool colours = !remote.haveColours || remote.lastColours != entity->colours;
+            const bool paint   = remote.lastPaintjob != entity->paintjob;
+            const bool parts   = remote.lastUpgrades != entity->upgrades;
+
+            if (!colours && !paint && !parts) {
+                return;
+            }
+
+            if (colours) {
+                SDK::SetVehicleRgbColors(remote.handle, entity->colours.data(), Shared::kVehicleColorCount);
+                remote.lastColours = entity->colours;
+                remote.haveColours = true;
+            }
+
+            if (paint || parts) {
+                SDK::ApplyVehicleCosmetics(remote.handle, entity->paintjob, entity->upgrades.data(), Shared::kUpgradeSlots);
+                remote.lastPaintjob  = entity->paintjob;
+                remote.lastUpgrades  = entity->upgrades;
+            }
         }
 
         bool DamageWorseThan(const SDK::VehicleState &local, const Shared::VehicleEntity &entity) {
@@ -531,6 +565,7 @@ namespace VantaMP::Game {
 
             SDK::KeepScriptVehicle(remote.handle);
             SDK::SetVehicleInterior(remote.handle, entity->interior);
+            ApplyCosmetics(entity, remote);
 
             remote.velocity = entity->velocity;
             remote.angular  = entity->angularVelocity;
@@ -571,6 +606,7 @@ namespace VantaMP::Game {
             }
 
             SDK::SetVehicleInterior(remote.handle, entity->interior);
+            ApplyCosmetics(entity, remote);
 
             const std::uint32_t now     = GetTickCount();
             const bool          changed = !remote.aimed || remote.aimedPosition != entity->position || remote.aimedRotation != entity->rotation;
@@ -677,6 +713,7 @@ namespace VantaMP::Game {
             }
 
             SDK::CancelEntriesInto(remote.handle);
+            SDK::ClearVehicleRgbColors(remote.handle);
             SDK::DestroyScriptVehicle(remote.handle);
             remote.handle = nullptr;
         }
@@ -715,6 +752,7 @@ namespace VantaMP::Game {
             }
 
             if (vehicle->IsOwner()) {
+                ApplyCosmetics(vehicle, remote);
                 MergeOwnerDamage(vehicle, remote);
                 PushOwnedVehicle(vehicle, remote);
                 return;
@@ -1012,5 +1050,11 @@ namespace VantaMP::Game {
         if ((flags & Shared::kWorldSpaceDimension) != 0) {
             vehicle->dimension = dimension;
         }
+    }
+
+    void *VehicleHandleOf(std::uint64_t networkId) {
+        const auto found = gVehicles.find(networkId);
+
+        return found == gVehicles.end() ? nullptr : found->second.handle;
     }
 } // namespace VantaMP::Game

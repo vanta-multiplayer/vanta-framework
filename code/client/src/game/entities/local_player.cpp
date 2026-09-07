@@ -7,10 +7,10 @@
 #include "game/sync/death.h"
 #include "game/sync/player_sync.h"
 #include "sdk/ped/local_ped.h"
-#include "shared/world_space.h"
+#include "shared/world/world_space.h"
 #include "sdk/ped/weapon.h"
-#include "sdk/vehicle_occupancy.h"
-#include "shared/spawn_points.h"
+#include "sdk/vehicle/occupancy.h"
+#include "shared/world/spawn_points.h"
 
 #include <utils/safe_win32.h>
 

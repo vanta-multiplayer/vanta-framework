@@ -59,11 +59,12 @@ corrects where that walk has drifted.
   sdk/game_sdk.h        the plugin-sdk wrapper
   sdk/patterns.{h,cpp}  the signature table (included by ~13 files; leave put)
   sdk/game_build.{h,cpp}
-  sdk/input.{h,cpp}     the pad, local read and remote write     [plugin-sdk]
-  sdk/camera.{h,cpp}    camera rotation, per slot                 no plugin-sdk
-  sdk/ped/access.h      INTERNAL raw ped access shared by the two below
-  sdk/ped/local_ped.{h,cpp}                                       [plugin-sdk]
-  sdk/ped/remote_ped.{h,cpp}                                      [plugin-sdk]
+  sdk/input/input.*     the pad, local read and remote write     [plugin-sdk]
+  sdk/world/camera.*    camera rotation, per slot                 no plugin-sdk
+  sdk/world/streaming.*                                           [plugin-sdk]
+  sdk/world/draw.*
+  sdk/ped/              local / remote / weapon / shot / aim
+  sdk/vehicle/          create, RGB paint, occupancy              [plugin-sdk]
   ```
 
   Note `sdk/ped/` rather than `sdk/entities/`: `game/entities/` already exists
@@ -79,6 +80,12 @@ corrects where that walk has drifted.
 
 ## Decisions already made — do not relitigate
 
+- **Vehicle colour is RGB, not a palette.** GTA stores four palette
+  indexes. Mapping `Color.fromRGB` to the nearest of 128 is wrong — a
+  script can ask for any RGB. The replica carries four `uint32`
+  0x00RRGGBB values; the client writes them into
+  `ms_vehicleColourTable[0..3]` around `CVehicle::SetupRender` and
+  restores the table after. Do not go back to indexes.
 - **Sentry is wired up and works** (DSN in `shared/constants.h`, client + server).
   Events reach the dashboard. The local crash report was kept alongside it: the
   local one reads live values, Sentry only sees what was published before the
@@ -193,8 +200,15 @@ them. They are not "this session".
 Two clients connect, see each other, walk, jump, crouch, swim, shoot, talk
 and share cars. Interior and dimension are on the snapshot (MTA-shaped).
 `player.interior` / `player.dimension` and the `Vehicles.*` helpers write
-them; a different dimension streams the ped and car out. Restart the
-server after this field append. Client and server both build.
+them; a different dimension streams the ped and car out.
+
+Vehicle paint is **four RGB colours**, not the 128-entry GTA palette.
+`car.setColor(Color.fromRGB(r,g,b), …)` is the real colour; the client
+rewrites `ms_vehicleColourTable` around `CVehicle::SetupRender`. Paintjob
+and the 17 upgrade slots (including wheels) ride the same replica. The
+owner never writes cosmetics back from GTA. Models/upgrades are
+allow-listed by `catalog/gta_sa.models`. Restart the server after this
+field append.
 
 Version stamps `rel`, GitHub `branch` and `environment` (`test` on
 develop / features, `release` on `release` and `release/*`). Shown as
@@ -214,7 +228,7 @@ ped, not the chase cam.
 
 **The spawn is still a testing spawn** at the Los Santos waterfront so
 both players start near deep water. Grove Street is commented in
-`shared/spawn_points.h`.
+`shared/world/spawn_points.h`.
 
 **Temporary telemetry may still be in `player_sync.cpp`** (`TEMPORARY
 TELEMETRY`). Strip it once sync has been watched long enough.
@@ -263,9 +277,16 @@ gun" note is stale.
 - `code/client/src/sdk/ped/access.h` — `ReleaseRealTimeShadow` before
   any pool-free.
 - `code/client/src/game/sync/player_sync.cpp` — send/apply, interpolation.
-- `code/shared/player_entity.{h,cpp}` — the wire format. **Append only.**
-  Interior and dimension are at the end. `shared/world_space.h`,
+- `code/shared/entity/player_entity.{h,cpp}` — the wire format. **Append only.**
+  Interior and dimension are at the end. `shared/world/world_space.h`,
   `shared/rpc/world_space.h`.
+- `code/shared/entity/vehicle_entity.{h,cpp}` — append-only after interior /
+  dimension: paintjob, 17 upgrades, four `uint32` RGB colours.
+  `shared/vehicle/colors.h`, `shared/vehicle/upgrades.h`,
+  `shared/catalog/model_catalog.*`.
+- `code/server/src/scripting/player.*` — Framework Player plus spawn /
+  world-space. `vehicle.*` is the Entity handle. `bindings.cpp` only
+  Bind + Register.
 
 ## Lessons worth keeping
 

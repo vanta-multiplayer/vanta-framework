@@ -79,6 +79,16 @@ namespace VantaMP::SDK {
     void SetVehicleInterior(void *vehicle, std::uint8_t interior);
     [[nodiscard]] std::uint8_t VehicleInterior(const void *vehicle);
 
+    void SetVehicleColors(void *vehicle, std::uint8_t primary, std::uint8_t secondary);
+
+    // Four 0x00RRGGBB colours. GTA only stores palette indexes; these
+    // are painted by rewriting ms_vehicleColourTable around SetupRender.
+    void SetVehicleRgbColors(void *vehicle, const std::uint32_t *colours, int count);
+    void ClearVehicleRgbColors(void *vehicle);
+
+    // paintjob 3 is none. upgrades is 17 slots, 0 empty, else 1000–1193.
+    void ApplyVehicleCosmetics(void *vehicle, std::uint8_t paintjob, const std::uint16_t *upgrades, int upgradeSlots);
+
     [[nodiscard]] bool IsLocalPlayerDriving(const void *vehicle);
     [[nodiscard]] bool VehicleHasDriver(const void *vehicle);
 
@@ -112,4 +122,5 @@ namespace VantaMP::SDK {
     // KillPedsInVehicle / KillPedsGettingInVehicle. A tank shot reaches
     // those even when BlowUpCar is not taken through the vtable we patch.
     void InstallVehicleExplosionHooks();
+    void InstallVehicleColorHooks();
 } // namespace VantaMP::SDK

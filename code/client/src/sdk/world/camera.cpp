@@ -1,7 +1,7 @@
 #include "camera.h"
 
 #include "game/entities/player_slots.h"
-#include "patterns.h"
+#include "sdk/patterns.h"
 
 #include <array>
 #include <cmath>

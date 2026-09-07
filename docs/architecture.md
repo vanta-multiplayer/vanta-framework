@@ -8,8 +8,8 @@ server. Shared types are compiled into both sides so the wire cannot drift.
 code/launcher    VantaMPLauncher   32-bit   maps the game, injects the client
 code/client      VantaMPClient     32-bit   sync, patches, UI, SDK
 code/server      VantaMPServer     64-bit   replicas, RPCs, scripting
-code/shared      —                 —        entities, RPCs, rates
-code/client/src/sdk                —        the only place game types exist
+code/shared      —                 —        entity / vehicle / catalog / world / rpc
+code/client/src/sdk                —        ped / vehicle / world / input
 data/resources/freeroam            —        spawn + the dock Sultan
 ```
 
@@ -21,8 +21,15 @@ game/entities    player slots, local player, remote player lifecycle
 game/sync        the per-tick loop: read local, apply remote
 core/nui         CEF view. Page lives in the DLL at http://vanta/ui.html
 core/voice_io    WASAPI devices, mic test, PTT latch
-sdk/             GTA pointers, tasks, pads, vehicles
-shared/          the same structs the server serializes
+sdk/ped          peds, weapons, shots
+sdk/vehicle      cars, occupancy
+sdk/world        streaming, camera, draw
+sdk/input        pad
+shared/entity    PlayerEntity / VehicleEntity
+shared/vehicle   colours, upgrades
+shared/catalog   model allow-list
+shared/world     interior / dimension, spawn points
+shared/rpc       reliable events
 ui/              Solid source for that page (not shipped as files)
 ```
 
@@ -76,13 +83,17 @@ positional. A mismatched pair deserializes garbage silently.
 
 ## Scripting
 
-Resources talk to C++ through `code/server/src/scripting/bindings.cpp`.
-`Vehicles.create` and `Player.spawn` are the ones freeroam uses. Interior and
-dimension are properties on `Player` and functions on `Vehicles` — see
+Resources talk to C++ through `code/server/src/scripting/`. `bindings.cpp`
+only enters the isolate and calls `Player::Register` / `Vehicle::Register`.
+`Player` **is** the Framework Player (`kick`, `emit`, `ping`, nametag,
+Entity `position` / `rotation`) with spawn and world-space hung on it.
+`Vehicle` is a Framework Entity. `Vehicles.create` returns a handle.
+Interior and dimension are properties on both; vehicle colour is any RGB
+via `setColor` / `Color`. See
 [world space](world-space.md). If a resource listens for `playerReady` or
 `playerDeath`, C++ does not also spawn — that is the resource's job.
 
 The current freeroam spawn is the Los Santos waterfront so two clients start
 near water and a test Sultan. Grove Street is commented next to the numbers
-in `shared/spawn_points.h` and should go back when the waterfront has been
+in `shared/world/spawn_points.h` and should go back when the waterfront has been
 watched for long enough.

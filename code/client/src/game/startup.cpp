@@ -15,8 +15,8 @@
 #include "game/ui/nametags.h"
 #include "sdk/game_build.h"
 #include "sdk/patterns.h"
-#include "sdk/vehicle.h"
-#include "sdk/vehicle_occupancy.h"
+#include "sdk/vehicle/vehicle.h"
+#include "sdk/vehicle/occupancy.h"
 
 namespace VantaMP::Game {
     namespace {
@@ -82,6 +82,7 @@ namespace VantaMP::Game {
         Apply("input", ReleaseMouseCapture);
         Apply("pad suppress", InstallPadSuppressHook);
         Apply("vehicle explode", SDK::InstallVehicleExplosionHooks);
+        Apply("vehicle colour", SDK::InstallVehicleColorHooks);
         Apply("gameplay", ApplyGameplayPatches);
 
         // WEAPONTYPE_EXPLOSION. Occupancy marks the ped dead; this is

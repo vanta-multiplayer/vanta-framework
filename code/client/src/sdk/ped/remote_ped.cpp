@@ -2,7 +2,7 @@
 
 #include "access.h"
 #include "game/entities/remote_players.h"
-#include "sdk/vehicle_occupancy.h"
+#include "sdk/vehicle/occupancy.h"
 
 #include <cstddef>
 #include <iterator>

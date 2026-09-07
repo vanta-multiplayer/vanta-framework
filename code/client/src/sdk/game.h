@@ -10,13 +10,13 @@
 //
 // Prefer including the specific header when a file only needs one of these.
 
-#include "camera.h"
-#include "draw.h"
-#include "input.h"
-#include "streaming.h"
+#include "input/input.h"
 #include "ped/aim.h"
 #include "ped/local_ped.h"
 #include "ped/remote_ped.h"
 #include "ped/weapon.h"
-#include "vehicle.h"
-#include "vehicle_occupancy.h"
+#include "vehicle/occupancy.h"
+#include "vehicle/vehicle.h"
+#include "world/camera.h"
+#include "world/draw.h"
+#include "world/streaming.h"

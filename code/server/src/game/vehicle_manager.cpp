@@ -1,13 +1,15 @@
 #include "vehicle_manager.h"
 
 #include "game/player_manager.h"
-#include "shared/player_entity.h"
+#include "shared/entity/player_entity.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/vehicle_damage_report.h"
-#include "shared/vehicle_entity.h"
+#include "shared/catalog/model_catalog.h"
+#include "shared/entity/vehicle_entity.h"
+#include "shared/vehicle/upgrades.h"
 #include "shared/rpc/world_space.h"
-#include "shared/world_space.h"
+#include "shared/world/world_space.h"
 
 #include <core_modules.h>
 #include <logging/logger.h>
@@ -21,8 +23,8 @@ namespace VantaMP::Game {
 
     std::uint64_t VehicleManager::Create(std::uint32_t modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour,
                                          std::uint8_t interior, std::uint16_t dimension) {
-        if (modelId < Shared::VehicleEntity::kFirstModel || modelId > Shared::VehicleEntity::kLastModel) {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle model {}", modelId);
+        if (!Shared::ModelCatalog::IsVehicle(modelId)) {
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle model {} — not in the catalog", modelId);
             return 0;
         }
 
@@ -42,6 +44,7 @@ namespace VantaMP::Game {
         vehicle->modelId         = modelId;
         vehicle->primaryColour   = primaryColour;
         vehicle->secondaryColour = secondaryColour;
+        vehicle->FillColoursFromPalette();
         vehicle->position        = glm::vec3(x, y, z);
         vehicle->rotation        = glm::quat(glm::vec3(0.0f, 0.0f, heading));
         vehicle->health          = 1000.0f;
@@ -303,6 +306,46 @@ namespace VantaMP::Game {
         Shared::RPC::WorldSpace message;
         message.FromParameters(static_cast<std::uint64_t>(vehicle.GetNetworkID()), vehicle.interior, dimension, Shared::kWorldSpaceDimension);
         net->SendRPC(message, MafiaNet::ToGuid(vehicle.ownerGUID));
+    }
+
+    void VehicleManager::SetColors(Shared::VehicleEntity &vehicle, std::uint32_t c1, std::uint32_t c2, std::uint32_t c3, std::uint32_t c4) {
+        vehicle.SetColours(c1, c2, c3, c4);
+    }
+
+    void VehicleManager::SetPaintjob(Shared::VehicleEntity &vehicle, std::uint8_t paintjob) {
+        if (!Shared::IsPaintjob(paintjob)) {
+            return;
+        }
+
+        vehicle.paintjob = paintjob;
+    }
+
+    bool VehicleManager::AddUpgrade(Shared::VehicleEntity &vehicle, std::uint16_t upgradeId) {
+        if (!Shared::ModelCatalog::IsUpgrade(upgradeId)) {
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle upgrade {} — not in the catalog", upgradeId);
+            return false;
+        }
+
+        return vehicle.SetUpgrade(upgradeId);
+    }
+
+    bool VehicleManager::RemoveUpgrade(Shared::VehicleEntity &vehicle, std::uint16_t upgradeId) {
+        const int slot = Shared::UpgradeSlot(upgradeId);
+
+        if (slot < 0) {
+            return false;
+        }
+
+        if (vehicle.upgrades[static_cast<std::size_t>(slot)] != upgradeId) {
+            return false;
+        }
+
+        vehicle.ClearUpgradeSlot(slot);
+        return true;
+    }
+
+    void VehicleManager::RemoveAllUpgrades(Shared::VehicleEntity &vehicle) {
+        vehicle.upgrades = {};
     }
 
     Shared::VehicleEntity *VehicleManager::Find(std::uint64_t networkId) const {

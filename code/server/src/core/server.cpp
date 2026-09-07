@@ -1,15 +1,16 @@
 #include "server.h"
 
 #include "scripting/bindings.h"
-#include "shared/player_entity.h"
-#include "shared/vehicle_entity.h"
+#include "shared/catalog/model_catalog.h"
+#include "shared/entity/player_entity.h"
+#include "shared/entity/vehicle_entity.h"
 #include "shared/rpc/player_death.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/vehicle_damage_report.h"
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
-#include "shared/spawn_points.h"
+#include "shared/world/spawn_points.h"
 
 #include <core_modules.h>
 #include <logging/logger.h>
@@ -27,6 +28,17 @@ namespace VantaMP {
         // a number.
         Replication::EntityRegistry::Get().Register<Shared::PlayerEntity>(Shared::PlayerEntity::kTypeName);
         Replication::EntityRegistry::Get().Register<Shared::VehicleEntity>(Shared::VehicleEntity::kTypeName);
+
+        if (Shared::ModelCatalog::Load("catalog/gta_sa.models")) {
+            Shared::ModelCatalog::Merge("catalog/custom.models");
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)
+                ->info("Model catalog: {} vehicles, {} peds, {} weapons, {} upgrades", Shared::ModelCatalog::VehicleCount(),
+                       Shared::ModelCatalog::PedCount(), Shared::ModelCatalog::WeaponCount(), Shared::ModelCatalog::UpgradeCount());
+        }
+        else {
+            Shared::ModelCatalog::UseRetail();
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("catalog/gta_sa.models missing — using the built-in retail list");
+        }
 
         if (auto *voice = Framework::CoreModules::GetVoiceServer()) {
             voice->SetProximityRange(40.0f);

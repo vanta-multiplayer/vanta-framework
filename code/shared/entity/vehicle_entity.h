@@ -1,7 +1,11 @@
 #pragma once
 
+#include "shared/vehicle/colors.h"
+#include "shared/vehicle/upgrades.h"
+
 #include <networking/replication/network_entity.h>
 
+#include <array>
 #include <cstdint>
 
 namespace VantaMP::Shared {
@@ -104,8 +108,50 @@ namespace VantaMP::Shared {
         std::uint8_t  interior  = 0;
         std::uint16_t dimension = 0;
 
+        // Cosmetics. Server / script write these; the owner echoes and
+        // never reads them back from GTA. A client that "found" a nitro
+        // in a cheat menu does not get to put it on the wire.
+        std::uint8_t paintjob = kPaintjobNone;
+        std::array<std::uint16_t, kUpgradeSlots> upgrades {};
+
+        // Four body colours, 0x00RRGGBB. Not palette indexes — GTA only
+        // has 128 of those, and a script can ask for any RGB. The two
+        // construction bytes stay as a late-join fallback.
+        std::array<std::uint32_t, kVehicleColorCount> colours {};
+
+        void SetColours(std::uint32_t c1, std::uint32_t c2, std::uint32_t c3, std::uint32_t c4) {
+            colours[0] = TweakVehicleRgb(c1);
+            colours[1] = TweakVehicleRgb(c2);
+            colours[2] = TweakVehicleRgb(c3);
+            colours[3] = TweakVehicleRgb(c4);
+        }
+
+        void FillColoursFromPalette() {
+            const auto primary   = PaletteRgb(primaryColour);
+            const auto secondary = PaletteRgb(secondaryColour);
+
+            SetColours(primary, secondary, primary, secondary);
+        }
+
         [[nodiscard]] bool IsBlown() const {
             return blown || health <= kWreckHealth;
+        }
+
+        bool SetUpgrade(std::uint16_t upgradeId) {
+            const int slot = UpgradeSlot(upgradeId);
+
+            if (slot < 0 || slot >= kUpgradeSlots) {
+                return false;
+            }
+
+            upgrades[static_cast<std::size_t>(slot)] = upgradeId;
+            return true;
+        }
+
+        void ClearUpgradeSlot(int slot) {
+            if (slot >= 0 && slot < kUpgradeSlots) {
+                upgrades[static_cast<std::size_t>(slot)] = 0;
+            }
         }
 
         void LatchBlown() {
@@ -120,5 +166,6 @@ namespace VantaMP::Shared {
 
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
+        void OnStateForced() override;
     };
 } // namespace VantaMP::Shared

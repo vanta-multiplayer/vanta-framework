@@ -1,6 +1,6 @@
 ---
 description: Occupancy RPCs, jacking, door ratios, steering pad swap
-globs: code/client/src/game/sync/vehicle_sync.*,code/client/src/sdk/vehicle*,code/server/src/game/vehicle_manager.*,code/shared/rpc/player_enter_vehicle.h,code/shared/rpc/player_exit_vehicle.h,code/shared/rpc/vehicle_damage_report.h,code/shared/vehicle_entity.*
+globs: code/client/src/game/sync/vehicle_sync.*,code/client/src/sdk/vehicle/**,code/server/src/game/vehicle_manager.*,code/shared/rpc/player_enter_vehicle.h,code/shared/rpc/player_exit_vehicle.h,code/shared/rpc/vehicle_damage_report.h,code/shared/entity/vehicle_entity.*
 alwaysApply: false
 ---
 

@@ -34,7 +34,9 @@ player.interior                 // get / set, 0–255
 player.dimension                // get / set, 0–65535
 player.spawn(x, y, z, heading?, model?, health?, armour?, interior?, dimension?)
 
-Vehicles.create(model, x, y, z, heading?, primary?, secondary?, interior?, dimension?)
+const car = Vehicles.create(model, x, y, z, heading?, color?, color2?, interior?, dimension?)
+car.interior = n
+car.dimension = n
 Vehicles.setInterior(id, n)
 Vehicles.setDimension(id, n)
 Vehicles.getInterior(id)

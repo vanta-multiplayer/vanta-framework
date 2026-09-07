@@ -1,6 +1,6 @@
 #include "input.h"
 
-#include "ped/access.h"
+#include "sdk/ped/access.h"
 
 #include <algorithm>
 

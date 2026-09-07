@@ -1,4 +1,5 @@
 #include "player_entity.h"
+#include "state_forced.h"
 
 namespace VantaMP::Shared {
     namespace Replication = Framework::Networking::Replication;
@@ -60,5 +61,11 @@ namespace VantaMP::Shared {
         }
 
         return ResolveSibling(static_cast<MafiaNet::NetworkID>(vehicleNetworkId));
+    }
+
+    void PlayerEntity::OnStateForced() {
+        if (gOnPlayerForced) {
+            gOnPlayerForced(this);
+        }
     }
 } // namespace VantaMP::Shared

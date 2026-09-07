@@ -1,9 +1,11 @@
 #include "vehicle.h"
 
-#include "ped/access.h"
+#include "occupancy.h"
 #include "sdk/game_sdk.h"
 #include "sdk/patterns.h"
-#include "sdk/vehicle_occupancy.h"
+#include "sdk/ped/access.h"
+#include "sdk/world/streaming.h"
+#include "shared/vehicle/colors.h"
 
 #include <utils/safe_win32.h>
 
@@ -308,6 +310,69 @@ namespace VantaMP::SDK {
 
         KillPedsFn gOriginalKillPedsIn        = nullptr;
         KillPedsFn gOriginalKillPedsGettingIn = nullptr;
+
+        using SetupRenderFn = void(__thiscall *)(CVehicle *);
+
+        SetupRenderFn gOriginalSetupRender = nullptr;
+
+        struct VehicleRgb {
+            std::uint8_t r[Shared::kVehicleColorCount] {};
+            std::uint8_t g[Shared::kVehicleColorCount] {};
+            std::uint8_t b[Shared::kVehicleColorCount] {};
+        };
+
+        struct PaletteRgba {
+            std::uint8_t r;
+            std::uint8_t g;
+            std::uint8_t b;
+            std::uint8_t a;
+        };
+
+        std::unordered_map<const void *, VehicleRgb> gVehicleRgb;
+
+        PaletteRgba *ColourTable() {
+            return reinterpret_cast<PaletteRgba *>(gPatterns.CVehicleModelInfo__ms_vehicleColourTable);
+        }
+
+        void __fastcall SetupRender_Hook(CVehicle *vehicle) {
+            auto *table = ColourTable();
+            const VehicleRgb *rgb = nullptr;
+            PaletteRgba saved[Shared::kVehicleColorCount] {};
+
+            if (vehicle) {
+                const auto found = gVehicleRgb.find(vehicle);
+
+                if (found != gVehicleRgb.end()) {
+                    rgb = &found->second;
+                }
+            }
+
+            if (rgb && table) {
+                // Four independent RGB slots. The vehicle's own indexes
+                // would collapse two colours that happened to share a
+                // palette entry.
+                vehicle->m_nPrimaryColor     = 0;
+                vehicle->m_nSecondaryColor   = 1;
+                vehicle->m_nTertiaryColor    = 2;
+                vehicle->m_nQuaternaryColor  = 3;
+
+                for (int i = 0; i < Shared::kVehicleColorCount; ++i) {
+                    saved[i]   = table[i];
+                    table[i].r = rgb->r[i];
+                    table[i].g = rgb->g[i];
+                    table[i].b = rgb->b[i];
+                    table[i].a = 255;
+                }
+            }
+
+            gOriginalSetupRender(vehicle);
+
+            if (rgb && table) {
+                for (int i = 0; i < Shared::kVehicleColorCount; ++i) {
+                    table[i] = saved[i];
+                }
+            }
+        }
 
         int SlotOfRemoteDriver(CPed *driver) {
             if (!driver || driver == Internal::LocalPed()) {
@@ -672,6 +737,72 @@ namespace VantaMP::SDK {
         return vehicle ? vehicle->m_nAreaCode : 0;
     }
 
+    void SetVehicleColors(void *handle, std::uint8_t primary, std::uint8_t secondary) {
+        if (auto *vehicle = AsVehicle(handle)) {
+            vehicle->m_nPrimaryColor   = primary;
+            vehicle->m_nSecondaryColor = secondary;
+        }
+    }
+
+    void SetVehicleRgbColors(void *handle, const std::uint32_t *colours, int count) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !colours || count <= 0) {
+            return;
+        }
+
+        VehicleRgb rgb {};
+
+        for (int i = 0; i < Shared::kVehicleColorCount; ++i) {
+            const auto packed = Shared::TweakVehicleRgb(colours[i < count ? i : 0]);
+
+            rgb.r[i] = Shared::RgbR(packed);
+            rgb.g[i] = Shared::RgbG(packed);
+            rgb.b[i] = Shared::RgbB(packed);
+        }
+
+        gVehicleRgb[vehicle] = rgb;
+
+        vehicle->m_nPrimaryColor    = 0;
+        vehicle->m_nSecondaryColor  = 1;
+        vehicle->m_nTertiaryColor   = 2;
+        vehicle->m_nQuaternaryColor = 3;
+    }
+
+    void ClearVehicleRgbColors(void *handle) {
+        if (handle) {
+            gVehicleRgb.erase(handle);
+        }
+    }
+
+    void ApplyVehicleCosmetics(void *handle, std::uint8_t paintjob, const std::uint16_t *upgrades, int upgradeSlots) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle) {
+            return;
+        }
+
+        using SetRemapFn  = void(__thiscall *)(CVehicle *, int);
+        using AddUpgradeFn = void(__thiscall *)(CVehicle *, int);
+
+        reinterpret_cast<SetRemapFn>(gPatterns.CVehicle__SetRemap)(vehicle, static_cast<int>(paintjob));
+
+        if (!upgrades || upgradeSlots <= 0) {
+            return;
+        }
+
+        for (int i = 0; i < upgradeSlots; ++i) {
+            const auto part = upgrades[i];
+
+            if (part == 0) {
+                continue;
+            }
+
+            LoadModelNow(static_cast<int>(part));
+            reinterpret_cast<AddUpgradeFn>(gPatterns.CVehicle__AddVehicleUpgrade)(vehicle, static_cast<int>(part));
+        }
+    }
+
     bool IsLocalPlayerDriving(const void *handle) {
         const auto *vehicle = AsVehicle(handle);
 
@@ -724,6 +855,16 @@ namespace VantaMP::SDK {
         *blowSlot = reinterpret_cast<void *>(&BlowUpCar_Hook);
 
         VirtualProtect(blowSlot, sizeof(void *), previous, &ignored);
+    }
+
+    void InstallVehicleColorHooks() {
+        if (gOriginalSetupRender) {
+            return;
+        }
+
+        MH_CreateHook(reinterpret_cast<void *>(gPatterns.CVehicle__SetupRender), reinterpret_cast<void *>(&SetupRender_Hook),
+                      reinterpret_cast<void **>(&gOriginalSetupRender));
+        MH_EnableHook(reinterpret_cast<void *>(gPatterns.CVehicle__SetupRender));
     }
 
     void InstallVehicleExplosionHooks() {

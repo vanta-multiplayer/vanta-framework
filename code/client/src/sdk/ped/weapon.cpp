@@ -2,7 +2,7 @@
 
 #include "access.h"
 
-#include "sdk/streaming.h"
+#include "sdk/world/streaming.h"
 
 #include <cstddef>
 #include <iterator>

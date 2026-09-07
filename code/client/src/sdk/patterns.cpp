@@ -327,6 +327,13 @@ namespace VantaMP::SDK {
         gPatterns.CCarCtrl__GenerateRandomCars   = Resolve("A0 51 F8 B5 00 84 C0 74 08"); // 0x004341C0
         gPatterns.CCarCtrl__RemoveCarsIfPoolFull = Resolve("A1 4C CB B7 00 83 E0 07 83 EC 08 3C 03"); // 0x004322B0
         gPatterns.CCarCtrl__CreateCarForScript   = Resolve("6A FF 68 BB 74 83"); // 0x00431F80
+        gPatterns.CVehicle__SetRemap             = Resolve("8B 44 24 04 83 F8 FF 56 8B F1 75"); // 0x006D0C00
+        gPatterns.CVehicle__AddVehicleUpgrade    = Resolve("53 8B 5C 24 08 56 8B 34 9D"); // 0x006E3290
+        gPatterns.CVehicle__RemoveVehicleUpgrade = Resolve("55 8B 6C 24 08 56 8B 34"); // 0x006DF930
+        gPatterns.CVehicle__SetupRender          = Resolve("56 8B F1 0F BF 46 22 8B 0D"); // 0x006D64F0
+        // mov cl, [esi*4+table]; mov [edx], cl; mov dl, [esi*4+table+1]
+        gPatterns.CVehicleModelInfo__ms_vehicleColourTable =
+            OperandAt(hook::get_pattern("8A 0C B5 ? ? ? ? 88 0A 8A 14 B5"), 3); // site 0x004C838D -> 0x00B4E480
         gPatterns.CPools__ms_pVehiclePool        = OperandAt(hook::get_pattern("8D FA FF 83 C4 08 8B 0D"), 8); // site 0x0045FABB -> 0x00B74494
 
         gPatterns.CTaskComplexEnterCarAsDriver__Constructor    = Resolve("8B 44 24 04 56 6A 00 6A 00 6A 00"); // 0x006402F0

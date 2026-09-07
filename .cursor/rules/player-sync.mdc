@@ -1,6 +1,6 @@
 ---
 description: Remote peds are input replay — pad edges, heading, velocity
-globs: code/client/src/game/sync/player_sync.*,code/client/src/game/entities/remote_players.*,code/client/src/sdk/input.cpp,code/client/src/sdk/ped/**
+globs: code/client/src/game/sync/player_sync.*,code/client/src/game/entities/remote_players.*,code/client/src/sdk/input/**,code/client/src/sdk/ped/**
 alwaysApply: false
 ---
 

@@ -140,13 +140,32 @@ not snap.
 
 ## Script spawn
 
+`Vehicle` is a Framework `Entity`. Position and rotation are the Entity
+ones (`ForceState`); a heading is still radians on `create` / `spawn`.
+
 ```js
-Vehicles.create(560, 2865.93, -1665.88, 10.88, 0);
-// optional: heading, primary, secondary, interior, dimension
+const car = Vehicles.create(560, 2865.93, -1665.88, 10.88, 0);
+// or Vehicle.create(560, new Vector3(x, y, z), heading)
+
+car.position = new Vector3(x, y, z);
+car.setColor(Color.fromRGB(20, 200, 40), Color.fromRGB(8, 8, 8));
+car.color3 = Color.fromRGB(255, 16, 64);
+car.addUpgrade(1074); // wheels, ids 1000–1193
+car.paintjob = 0;
 ```
 
-Interior and dimension ride the vehicle snapshot. See
-[world space](world-space.md).
+`setColor` takes one to four `Color`s, or 3 / 6 / 9 / 12 RGB bytes
+(0–255). Those are real RGB, not a nearest-of-128 palette guess. GTA
+only stores palette indexes on the vehicle; the client rewrites
+`ms_vehicleColourTable` around `CVehicle::SetupRender` so the mesh
+actually gets that green.
+
+Create still accepts the old two palette indexes after heading. They
+are converted to RGB on the replica. Interior and dimension follow.
+See [world space](world-space.md).
+
+A model or upgrade that is not in `catalog/gta_sa.models` is refused.
+The owner never writes paint or parts back from GTA.
 
 `CCarCtrl::CreateCarForScript` allocates from the pool, adds to the world
 and gives the car physics. Mission cleanup is off so the game never deletes

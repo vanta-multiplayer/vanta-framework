@@ -8,14 +8,14 @@
 # Adding a file here should be a deliberate act. Prefer putting the game call
 # behind an existing SDK function instead.
 set(VANTAMP_CLIENT_SDK_FILES
-    src/sdk/input.cpp
-    src/sdk/streaming.cpp
+    src/sdk/input/input.cpp
+    src/sdk/world/streaming.cpp
     src/sdk/ped/local_ped.cpp
     src/sdk/ped/remote_ped.cpp
     src/sdk/ped/weapon.cpp
     src/sdk/ped/shot.cpp
-    src/sdk/vehicle.cpp
-    src/sdk/vehicle_occupancy.cpp
+    src/sdk/vehicle/vehicle.cpp
+    src/sdk/vehicle/occupancy.cpp
 )
 
 set(VANTAMP_CLIENT_FILES
@@ -68,16 +68,16 @@ set(VANTAMP_CLIENT_FILES
 
     # The game's memory, wrapped. These need no plugin-sdk of their own: an
     # address is a number and a slot is an integer.
-    src/sdk/camera.cpp
-    src/sdk/draw.cpp
+    src/sdk/world/camera.cpp
+    src/sdk/world/draw.cpp
     src/sdk/game_build.cpp
     src/sdk/patterns.cpp
     src/sdk/ped/aim.cpp
 
     ${VANTAMP_CLIENT_SDK_FILES}
 
-    ../shared/player_entity.cpp
-    ../shared/vehicle_entity.cpp
+    ../shared/entity/player_entity.cpp
+    ../shared/entity/vehicle_entity.cpp
 
     ${CMAKE_BINARY_DIR}/vantamp_version.cpp
 )

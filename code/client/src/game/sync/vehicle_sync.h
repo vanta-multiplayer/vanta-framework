@@ -26,4 +26,6 @@ namespace VantaMP::Game {
 
     // Script set on a car this client currently owns (the driver).
     void ApplyOwnedVehicleWorldSpace(std::uint64_t networkId, std::uint8_t interior, std::uint16_t dimension, std::uint8_t flags);
+
+    [[nodiscard]] void *VehicleHandleOf(std::uint64_t networkId);
 } // namespace VantaMP::Game

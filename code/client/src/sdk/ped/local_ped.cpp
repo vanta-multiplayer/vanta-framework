@@ -103,4 +103,15 @@ namespace VantaMP::SDK {
             ped->m_nAreaCode = interior;
         }
     }
+
+    void SetLocalPedTransform(float x, float y, float z, float heading) {
+        auto *ped = Internal::LocalPed();
+
+        if (!ped) {
+            return;
+        }
+
+        Internal::SetPedPosition(ped, x, y, z);
+        Internal::SetPedRotation(ped, heading);
+    }
 } // namespace VantaMP::SDK

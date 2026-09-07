@@ -152,6 +152,7 @@ namespace VantaMP::Shared {
 
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
+        void OnStateForced() override;
 
         // A seated ped is meaningless without its car. The interest grid
         // pulls the vehicle in with them, uncounted.

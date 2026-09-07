@@ -497,6 +497,18 @@ namespace VantaMP::SDK {
         // argument - we pass false so the game never deletes a Vanta car.
         uintptr_t CCarCtrl__CreateCarForScript = 0;
 
+        // Paintjob is SetRemap. Upgrades are model ids 1000–1193; the
+        // game attaches the mesh. Remove takes the same id Add was given.
+        uintptr_t CVehicle__SetRemap             = 0;
+        uintptr_t CVehicle__AddVehicleUpgrade    = 0;
+        uintptr_t CVehicle__RemoveVehicleUpgrade = 0;
+
+        // CVehicle::SetupRender paints the shared model materials from
+        // ms_vehicleColourTable. Custom RGB is written into the first
+        // four table slots for the duration of that call, then restored.
+        uintptr_t CVehicle__SetupRender                      = 0;
+        uintptr_t CVehicleModelInfo__ms_vehicleColourTable   = 0;
+
         // CPools::ms_pVehiclePool. CreateCarForScript allocates from it;
         // operator delete has no unique body, so we free through the pool
         // the same way the game does.

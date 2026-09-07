@@ -1,9 +1,10 @@
 #include "player_manager.h"
 
-#include "shared/player_entity.h"
+#include "shared/catalog/model_catalog.h"
+#include "shared/entity/player_entity.h"
 #include "shared/rpc/local_player_spawn.h"
 #include "shared/rpc/world_space.h"
-#include "shared/world_space.h"
+#include "shared/world/world_space.h"
 
 #include <core_modules.h>
 #include <logging/logger.h>
@@ -82,7 +83,12 @@ namespace VantaMP::Game {
         player->dimension = dimension;
 
         if (modelId != 0) {
-            player->modelId = modelId;
+            if (Shared::ModelCatalog::IsPed(modelId)) {
+                player->modelId = modelId;
+            }
+            else {
+                Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing ped model {} — not in the catalog", modelId);
+            }
         }
 
         auto *net = Framework::CoreModules::GetNetworkPeer();

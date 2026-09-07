@@ -1,9 +1,9 @@
-#include "vehicle_occupancy.h"
+#include "occupancy.h"
 
-#include "ped/access.h"
-#include "ped/remote_ped.h"
 #include "sdk/game_sdk.h"
 #include "sdk/patterns.h"
+#include "sdk/ped/access.h"
+#include "sdk/ped/remote_ped.h"
 
 #include "game/entities/player_slots.h"
 

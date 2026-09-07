@@ -1,4 +1,5 @@
 #include "vehicle_entity.h"
+#include "state_forced.h"
 
 namespace VantaMP::Shared {
     namespace Replication = Framework::Networking::Replication;
@@ -28,5 +29,25 @@ namespace VantaMP::Shared {
 
         fields.Field(interior);
         fields.Field(dimension);
+
+        // Runtime colour so setColor is not construction-only. Same two
+        // bytes as OnSerializeConstruction; a late joiner sees both.
+        fields.Field(primaryColour);
+        fields.Field(secondaryColour);
+        fields.Field(paintjob);
+
+        for (auto &part : upgrades) {
+            fields.Field(part);
+        }
+
+        for (auto &colour : colours) {
+            fields.Field(colour);
+        }
+    }
+
+    void VehicleEntity::OnStateForced() {
+        if (gOnVehicleForced) {
+            gOnVehicleForced(this);
+        }
     }
 } // namespace VantaMP::Shared

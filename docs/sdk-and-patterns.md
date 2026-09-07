@@ -4,27 +4,33 @@ The SDK is the only place that may name a GTA type. Above it, the game is
 player slots, `void *` handles, network ids and plain numbers.
 
 ```
-sdk/game.h              umbrella — include a specific header if you only need one
-sdk/game_sdk.h          the plugin-sdk wrapper
-sdk/patterns.{h,cpp}    the signature table
+sdk/game.h                 umbrella — include a specific header if you only need one
+sdk/game_sdk.h             the plugin-sdk wrapper
+sdk/patterns.{h,cpp}       the signature table
 sdk/game_build.{h,cpp}
-sdk/input.{h,cpp}       pad, local read, remote write          [plugin-sdk]
-sdk/camera.{h,cpp}      camera rotation, per slot
-sdk/streaming.{h,cpp}   model request / residency / interiors  [plugin-sdk]
-sdk/draw.{h,cpp}        nametag font
-sdk/ped/access.h        INTERNAL raw ped access (incl. ReleaseRealTimeShadow)
-sdk/ped/local_ped.*                                            [plugin-sdk]
-sdk/ped/remote_ped.*                                           [plugin-sdk]
-sdk/ped/weapon.*                                               [plugin-sdk]
-sdk/ped/shot.*                                                 [plugin-sdk]
-sdk/ped/aim.*           PointGunInDirection intercept
-sdk/vehicle.*           create, pose, damage, door ratios      [plugin-sdk]
-sdk/vehicle_occupancy.* enter / exit / jack tasks              [plugin-sdk]
+
+sdk/ped/access.h           INTERNAL raw ped access (incl. ReleaseRealTimeShadow)
+sdk/ped/local_ped.*                                               [plugin-sdk]
+sdk/ped/remote_ped.*                                              [plugin-sdk]
+sdk/ped/weapon.*                                                  [plugin-sdk]
+sdk/ped/shot.*                                                    [plugin-sdk]
+sdk/ped/aim.*              PointGunInDirection intercept
+
+sdk/vehicle/vehicle.*      create, pose, damage, RGB paint        [plugin-sdk]
+sdk/vehicle/occupancy.*    enter / exit / jack tasks              [plugin-sdk]
+
+sdk/world/streaming.*      model request / residency / interiors  [plugin-sdk]
+sdk/world/camera.*         camera rotation, per slot
+sdk/world/draw.*           nametag font
+
+sdk/input/input.*          pad, local read, remote write          [plugin-sdk]
 ```
 
 `sdk/ped/` rather than `sdk/entities/`: `game/entities/` already exists
 above the boundary and already has a `local_player.cpp`. The names would
-collide for a reader and for object files.
+collide for a reader and for object files. Vehicles sit next to peds
+under `sdk/vehicle/`. World helpers (stream, camera, draw) are
+`sdk/world/`.
 
 Vanta pool-deletes peds and vehicles without running `~CPhysical`. That
 destructor is what returns a realtime shadow to the manager. Call

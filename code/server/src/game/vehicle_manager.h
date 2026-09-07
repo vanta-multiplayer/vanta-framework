@@ -24,6 +24,12 @@ namespace VantaMP::Game {
         void SetInterior(Shared::VehicleEntity &vehicle, std::uint8_t interior);
         void SetDimension(Shared::VehicleEntity &vehicle, std::uint16_t dimension);
 
+        void SetColors(Shared::VehicleEntity &vehicle, std::uint32_t c1, std::uint32_t c2, std::uint32_t c3, std::uint32_t c4);
+        void SetPaintjob(Shared::VehicleEntity &vehicle, std::uint8_t paintjob);
+        bool AddUpgrade(Shared::VehicleEntity &vehicle, std::uint16_t upgradeId);
+        bool RemoveUpgrade(Shared::VehicleEntity &vehicle, std::uint16_t upgradeId);
+        void RemoveAllUpgrades(Shared::VehicleEntity &vehicle);
+
         bool Destroy(std::uint64_t networkId);
 
         void HandleEnter(Shared::PlayerEntity &player, std::uint64_t vehicleId, std::uint8_t seat, bool warp, std::uint8_t door);

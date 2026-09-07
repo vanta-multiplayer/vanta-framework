@@ -1,10 +1,10 @@
 #include "nametags.h"
 
 #include "game/sync/player_sync.h"
-#include "sdk/draw.h"
+#include "sdk/world/draw.h"
 #include "sdk/game.h"
-#include "shared/player_entity.h"
-#include "shared/world_space.h"
+#include "shared/entity/player_entity.h"
+#include "shared/world/world_space.h"
 
 #include <core_modules.h>
 #include <networking/replication/replication_manager.h>

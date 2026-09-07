@@ -65,4 +65,7 @@ namespace VantaMP::SDK {
     // Writes the local ped's area code. Pair with SetCurrentInterior when
     // the change did not come from GTA itself.
     void SetLocalPedInterior(std::uint8_t interior);
+
+    // Script wrote player.position / rotation. Move the ped; do not revive.
+    void SetLocalPedTransform(float x, float y, float z, float heading);
 } // namespace VantaMP::SDK

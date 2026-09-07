@@ -5,8 +5,8 @@
 #include <networking/network_peer.h>
 #include <networking/replication/entity_registry.h>
 
-#include "shared/player_entity.h"
-#include "shared/vehicle_entity.h"
+#include "shared/entity/player_entity.h"
+#include "shared/entity/vehicle_entity.h"
 #include "shared/rpc/local_player_spawn.h"
 #include "shared/rpc/world_space.h"
 #include "shared/rpc/player_enter_vehicle.h"
@@ -23,7 +23,7 @@
 #include "core/ui/window_input.h"
 #include "core/ui/ped_debug_ui.h"
 #include "game/patches/boot.h"
-#include "sdk/draw.h"
+#include "sdk/world/draw.h"
 
 #include <graphics/backend/d3d9.h>
 #include "game/sync/player_sync.h"
@@ -34,10 +34,10 @@
 #include "game/entities/remote_players.h"
 #include "game/patches/display.h"
 #include "game/patches/script.h"
-#include "sdk/camera.h"
+#include "sdk/world/camera.h"
 #include "sdk/ped/local_ped.h"
-#include "sdk/vehicle.h"
-#include "sdk/vehicle_occupancy.h"
+#include "sdk/vehicle/vehicle.h"
+#include "sdk/vehicle/occupancy.h"
 #include "shared/constants.h"
 #include "shared/version.h"
 

@@ -5,8 +5,8 @@
 #include "game/patches/audio_output.h"
 #include "game/sync/player_sync.h"
 #include "sdk/ped/remote_ped.h"
-#include "shared/player_entity.h"
-#include "shared/world_space.h"
+#include "shared/entity/player_entity.h"
+#include "shared/world/world_space.h"
 
 #include <utils/safe_win32.h>
 

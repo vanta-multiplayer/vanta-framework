@@ -6,11 +6,12 @@
 #include "game/entities/player_slots.h"
 #include "game/entities/remote_players.h"
 #include "sdk/game.h"
-#include "shared/player_entity.h"
+#include "shared/entity/player_entity.h"
+#include "shared/entity/state_forced.h"
 #include "shared/rpc/world_space.h"
 #include "shared/sync_rates.h"
-#include "shared/vehicle_entity.h"
-#include "shared/world_space.h"
+#include "shared/entity/vehicle_entity.h"
+#include "shared/world/world_space.h"
 
 #include <utils/safe_win32.h>
 
@@ -859,6 +860,24 @@ namespace VantaMP::Game {
 
     void InstallRemotePlayerCorrection() {
         SetRemotePedCorrector(&CorrectRemotePlayer);
+
+        Shared::gOnPlayerForced = [](Shared::PlayerEntity *player) {
+            if (!player || !player->IsOwner()) {
+                return;
+            }
+
+            SDK::SetLocalPedTransform(player->position.x, player->position.y, player->position.z, glm::roll(player->rotation));
+        };
+
+        Shared::gOnVehicleForced = [](Shared::VehicleEntity *vehicle) {
+            if (!vehicle || !vehicle->IsOwner()) {
+                return;
+            }
+
+            if (auto *handle = VehicleHandleOf(static_cast<std::uint64_t>(vehicle->GetNetworkID()))) {
+                SDK::SetVehiclePose(handle, vehicle->position.x, vehicle->position.y, vehicle->position.z, vehicle->rotation);
+            }
+        };
     }
 
     void ClearRemotePlayers() {
