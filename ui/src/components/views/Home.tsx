@@ -1,6 +1,5 @@
 import type {JSX} from "solid-js";
 import {For, Show} from "solid-js";
-import {A} from "@solidjs/router";
 import {Badge} from "../ui/badge";
 import {Button} from "../form/Button";
 import {Logo, Wordmark} from "../Brand";
@@ -71,10 +70,6 @@ export function Home(): JSX.Element {
                         <Group title="Recent" servers={recent()} empty="Join a server and it will show up here." />
                         <Group title="Favorites" servers={favorites()} empty="No favorites yet." />
                     </div>
-
-                    <A href={routes.servers} class="mt-8 inline-block text-sm font-semibold text-muted hover:text-foreground">
-                        Open the server list
-                    </A>
                 </div>
 
                 <div class="relative mx-auto hidden aspect-square w-full max-w-[28rem] items-center justify-center md:flex">
