@@ -36,6 +36,7 @@
 #include "sdk/camera.h"
 #include "sdk/ped/local_ped.h"
 #include "sdk/vehicle.h"
+#include "sdk/vehicle_occupancy.h"
 #include "shared/constants.h"
 #include "shared/version.h"
 
@@ -99,6 +100,7 @@ namespace VantaMP::Core {
         Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::InGame);
 
         StopMicTest();
+        Nui::ReportMicTest(false);
         ApplyVoiceSettings();
 
         Nui::ReportConnected(GetClientConfig().serverHost);
@@ -111,6 +113,7 @@ namespace VantaMP::Core {
 
     void Application::OnConnectionClosed() {
         StopMicTest();
+        Nui::ReportMicTest(false);
         SetTalkLatched(false);
 
         const auto reason      = GetLastDisconnectionReason();
@@ -231,6 +234,7 @@ namespace VantaMP::Core {
 
     void Application::PublishVoice() {
         auto &voice = GetVoiceClient();
+        InvalidateVoiceSpeakerCache();
 
         DWORD foregroundPid = 0;
         GetWindowThreadProcessId(GetForegroundWindow(), &foregroundPid);
@@ -264,6 +268,13 @@ namespace VantaMP::Core {
         const auto ped = SDK::QueryLocalPed();
         if (ped.valid) {
             listener.attenuationPosition = {ped.x, ped.y, ped.z};
+
+            // Chase-cam sits metres behind the cabin and springs. Pan is
+            // measured from listener.position, so that motion chops the mix
+            // every frame. Distance still uses the ped.
+            if (SDK::QueryPedOccupancy(0).seated) {
+                listener.position = listener.attenuationPosition;
+            }
         }
 
         voice.SetListenerTransform(listener);
@@ -384,6 +395,7 @@ namespace VantaMP::Core {
 
     void Application::PreShutdown() {
         StopMicTest();
+        Nui::ReportMicTest(false);
         SetTalkLatched(false);
         Nui::ShutdownInterface();
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client shutting down");

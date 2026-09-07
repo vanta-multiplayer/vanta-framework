@@ -84,7 +84,8 @@ Copy-Item (Join-Path $ClientBin "locales") (Join-Path $ClientOut "locales") -Rec
     "voice_ptt_key": 86,
     "nickname": "Player",
     "server_host": "127.0.0.1",
-    "server_port": 27015
+    "server_port": 27015,
+    "netgraph": false
 }
 '@ | Set-Content -Path (Join-Path $ClientOut "VantaMP.json") -Encoding ascii
 

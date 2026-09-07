@@ -8,6 +8,13 @@ export interface ServerEntry {
     readonly players: number;
     readonly maxPlayers: number;
     readonly ping: number;
+    readonly language?: string;
+    readonly gamemode?: string;
+    readonly website?: string;
+    readonly description?: string;
+    readonly tags?: readonly string[];
+    readonly banner?: string;
+    readonly avatar?: string;
 }
 
 export interface ConnectionProgress {
@@ -54,6 +61,7 @@ export interface Settings {
     readonly voiceOutputDevice?: string;
     readonly voiceVolume?: number;
     readonly voicePttKey?: number;
+    readonly netgraph?: boolean;
     readonly display?: number;
     readonly modes?: readonly { width: number; height: number; label: string }[];
     readonly displays?: readonly {

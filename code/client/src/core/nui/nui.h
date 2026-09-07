@@ -26,6 +26,7 @@ namespace VantaMP::Nui {
     void TickNetgraph();
     void RefreshSettings();
     void TickMicTest();
+    void ReportMicTest(bool running);
 
     void ReportConnected(const std::string &serverName);
     void ReportConnectionState(const std::string &state, const std::string &detail);

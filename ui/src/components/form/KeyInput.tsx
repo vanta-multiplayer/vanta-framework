@@ -72,9 +72,9 @@ export function KeyInput(props: {value: number; onChange: (value: number) => voi
     return (
         <button
             type="button"
-            class="text-body min-w-20 rounded-lg border border-border bg-brown-dark px-4
-                   h-[length:var(--control-height)] text-foreground"
-            classList={{"bg-surface": listening()}}
+            class="min-w-20 rounded-md border border-border bg-surface-raised px-4
+                   h-[length:var(--control-height)] text-sm font-extrabold text-foreground"
+            classList={{"border-primary bg-primary/10": listening()}}
             onClick={(event) => {
                 event.stopPropagation();
                 setListening(!listening());

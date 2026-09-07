@@ -32,22 +32,20 @@ export function ConnectionError(): JSX.Element {
     });
 
     return (
-        <Overlay onClose={close}>
-            <div class="w-[min(32rem,90vw)] rounded-lg border-2 border-danger/50 bg-surface px-[length:var(--space-xl)] py-[length:var(--space-xl)] text-center">
-                <div class="flex flex-col items-center gap-6">
-                    <div class="text-[length:var(--text-h1)] font-semibold text-danger">{errorTitle()}</div>
-                    <Show when={address()}>
-                        <div class="text-[length:var(--text-h3)] font-medium text-muted">{address()}</div>
-                    </Show>
-                    <p class="m-0 max-w-md text-[length:var(--text-body)] leading-relaxed text-foreground whitespace-pre-line">
-                        {errorMessage()}
-                    </p>
-                </div>
-                <div class="mt-[length:var(--space-xl)] flex justify-center gap-4">
-                    <Button kind="primary" onClick={retry}>
+        <Overlay class="border-danger/40" onClose={close}>
+            <div class="text-center">
+                <div class="font-display text-3xl font-bold tracking-tight text-danger">{errorTitle()}</div>
+                <Show when={address()}>
+                    <div class="mt-2 text-sm font-semibold text-muted">{address()}</div>
+                </Show>
+                <p class="mt-4 mb-0 text-sm leading-relaxed whitespace-pre-line text-foreground">
+                    {errorMessage()}
+                </p>
+                <div class="mt-8 flex justify-center gap-3">
+                    <Button variant="primary" onClick={retry}>
                         Retry
                     </Button>
-                    <Button kind="ghost" onClick={close}>
+                    <Button variant="secondary" onClick={close}>
                         Close
                     </Button>
                 </div>

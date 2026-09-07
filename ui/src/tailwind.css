@@ -1,62 +1,56 @@
 /*
  * Tailwind's entry point, and the theme.
  *
- * Plain CSS, and imported directly from index.tsx rather than from the SCSS.
- * Sass resolves @use before Vite sees the file, so Tailwind's plugin would
- * never find its own directive and would generate no utilities at all.
- *
- * The theme lives here for the same reason: Tailwind reads @theme to decide
- * which colour and font utilities exist.
+ * Tokens follow the public site: ink ground, amber primary, Space Grotesk
+ * for display, Manrope for everything else.
  */
 @import "tailwindcss";
 
 @theme {
-    --color-background: #0d0a08;
-    --color-background-soft: #15100c;
+    --color-background: #090806;
+    --color-background-soft: #100e0b;
 
-    --color-surface: #1b140f;
-    --color-surface-elevated: #241911;
+    --color-surface: #100e0b;
+    --color-surface-elevated: #17130f;
+    --color-surface-raised: #17130f;
 
-    --color-border: #3a281d;
+    --color-border: #2a2119;
+    --color-border-soft: #1d1813;
 
-    --color-foreground: #f6ead7;
-    --color-muted: #b9a58f;
+    --color-foreground: #f7f3ed;
+    --color-muted: #9e968d;
 
-    --color-primary: #e56f2d;
-    --color-primary-hover: #f07b35;
-    --color-primary-dark: #b94f1e;
+    --color-primary: #f28b3a;
+    --color-primary-hover: #ffb45e;
+    --color-primary-soft: #ffb45e;
+    --color-primary-dark: #b94d12;
+    --color-primary-deep: #b94d12;
 
-    --color-secondary: #f0b35e;
+    --color-secondary: #ffb45e;
     --color-secondary-soft: #d89542;
 
-    --color-accent: #ffe0a3;
-    --color-accent-muted: #c9894d;
+    --color-accent: #fff3db;
+    --color-accent-muted: #9e968d;
 
-    --color-brown: #4a2618;
-    --color-brown-dark: #28150f;
+    --color-brown: #2a2119;
+    --color-brown-dark: #100e0b;
 
     --color-success: #6ca45b;
     --color-warning: #e7a948;
     --color-danger: #d95b4f;
 
-    /* Aliases used by older class names in the interface. */
-    --color-back: #0d0a08;
-    --color-back-raised: #1b140f;
-    --color-text-light: #f6ead7;
-    --color-text-dim: #b9a58f;
-    --color-text-faint: #c9894d;
-    --color-accent-bright: #f07b35;
+    --color-back: #090806;
+    --color-back-raised: #100e0b;
+    --color-text-light: #f7f3ed;
+    --color-text-dim: #9e968d;
+    --color-text-faint: #9e968d;
+    --color-accent-bright: #ffb45e;
 
     --color-level-error: #d95b4f;
     --color-level-warn: #e7a948;
-    --color-level-debug: #f0b35e;
+    --color-level-debug: #ffb45e;
 
-    /* --font-sans, not a custom name.
-     *
-     * Tailwind v4 drops theme variables no utility references, so a custom
-     * --font-ui was stripped from the output and every `var(--font-ui)`
-     * resolved to nothing. Overriding --font-sans keeps it AND applies it
-     * through preflight. */
     --font-sans: "Manrope", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --font-display: "Space Grotesk", "Manrope", ui-sans-serif, system-ui, sans-serif;
     --font-mono: "DM Mono", "Cascadia Mono", Consolas, "Courier New", monospace;
 }

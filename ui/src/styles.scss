@@ -45,33 +45,34 @@
 }
 
 :root {
-    --primary-color: 229, 111, 45;
-    --primary-color-light: 240, 123, 53;
-    --color-background: #0d0a08;
-    --color-background-soft: #15100c;
-    --color-surface: #1b140f;
-    --color-surface-elevated: #241911;
-    --color-border: #3a281d;
-    --color-foreground: #f6ead7;
-    --color-muted: #b9a58f;
-    --color-primary: #e56f2d;
-    --color-accent: #ffe0a3;
+    --primary-color: 242, 139, 58;
+    --primary-color-light: 255, 180, 94;
+    --color-background: #090806;
+    --color-background-soft: #100e0b;
+    --color-surface: #100e0b;
+    --color-surface-elevated: #17130f;
+    --color-border: #2a2119;
+    --color-foreground: #f7f3ed;
+    --color-muted: #9e968d;
+    --color-primary: #f28b3a;
+    --color-accent: #fff3db;
     --color-danger: #d95b4f;
     --font-mono: "DM Mono", "Cascadia Mono", Consolas, "Courier New", monospace;
+    --font-display: "Space Grotesk", "Manrope", ui-sans-serif, system-ui, sans-serif;
     --text-h1: #{u(48)};
     --text-h2: #{u(32)};
     --text-h3: #{u(18)};
     --text-body: #{u(16)};
     --text-label: #{u(12)};
-    --nav-width: #{u(96)};
+    --nav-width: #{u(88)};
     --nav-icon: #{u(48)};
-    --control-height: #{u(50)};
+    --control-height: #{u(44)};
     --space-lg: #{u(24)};
-    --space-xl: #{u(48)};
-    --header-row: #{u(154)};
-    --servers-rail: #{u(416)};
-    --settings-rail: #{u(462)};
-    --voice-rail: #{u(462)};
+    --space-xl: #{u(40)};
+    --header-row: #{u(96)};
+    --servers-rail: #{u(380)};
+    --settings-rail: #{u(420)};
+    --voice-rail: #{u(420)};
 }
 
 html,
@@ -92,28 +93,36 @@ body,
     color: var(--color-foreground);
 }
 
+::selection {
+    background: rgb(242 139 58 / 0.28);
+    color: #fff;
+}
+
 h1 {
     margin: 0;
+    font-family: var(--font-display);
     font-size: u(48);
-    font-weight: 500;
-    line-height: 1.2;
-    letter-spacing: -0.0625rem;
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.06em;
 }
 
 h2 {
     margin: 0;
+    font-family: var(--font-display);
     font-size: u(32);
-    font-weight: 500;
-    line-height: 1.2;
-    letter-spacing: -0.0625rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.04em;
 }
 
 h3 {
     margin: 0;
-    font-size: u(18);
-    font-weight: 500;
+    font-size: u(12);
+    font-weight: 700;
     line-height: 1em;
-    letter-spacing: -0.02rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     color: var(--color-muted);
 }
 
@@ -139,7 +148,7 @@ h3 {
 
 /* A scrollbar suited to a dark overlay; the default is jarring over a game. */
 ::-webkit-scrollbar {
-    width: u(4);
+    width: u(8);
 }
 
 ::-webkit-scrollbar-track {
@@ -148,28 +157,35 @@ h3 {
 
 ::-webkit-scrollbar-thumb {
     border-radius: u(62);
-    background: rgb(185 165 143 / 0.35);
+    border: 2px solid transparent;
+    background: #2d241d;
+    background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-muted);
+    background: #473327;
+    background-clip: padding-box;
 }
 
 .page {
     pointer-events: auto;
     display: grid;
-    grid-template-columns: u(96) auto;
+    grid-template-columns: u(88) auto;
     height: 100vh;
-    background: var(--color-background);
+    background:
+        radial-gradient(circle at 70% -10%, rgba(242, 139, 58, 0.08), transparent 32rem),
+        var(--color-background);
 }
 
 .page--in-world {
-    background: rgb(13 10 8 / 0.72);
+    background:
+        radial-gradient(circle at 70% -10%, rgba(242, 139, 58, 0.06), transparent 28rem),
+        rgb(9 8 6 / 0.78);
 }
 
 .page--pause {
     grid-template-columns: 1fr;
-    background: rgb(13 10 8 / 0.58);
+    background: rgb(9 8 6 / 0.55);
 }
 
 .pause {
@@ -216,8 +232,10 @@ h3 {
     height: u(52);
     padding: 0 u(8);
     color: var(--color-foreground);
+    font-family: var(--font-display);
     font-size: u(22);
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: -0.03em;
     text-align: left;
     cursor: pointer;
     background: transparent;
@@ -266,11 +284,12 @@ h3 {
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    width: u(96);
+    width: u(88);
     height: 100vh;
-    padding-top: u(24);
+    padding-top: u(20);
     padding-bottom: u(12);
     border-right: u(1) solid var(--color-border);
+    background: rgb(16 14 11 / 0.72);
 }
 
 .nav__group {
@@ -281,10 +300,12 @@ h3 {
 
 .nav__branch {
     margin-bottom: u(4);
-    font-size: u(12);
+    font-size: u(10);
     font-weight: 800;
+    letter-spacing: 0.16em;
     text-align: center;
     text-transform: uppercase;
+    color: var(--color-primary);
 }
 
 .nav__logo {
@@ -293,37 +314,38 @@ h3 {
     justify-content: center;
     width: u(48);
     height: u(48);
-    margin-top: u(16);
-    margin-bottom: u(32);
+    margin-top: u(8);
+    margin-bottom: u(24);
 
-    svg {
+    img {
         width: u(48);
         height: u(48);
+        filter: drop-shadow(0 12px 24px rgba(242, 112, 35, 0.22));
     }
 }
 
 .nav-item {
     display: grid;
     place-items: center;
-    width: u(96);
-    height: u(80);
-    padding: u(12) u(20);
-    color: var(--color-foreground);
+    width: u(88);
+    height: u(64);
+    padding: u(10) u(16);
+    color: var(--color-muted);
     text-decoration: none;
     cursor: pointer;
     background: transparent;
     border: 0;
 
     svg {
-        width: u(28);
-        height: u(28);
+        width: u(22);
+        height: u(22);
         fill: none;
-        color: var(--color-foreground);
+        color: currentColor;
         transition: color 0.15s ease-in-out, transform 0.2s ease;
     }
 
-    &:hover:not(:disabled) svg {
-        color: var(--color-accent);
+    &:hover:not(:disabled) {
+        color: var(--color-foreground);
     }
 
     &:active:not(:disabled) svg {
@@ -331,16 +353,14 @@ h3 {
     }
 }
 
-.nav-item--active svg {
+.nav-item--active {
     color: var(--color-primary);
 }
 
 .nav-item--disabled {
     pointer-events: none;
-
-    svg {
-        color: var(--color-muted);
-    }
+    color: var(--color-muted);
+    opacity: 0.45;
 }
 
 .server-card {
@@ -348,19 +368,20 @@ h3 {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    gap: u(16);
-    padding: 0 u(20);
-    font-size: u(16);
+    gap: u(14);
+    padding: 0 u(12);
+    font-size: u(14);
     line-height: 1;
     text-align: left;
     cursor: pointer;
-    background: var(--color-surface);
-    border: u(1) solid transparent;
-    border-radius: u(8);
-    transition: border-color 0.2s ease-in-out, transform 0.2s ease;
+    background: rgb(255 255 255 / 0.025);
+    border: u(1) solid var(--color-border);
+    border-radius: u(6);
+    transition: border-color 0.2s ease-in-out, background 0.2s ease, transform 0.2s ease;
 
     &:hover {
-        border-color: var(--color-primary);
+        border-color: rgb(242 139 58 / 0.5);
+        background: rgb(242 139 58 / 0.06);
     }
 
     &:active {
@@ -404,13 +425,39 @@ h3 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: u(80);
-    background: var(--color-background);
+    gap: u(28);
+    background:
+        radial-gradient(circle at 50% 30%, rgba(242, 139, 58, 0.1), transparent 28rem),
+        var(--color-background);
 }
 
 .splash__mark {
-    width: u(120);
-    height: u(120);
+    width: u(160);
+    height: u(160);
+}
+
+.glass {
+    background: rgba(15, 13, 10, 0.72);
+    backdrop-filter: blur(18px);
+}
+
+.hero-grid {
+    background-image:
+        linear-gradient(rgba(242, 139, 58, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(242, 139, 58, 0.045) 1px, transparent 1px);
+    background-size: 52px 52px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 82%);
+}
+
+.text-gradient {
+    background: linear-gradient(120deg, #fff3db 0%, #ffba68 52%, #e56b25 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.logo-shadow {
+    filter: drop-shadow(0 30px 55px rgba(242, 112, 35, 0.16));
 }
 
 .progress {
@@ -424,9 +471,9 @@ h3 {
 .progress__bar {
     position: relative;
     width: u(250);
-    height: u(8);
+    height: u(6);
     overflow: hidden;
-    background: var(--color-brown);
+    background: rgb(255 255 255 / 0.06);
     border-radius: u(100);
 }
 
@@ -497,6 +544,45 @@ h3 {
 
 .netgraph td:first-child {
     padding-right: 0.5em;
+}
+
+.watermark {
+    pointer-events: none;
+    position: fixed;
+    top: 0.2em;
+    right: 0.2em;
+    z-index: 101;
+    display: flex;
+    align-items: center;
+    gap: u(10);
+    margin: 2em;
+    color: rgb(255 255 255 / 0.75);
+    font-size: u(14);
+    font-weight: 500;
+    line-height: 1.15;
+    text-shadow:
+        0 2px 0 rgb(0 0 0 / 0.5),
+        0 -2px 0 rgb(0 0 0 / 0.5),
+        2px 0 0 rgb(0 0 0 / 0.5),
+        -2px 0 0 rgb(0 0 0 / 0.5);
+}
+
+.watermark__mark {
+    width: u(28);
+    height: u(28);
+    filter: grayscale(1) brightness(1.35) opacity(0.8);
+}
+
+.watermark__name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.watermark__meta {
+    margin-top: 0.15em;
+    font-size: 0.85em;
+    color: rgb(255 255 255 / 0.55);
 }
 
 .page-view {

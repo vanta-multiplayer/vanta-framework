@@ -13,6 +13,7 @@ namespace VantaMP::Nui {
         inline constexpr const char *kConnectionAbort        = "connection:abort";
         inline constexpr const char *kConnectionIdle         = "connection:idle";
         inline constexpr const char *kConnectionSetServer    = "connection:setServer";
+        inline constexpr const char *kConnectionInvite       = "connection:invite";
         inline constexpr const char *kConnectionConnecting   = "connection:connecting";
         inline constexpr const char *kConnectionConnected    = "connection:connected";
         inline constexpr const char *kConnectionDisconnected = "connection:disconnected";
@@ -24,6 +25,7 @@ namespace VantaMP::Nui {
         inline constexpr const char *kConsolePush     = "console:push";
         inline constexpr const char *kConsoleClear    = "console:clear";
         inline constexpr const char *kConsoleOpen     = "console:open";
+        inline constexpr const char *kConsoleCommands = "console:commands";
 
         inline constexpr const char *kServersUpdate = "servers:update";
         inline constexpr const char *kServersReload = "servers:reload";
@@ -36,6 +38,7 @@ namespace VantaMP::Nui {
         inline constexpr const char *kSettingsDevicesReload = "settings:devices:reload";
         inline constexpr const char *kSettingsMicLevel      = "settings:currentVolume:update";
         inline constexpr const char *kSettingsMicToggle     = "settings:currentVolume:toggle";
+        inline constexpr const char *kSettingsMicRunning    = "settings:currentVolume:running";
         inline constexpr const char *kSettingsTalkToggle    = "settings:talk:toggle";
 
         inline constexpr const char *kVersionUpdate = "version:update";

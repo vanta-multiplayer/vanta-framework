@@ -13,6 +13,7 @@ namespace VantaMP::SDK {
         using Internal::OperatorDeleteFn;
         using Internal::OperatorNewFn;
         using Internal::PedAt;
+        using Internal::ReleaseRealTimeShadow;
         using Internal::SetPedPosition;
         using Internal::SetPedRotation;
 
@@ -171,6 +172,11 @@ namespace VantaMP::SDK {
             playerData->m_pPedClothesDesc = nullptr;
         }
 
+        // BEFORE the pool-free. operator delete does not run ~CPhysical, which
+        // is what returns the shadow; leaving it attached is the 0x705B3B
+        // crash a beat after disconnect.
+        ReleaseRealTimeShadow(ped);
+
         Game::UnregisterRemotePlayer(slot);
 
         reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(ped);
@@ -213,7 +219,7 @@ namespace VantaMP::SDK {
 
         auto *ped = PedAt(slot);
 
-        if (!ped) {
+        if (!ped || !ped->m_pRwObject) {
             return position;
         }
 

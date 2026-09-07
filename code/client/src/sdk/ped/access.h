@@ -100,6 +100,21 @@ namespace VantaMP::SDK::Internal {
         return info ? info->m_pPed : nullptr;
     }
 
+    // Hands a realtime shadow back to the manager while its owner is still
+    // allocated. CPhysical's destructor does this; Vanta pool-deletes peds
+    // and vehicles without running it, so the manager keeps m_pOwner. The
+    // next ReturnRealTimeShadow (0x705B30) then writes m_pShadowData through
+    // that freed pointer and AVs at 0x705B3B - the disconnect crash a frame
+    // or two after a remote player leaves.
+    inline void ReleaseRealTimeShadow(CPhysical *physical) {
+        if (!physical || !physical->m_pShadowData) {
+            return;
+        }
+
+        physical->m_pShadowData->m_pOwner = nullptr;
+        physical->m_pShadowData           = nullptr;
+    }
+
     inline void SetPedPosition(CPed *ped, float x, float y, float z) {
         reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(ped, x, y, z);
     }

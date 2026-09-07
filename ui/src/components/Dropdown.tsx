@@ -84,8 +84,8 @@ export function Dropdown(props: DropdownProps): JSX.Element {
                 ref={trigger}
                 type="button"
                 disabled={props.disabled}
-                class="text-body flex h-[length:var(--control-height)] w-full items-center justify-between
-                       rounded-lg border border-border bg-brown-dark px-3.5 text-left text-foreground
+                class="text-sm flex h-[length:var(--control-height)] w-full items-center justify-between
+                       rounded-md border border-border bg-surface-raised px-3.5 text-left text-foreground
                        disabled:opacity-50"
                 onClick={toggle}
             >
@@ -98,8 +98,8 @@ export function Dropdown(props: DropdownProps): JSX.Element {
                     <Portal>
                         <div
                             ref={menu}
-                            class="pointer-events-auto fixed z-[200] max-h-56 overflow-y-auto rounded-lg
-                                   border border-border bg-surface-elevated shadow-xl shadow-brown-dark/60"
+                            class="pointer-events-auto fixed z-[200] max-h-56 overflow-y-auto rounded-md
+                                   border border-border bg-surface-elevated shadow-xl"
                             style={{
                                 top: `${rect().bottom + 4}px`,
                                 left: `${rect().left}px`,
@@ -110,8 +110,8 @@ export function Dropdown(props: DropdownProps): JSX.Element {
                                 {(option) => (
                                     <button
                                         type="button"
-                                        class="text-body block w-full px-3.5 py-2.5 text-left text-foreground hover:bg-surface"
-                                        classList={{ "bg-brown": option.value === props.value }}
+                                        class="block w-full px-3.5 py-2.5 text-left text-sm text-foreground hover:bg-primary/[.08]"
+                                        classList={{"bg-primary/10": option.value === props.value}}
                                         onClick={() => {
                                             props.onChange(option.value);
                                             close();

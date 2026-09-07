@@ -4,10 +4,13 @@ import {HashRouter, Route, useLocation, useNavigate} from "@solidjs/router";
 import {Transition} from "solid-transition-group";
 import {Console} from "./Console";
 import {Netgraph} from "./Netgraph";
+import {Watermark} from "./Watermark";
 import {SideNav} from "./SideNav";
 import {Connecting} from "./modals/Connecting";
 import {ConnectionError} from "./modals/ConnectionError";
 import {DirectConnect} from "./modals/DirectConnect";
+import {InviteCard} from "./modals/InviteCard";
+import {JoinModal} from "./modals/JoinModal";
 import {ExitModal} from "./modals/ExitModal";
 import {RestartModal} from "./modals/RestartModal";
 import {About} from "./views/About";
@@ -15,7 +18,7 @@ import {Home} from "./views/Home";
 import {Pause} from "./views/Pause";
 import {Servers} from "./views/Servers";
 import {Settings} from "./views/Settings";
-import {IconMark} from "./icons";
+import {Logo, Wordmark} from "./Brand";
 import {routes} from "../routes";
 import {inGame} from "../state/bridge";
 import {
@@ -24,6 +27,8 @@ import {
     connected,
     connecting,
     directOpen,
+    joinOpen,
+    inviteOpen,
     errorOpen,
     exitOpen,
     restartOpen,
@@ -73,7 +78,8 @@ function Shell(props: {children?: JSX.Element}): JSX.Element {
             <Transition name="fade">
                 <Show when={!ready()}>
                     <div class="splash">
-                        <IconMark class="splash__mark" />
+                        <Logo class="splash__mark logo-shadow" alt="Vanta" />
+                        <Wordmark class="text-2xl" />
                         <div class="progress">
                             <div class="progress__bar">
                                 <div class="progress__fill progress__fill--indeterminate" />
@@ -84,7 +90,7 @@ function Shell(props: {children?: JSX.Element}): JSX.Element {
             </Transition>
 
             <Transition name="fade">
-                <Show when={ready() && menuOpen()}>
+                <Show when={ready() && menuOpen() && !inviteOpen()}>
                     <div
                         class="page"
                         classList={{
@@ -112,6 +118,16 @@ function Shell(props: {children?: JSX.Element}): JSX.Element {
                 </Show>
             </Transition>
             <Transition name="fade">
+                <Show when={inviteOpen()}>
+                    <InviteCard />
+                </Show>
+            </Transition>
+            <Transition name="fade">
+                <Show when={joinOpen()}>
+                    <JoinModal />
+                </Show>
+            </Transition>
+            <Transition name="fade">
                 <Show when={directOpen()}>
                     <DirectConnect />
                 </Show>
@@ -134,6 +150,7 @@ function Shell(props: {children?: JSX.Element}): JSX.Element {
 
             <Console />
             <Netgraph />
+            <Watermark />
         </>
     );
 }

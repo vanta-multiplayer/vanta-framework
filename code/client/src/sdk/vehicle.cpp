@@ -429,6 +429,7 @@ namespace VantaMP::SDK {
         // detach only.
         EvacuateVehicle(vehicle);
         ExtinguishCarFire(vehicle);
+        Internal::ReleaseRealTimeShadow(vehicle);
         reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(vehicle);
         DeleteFromVehiclePool(vehicle);
     }

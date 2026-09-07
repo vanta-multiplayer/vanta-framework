@@ -1,6 +1,7 @@
 import type {JSX} from "solid-js";
 import {routes} from "../../routes";
 import {address, disconnect, goTo, setExitOpen, showMenu} from "../../state/session";
+import {Brand} from "../Brand";
 
 function Action(props: {label: string; hint?: string; danger?: boolean; onClick: () => void}): JSX.Element {
     return (
@@ -15,8 +16,9 @@ function Action(props: {label: string; hint?: string; danger?: boolean; onClick:
 export function Pause(): JSX.Element {
     return (
         <div class="pause">
+            <Brand class="mb-10" />
             <p class="pause__eyebrow">Paused</p>
-            <h1 class="pause__title">In session</h1>
+            <h1 class="pause__title font-display">In session</h1>
             <p class="pause__server">{address() || "Connected"}</p>
 
             <div class="pause__actions">

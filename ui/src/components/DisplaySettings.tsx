@@ -4,6 +4,7 @@ import { emit } from "../state/bridge";
 import { notifyDisplaySaved } from "../state/session";
 import { Dropdown, type DropdownOption } from "./Dropdown";
 import { Button } from "./form/Button";
+import { Checkbox } from "./form/Checkbox";
 
 /** One resolution the graphics device reports. */
 export interface VideoModeEntry {
@@ -117,39 +118,29 @@ export function DisplaySettings(props: DisplaySettingsProps): JSX.Element {
                 </div>
             </Show>
 
-            <label class="flex cursor-pointer items-center gap-3 text-[length:var(--text-body)]">
-                <input
-                    type="checkbox"
-                    class="size-4 accent-primary"
-                    checked={borderless() && !exclusive()}
-                    onChange={(event) => {
-                        const on = event.currentTarget.checked;
-                        setBorderless(on);
-                        if (on) {
-                            setExclusive(false);
-                        }
-                        setSaved(false);
-                    }}
-                />
-                Borderless window
-            </label>
+            <Checkbox
+                label="Borderless window"
+                checked={borderless() && !exclusive()}
+                onChange={(on) => {
+                    setBorderless(on);
+                    if (on) {
+                        setExclusive(false);
+                    }
+                    setSaved(false);
+                }}
+            />
 
-            <label class="flex cursor-pointer items-center gap-3 text-[length:var(--text-body)]">
-                <input
-                    type="checkbox"
-                    class="size-4 accent-primary"
-                    checked={exclusive()}
-                    onChange={(event) => {
-                        const on = event.currentTarget.checked;
-                        setExclusive(on);
-                        if (on) {
-                            setBorderless(false);
-                        }
-                        setSaved(false);
-                    }}
-                />
-                Exclusive fullscreen
-            </label>
+            <Checkbox
+                label="Exclusive fullscreen"
+                checked={exclusive()}
+                onChange={(on) => {
+                    setExclusive(on);
+                    if (on) {
+                        setBorderless(false);
+                    }
+                    setSaved(false);
+                }}
+            />
 
             <div class="flex items-center gap-4">
                 <Button kind="primary" onClick={save}>

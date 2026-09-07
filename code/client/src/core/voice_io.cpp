@@ -3,13 +3,20 @@
 #include "core/application.h"
 #include "core/client_config.h"
 #include "game/patches/audio_output.h"
+#include "game/sync/player_sync.h"
+#include "sdk/ped/remote_ped.h"
+#include "shared/player_entity.h"
 
 #include <utils/safe_win32.h>
 
 #include <MinHook.h>
+#include <core_modules.h>
+#include <glm/vec3.hpp>
 #include <logging/logger.h>
 #include <miniaudio.h>
+#include <networking/replication/replication_manager.h>
 #include <utils/hooking/hook_function.h>
+#include <voice/client/voice_client.h>
 
 #include <algorithm>
 #include <atomic>
@@ -23,6 +30,38 @@ namespace VantaMP::Core {
         ma_device *gTestDevice = nullptr;
         std::atomic<float> gLevel {0.0f};
         std::atomic<bool> gTalkLatched {false};
+        bool gPausedVoiceForTest = false;
+
+        void PauseVoiceForTest() {
+            if (!gApplication) {
+                return;
+            }
+
+            auto &voice = gApplication->GetVoiceClient();
+            if (!voice.IsEnabled()) {
+                return;
+            }
+
+            voice.SetEnabled(false);
+            gPausedVoiceForTest = true;
+        }
+
+        void ResumeVoiceAfterTest() {
+            if (!gPausedVoiceForTest) {
+                return;
+            }
+
+            gPausedVoiceForTest = false;
+
+            if (!gApplication) {
+                return;
+            }
+
+            auto &voice = gApplication->GetVoiceClient();
+            if (!voice.IsEnabled()) {
+                voice.SetEnabled(true);
+            }
+        }
 
         using MaDeviceInitFn = ma_result (*)(ma_context *, const ma_device_config *, ma_device *);
         MaDeviceInitFn gMaDeviceInit = nullptr;
@@ -34,6 +73,102 @@ namespace VantaMP::Core {
         std::string gAppliedInput  = "default";
         std::string gAppliedOutput = "default";
         bool gHooked = false;
+
+        using SetSpeakerPositionFn = void *;
+        SetSpeakerPositionFn gSetSpeakerPosition = nullptr;
+        std::uint64_t gCachedSpeaker = 0;
+        glm::vec3 gCachedLive {};
+        bool gCachedLiveOk = false;
+
+        bool LiveSpeakerPosition(std::uint64_t guid, glm::vec3 &out) {
+            if (guid == 0) {
+                return false;
+            }
+
+            if (guid == gCachedSpeaker) {
+                if (gCachedLiveOk) {
+                    out = gCachedLive;
+                }
+
+                return gCachedLiveOk;
+            }
+
+            gCachedSpeaker = guid;
+            gCachedLiveOk  = false;
+
+            auto *replication = Framework::CoreModules::GetReplication();
+            if (!replication) {
+                return false;
+            }
+
+            Shared::PlayerEntity *player = nullptr;
+            replication->ForEachEntity([&](Framework::Networking::Replication::NetworkEntity *entity) {
+                if (player || static_cast<std::uint64_t>(entity->ownerGUID) != guid) {
+                    return;
+                }
+
+                player = dynamic_cast<Shared::PlayerEntity *>(entity);
+            });
+
+            if (!player || player->IsOwner()) {
+                return false;
+            }
+
+            const int slot = Game::SlotOfNetworkId(static_cast<std::uint64_t>(player->GetNetworkID()));
+            if (slot < 0) {
+                return false;
+            }
+
+            const auto head = SDK::GetRemotePedBonePosition(slot, SDK::kBoneHead);
+            if (head.x != 0.0f || head.y != 0.0f || head.z != 0.0f) {
+                gCachedLive   = {head.x, head.y, head.z};
+                gCachedLiveOk = true;
+                out           = gCachedLive;
+                return true;
+            }
+
+            const auto body = SDK::GetRemotePedPosition(slot);
+            if (body.x != 0.0f || body.y != 0.0f || body.z != 0.0f) {
+                gCachedLive   = {body.x, body.y, body.z};
+                gCachedLiveOk = true;
+                out           = gCachedLive;
+                return true;
+            }
+
+            return false;
+        }
+
+        class SpeakerPositionDetour {
+          public:
+            void Thunk(std::uint64_t speaker, const glm::vec3 &position);
+        };
+
+        void SpeakerPositionDetour::Thunk(std::uint64_t speaker, const glm::vec3 &position) {
+            auto *self = reinterpret_cast<Framework::Voice::VoiceClient *>(this);
+            glm::vec3 live = position;
+            const glm::vec3 &use = LiveSpeakerPosition(speaker, live) ? live : position;
+
+            using Original = void (Framework::Voice::VoiceClient::*)(std::uint64_t, const glm::vec3 &);
+            Original original {};
+            std::memcpy(&original, &gSetSpeakerPosition, sizeof(original));
+            (self->*original)(speaker, use);
+        }
+
+        void *SpeakerPositionAddress() {
+            using Member = void (Framework::Voice::VoiceClient::*)(std::uint64_t, const glm::vec3 &);
+            const Member member = &Framework::Voice::VoiceClient::SetSpeakerPosition;
+            void *address       = nullptr;
+            std::memcpy(&address, &member, sizeof(address));
+            return address;
+        }
+
+        void *SpeakerHookAddress() {
+            using Member = void (SpeakerPositionDetour::*)(std::uint64_t, const glm::vec3 &);
+            const Member member = &SpeakerPositionDetour::Thunk;
+            void *address       = nullptr;
+            std::memcpy(&address, &member, sizeof(address));
+            return address;
+        }
 
         bool FillWasapiId(const std::string &text, ma_device_id &out) {
             if (text.empty() || text == "default") {
@@ -80,16 +215,27 @@ namespace VantaMP::Core {
                 return;
             }
 
+            auto logger = Framework::Logging::GetLogger("Voice");
             auto *target = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(&ma_device_init));
             const MH_STATUS created = MH_CreateHook(target, reinterpret_cast<void *>(&MaDeviceInit_Hook), reinterpret_cast<void **>(&gMaDeviceInit));
             if (created != MH_OK) {
-                Framework::Logging::GetLogger("Voice")->error("Voice device hook failed to install ({})", static_cast<int>(created));
+                logger->error("Voice device hook failed to install ({})", static_cast<int>(created));
                 return;
             }
 
             MH_EnableHook(target);
+
+            auto *speaker = SpeakerPositionAddress();
+            const MH_STATUS speakers = MH_CreateHook(speaker, SpeakerHookAddress(), &gSetSpeakerPosition);
+            if (speakers != MH_OK) {
+                logger->error("Voice speaker hook failed to install ({})", static_cast<int>(speakers));
+            }
+            else {
+                MH_EnableHook(speaker);
+            }
+
             gHooked = true;
-            Framework::Logging::GetLogger("Voice")->info("Voice device hook installed");
+            logger->info("Voice device hook installed");
         }
 
         void WantDevice(bool capture, const std::string &id) {
@@ -180,6 +326,7 @@ namespace VantaMP::Core {
 
     bool StartMicTest(const std::string &inputId, const std::string &outputId) {
         StopMicTest();
+        PauseVoiceForTest();
 
         ma_device_config config  = ma_device_config_init(ma_device_type_duplex);
         config.capture.format    = ma_format_f32;
@@ -202,12 +349,14 @@ namespace VantaMP::Core {
 
         auto *device = new (std::nothrow) ma_device {};
         if (!device) {
+            ResumeVoiceAfterTest();
             return false;
         }
 
         if (ma_device_init(nullptr, &config, device) != MA_SUCCESS || ma_device_start(device) != MA_SUCCESS) {
             ma_device_uninit(device);
             delete device;
+            ResumeVoiceAfterTest();
             Framework::Logging::GetLogger("Voice")->warn("Mic test could not open the selected devices");
             return false;
         }
@@ -218,14 +367,14 @@ namespace VantaMP::Core {
     }
 
     void StopMicTest() {
-        if (!gTestDevice) {
-            return;
+        if (gTestDevice) {
+            ma_device_uninit(gTestDevice);
+            delete gTestDevice;
+            gTestDevice = nullptr;
+            gLevel.store(0.0f, std::memory_order_relaxed);
         }
 
-        ma_device_uninit(gTestDevice);
-        delete gTestDevice;
-        gTestDevice = nullptr;
-        gLevel.store(0.0f, std::memory_order_relaxed);
+        ResumeVoiceAfterTest();
     }
 
     bool IsMicTestRunning() {
@@ -246,6 +395,11 @@ namespace VantaMP::Core {
 
     bool IsTalkLatched() {
         return gTalkLatched.load(std::memory_order_relaxed);
+    }
+
+    void InvalidateVoiceSpeakerCache() {
+        gCachedSpeaker = 0;
+        gCachedLiveOk  = false;
     }
 
     void ApplyVoiceSettings() {

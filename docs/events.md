@@ -32,6 +32,7 @@ Resource views still use `Web.emit` / `Web.on` on their own CEF views.
 | `ui:ready` | | Game startup finished (frontend bypassed) |
 | `ui:toggle` | `state?` | Core wants the F1 menu open or shut |
 | `connection:setServer` | `serverName` | Connect started |
+| `connection:invite` | `server` | Launched with `vanta://` or `--connect`; UI shows the invite card |
 | `connection:connecting` | `serverName?` | TCP connect |
 | `connection:connected` | `serverId?` | Accepted |
 | `connection:failed` | `message, allowReconnect?` | Could not reach |
@@ -48,12 +49,13 @@ Resource views still use `Web.emit` / `Web.on` on their own CEF views.
 | `loaded` | | Pushes version, settings, servers, then `version:ready` |
 | `connection:connect` | `host, port, cdn, auth, password, id, name, applyTheme` | Join |
 | `connection:abort` | | Logged; disconnect not wired yet |
-| `console:execute` | `command` | Log + echo via `console:push` |
+| `console:execute` | `command` | Runs a built-in client command |
+| `console:commands` | `commands` | Built-in command catalog for suggestions |
 | `console:setState` | `state` | Echo `console:open` |
 | `servers:reload` | | `servers:update` with `[]` |
 | `settings:change` | `key, value` | Save display keys |
 | `ui:toggle` | `state?` | Cursor / menu focus |
-| `netgraph:enable` | `visible` | Reserved |
+| `netgraph:enable` | `visible` | Start or stop netgraph samples |
 | `exit` | | `PostQuitMessage` |
 
 ## Reserved (not implemented)

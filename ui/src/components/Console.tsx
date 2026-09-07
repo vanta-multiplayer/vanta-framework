@@ -1,7 +1,9 @@
 import type {JSX} from "solid-js";
-import { Show, createSignal, For, onCleanup, onMount } from "solid-js";
-import { emit, on, type ConsoleLevel, type ConsoleLine } from "../state/bridge";
-import { claimFocus } from "../state/focus";
+import {Show, For, createEffect, createMemo, createSignal, onCleanup, onMount} from "solid-js";
+import {emit, on, type ConsoleLevel, type ConsoleLine} from "../state/bridge";
+import {asCommandCatalog, CLIENT_COMMANDS, commandSuggestions, type Suggestion} from "../lib/commands";
+import {claimFocus} from "../state/focus";
+import {recent} from "../state/session";
 
 /**
  * The in-game console: log output and a command line.
@@ -21,6 +23,9 @@ export function Console(): JSX.Element {
     const [input, setInput] = createSignal("");
     const [history, setHistory] = createSignal<string[]>([]);
     const [historyIndex, setHistoryIndex] = createSignal(-1);
+    const [catalog, setCatalog] = createSignal(CLIENT_COMMANDS);
+    const [picked, setPicked] = createSignal(0);
+    const [hideSuggest, setHideSuggest] = createSignal(false);
 
     let inputElement: HTMLInputElement | undefined;
     let outputElement: HTMLDivElement | undefined;
@@ -83,6 +88,35 @@ export function Console(): JSX.Element {
         }
     }
 
+    const suggestions = createMemo(() => {
+        if (hideSuggest()) {
+            return [];
+        }
+
+        return commandSuggestions(input(), {
+            catalog: catalog(),
+            recent: recent().map((server) => server.address),
+        });
+    });
+
+    createEffect(() => {
+        input();
+        setPicked(0);
+        setHideSuggest(false);
+    });
+
+    function acceptSuggestion(item?: Suggestion): void {
+        const list = suggestions();
+        const chosen = item ?? list[picked()] ?? list[0];
+
+        if (!chosen) {
+            return;
+        }
+
+        setInput(chosen.fill);
+        setPicked(0);
+    }
+
     function runCommand(command: string): void {
         const trimmed = command.trim();
 
@@ -97,16 +131,13 @@ export function Console(): JSX.Element {
             timestamp: timestamp(),
         });
 
-        // clear is handled here rather than natively: the page owns what is on
-        // screen, and a round trip to the client only to come back and empty a
-        // list would be indirection for its own sake.
-        const word = trimmed.toLowerCase();
+        const verb = (trimmed.split(/\s+/)[0] ?? "").toLowerCase();
 
-        if (word === "clear" || word === "cls") {
+        if (verb === "clear" || verb === "cls") {
             setLines([]);
-        } else {
-            emit("console:execute", trimmed);
         }
+
+        emit("console:execute", trimmed);
 
         setHistory((current) => [trimmed, ...current.filter((entry) => entry !== trimmed)].slice(0, 50));
         setHistoryIndex(-1);
@@ -118,11 +149,33 @@ export function Console(): JSX.Element {
         runCommand(input());
     }
 
-    /** Up and down walk the command history, as a shell does. */
     function onInputKeyDown(event: KeyboardEvent): void {
+        const list = suggestions();
+
+        if (event.key === "Tab") {
+            event.preventDefault();
+
+            if (list.length === 0) {
+                return;
+            }
+
+            const index = event.shiftKey
+                ? (picked() - 1 + list.length) % list.length
+                : picked();
+            acceptSuggestion(list[index]);
+            return;
+        }
+
         if (event.key === "Enter") {
             event.preventDefault();
             runCommand(input());
+            return;
+        }
+
+        if (list.length > 0 && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+            event.preventDefault();
+            const delta = event.key === "ArrowDown" ? 1 : -1;
+            setPicked((current) => (current + delta + list.length) % list.length);
             return;
         }
 
@@ -160,6 +213,12 @@ export function Console(): JSX.Element {
 
             if (event.key === "Escape" && open()) {
                 event.preventDefault();
+
+                if (suggestions().length > 0) {
+                    setHideSuggest(true);
+                    return;
+                }
+
                 toggle();
                 return;
             }
@@ -182,7 +241,7 @@ export function Console(): JSX.Element {
                 return;
             }
 
-            if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+            if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "Tab") {
                 onInputKeyDown(event);
             }
         }
@@ -214,6 +273,10 @@ export function Console(): JSX.Element {
             }
         });
 
+        const stopCommands = on("console:commands", (list: unknown) => {
+            setCatalog(asCommandCatalog(list));
+        });
+
         const stopClear = on("console:clear", () => setLines([]));
 
         const stopOpen = on("console:open", (state?: boolean) => {
@@ -225,6 +288,7 @@ export function Console(): JSX.Element {
         onCleanup(() => {
             window.removeEventListener("keydown", onKeyDown);
             stopLog();
+            stopCommands();
             stopClear();
             stopOpen();
         });
@@ -312,22 +376,48 @@ export function Console(): JSX.Element {
                 </For>
             </div>
 
-            <form class="flex items-center gap-2 border-t border-border bg-brown-dark/50 px-5 py-2" onSubmit={submit}>
-                <span class="font-mono text-primary">&gt;</span>
+            <form class="relative border-t border-border bg-surface/50" onSubmit={submit}>
+                <Show when={suggestions().length > 0}>
+                    <div class="absolute inset-x-0 bottom-full max-h-48 overflow-y-auto border-t border-border bg-background/95">
+                        <For each={suggestions()}>
+                            {(item, index) => (
+                                <button
+                                    type="button"
+                                    class="flex w-full items-center gap-4 px-5 py-1.5 text-left font-mono text-sm"
+                                    classList={{
+                                        "bg-primary/15 text-foreground": index() === picked(),
+                                        "text-muted": index() !== picked(),
+                                    }}
+                                    onMouseDown={(event) => {
+                                        event.preventDefault();
+                                        acceptSuggestion(item);
+                                    }}
+                                >
+                                    <span class="text-foreground">{item.label}</span>
+                                    <span class="truncate text-xs text-muted">{item.hint}</span>
+                                </button>
+                            )}
+                        </For>
+                    </div>
+                </Show>
 
-                <input
-                    ref={inputElement}
-                    class="text-console flex-1 border-0 bg-transparent font-mono text-inherit
-                           outline-none select-text placeholder:text-muted/40"
-                    type="text"
-                    value={input()}
-                    spellcheck={false}
-                    autocomplete="off"
-                    autofocus
-                    placeholder="Type a command, or 'help'"
-                    onInput={(event) => setInput(event.currentTarget.value)}
-                    onKeyDown={onInputKeyDown}
-                />
+                <div class="flex items-center gap-2 px-5 py-2">
+                    <span class="font-mono text-primary">&gt;</span>
+
+                    <input
+                        ref={inputElement}
+                        class="text-console flex-1 border-0 bg-transparent font-mono text-inherit
+                               outline-none select-text placeholder:text-muted/40"
+                        type="text"
+                        value={input()}
+                        spellcheck={false}
+                        autocomplete="off"
+                        autofocus
+                        placeholder="Type a command, or 'help'"
+                        onInput={(event) => setInput(event.currentTarget.value)}
+                        onKeyDown={onInputKeyDown}
+                    />
+                </div>
             </form>
         </div>
     );

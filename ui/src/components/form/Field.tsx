@@ -1,4 +1,7 @@
 import type {JSX} from "solid-js";
+import {Input} from "../ui/input";
+import {Label} from "../ui/label";
+
 export function Field(props: {
     id: string;
     label?: string;
@@ -12,18 +15,10 @@ export function Field(props: {
     onBlur?: () => void;
 }): JSX.Element {
     return (
-        <label class="block" for={props.id}>
-            {props.label ? (
-                <span class="mb-3 block text-[length:var(--text-h3)] font-medium tracking-tight text-muted">
-                    {props.label}
-                </span>
-            ) : null}
-            <input
+        <div>
+            {props.label ? <Label for={props.id}>{props.label}</Label> : null}
+            <Input
                 id={props.id}
-                class="text-body h-[length:var(--control-height)] w-full rounded-lg border border-border
-                       bg-brown-dark px-3.5 text-foreground outline-none select-text
-                       placeholder:text-muted/50 focus:border-primary
-                       disabled:opacity-50"
                 type={props.type ?? "text"}
                 value={props.value}
                 maxLength={props.maxLength}
@@ -39,6 +34,6 @@ export function Field(props: {
                     }
                 }}
             />
-        </label>
+        </div>
     );
 }

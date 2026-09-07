@@ -1,5 +1,4 @@
 import type {JSX} from "solid-js";
-import {Show} from "solid-js";
 import {A} from "@solidjs/router";
 import House from "lucide-solid/icons/house";
 import Server from "lucide-solid/icons/server";
@@ -7,7 +6,9 @@ import Unplug from "lucide-solid/icons/unplug";
 import Settings from "lucide-solid/icons/settings";
 import Info from "lucide-solid/icons/info";
 import LogOut from "lucide-solid/icons/log-out";
-import {IconMark} from "./icons";
+import {Show} from "solid-js";
+import {Logo} from "./Brand";
+import {cn} from "../lib/cn";
 import {routes} from "../routes";
 import {branch, connected, connecting, disconnect, setDirectOpen, setExitOpen} from "../state/session";
 
@@ -47,7 +48,7 @@ export function SideNav(): JSX.Element {
                     <div class="nav__branch">{branch()}</div>
                 </Show>
                 <div class="nav__logo">
-                    <IconMark />
+                    <Logo class="size-full" alt="Vanta" />
                 </div>
                 <Show when={!connected()}>
                     <NavLink href={routes.home} label="Home" end disabled={busy()}>
@@ -60,8 +61,7 @@ export function SideNav(): JSX.Element {
                         type="button"
                         title="Direct connect"
                         disabled={busy()}
-                        class="nav-item"
-                        classList={{"nav-item--disabled": busy()}}
+                        class={cn("nav-item", busy() && "nav-item--disabled")}
                         onClick={() => setDirectOpen(true)}
                     >
                         <Unplug />

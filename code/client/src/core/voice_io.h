@@ -13,8 +13,8 @@ namespace VantaMP::Core {
     [[nodiscard]] std::vector<VoiceEndpoint> ListVoiceInputs();
     [[nodiscard]] std::vector<VoiceEndpoint> ListVoiceOutputs();
 
-    // Hear-yourself loopback on the chosen endpoints. Independent of the
-    // voice session, so it works from the menu before a connect.
+    // Hear-yourself loopback on the chosen endpoints. Pauses the live voice
+    // session while it runs so the same WASAPI device can open twice.
     bool StartMicTest(const std::string &inputId, const std::string &outputId);
     void StopMicTest();
     [[nodiscard]] bool IsMicTestRunning();
@@ -22,6 +22,8 @@ namespace VantaMP::Core {
 
     void SetTalkLatched(bool on);
     [[nodiscard]] bool IsTalkLatched();
+
+    void InvalidateVoiceSpeakerCache();
 
     void ApplyVoiceSettings();
 } // namespace VantaMP::Core

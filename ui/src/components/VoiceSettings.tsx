@@ -46,9 +46,7 @@ export function VoiceSettings(props: VoiceSettingsProps): JSX.Element {
     });
 
     function toggleTest(): void {
-        const next = !micTest();
-        setMicTest(next);
-        emit("settings:currentVolume:toggle", next);
+        emit("settings:currentVolume:toggle", !micTest());
     }
 
     function startTalk(): void {
@@ -89,16 +87,16 @@ export function VoiceSettings(props: VoiceSettingsProps): JSX.Element {
                 </p>
             </div>
 
-            <VolumeMeter label={connected() ? "Talking" : "Mic test"} value={micLevel()} />
+            <VolumeMeter label={micTest() ? "Mic test" : connected() ? "Talking" : "Mic test"} value={micLevel()} />
 
-            <Show
-                when={connected()}
-                fallback={
-                    <Button kind={micTest() ? "danger" : "ghost"} onClick={toggleTest}>
-                        {micTest() ? "Stop mic test" : "Start mic test"}
-                    </Button>
-                }
-            >
+            <Button kind={micTest() ? "danger" : "ghost"} onClick={toggleTest}>
+                {micTest() ? "Stop mic test" : "Start mic test"}
+            </Button>
+            <p class="mt-0 mb-0 text-[length:var(--text-label)] text-muted">
+                Hear yourself on the output device. Voice chat pauses while this runs.
+            </p>
+
+            <Show when={connected()}>
                 <Button kind="primary" onClick={startTalk}>
                     Talk
                 </Button>

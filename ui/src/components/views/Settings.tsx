@@ -60,7 +60,7 @@ export function Settings(): JSX.Element {
         <div class="flex h-full min-h-0">
             <div class="flex w-[length:var(--settings-rail)] shrink-0 flex-col border-r border-border">
                 <div class="flex min-h-[length:var(--header-row)] items-center border-b border-border px-[length:var(--space-xl)]">
-                    <h1>Settings</h1>
+                    <h1 class="text-2xl">Settings</h1>
                 </div>
                 <div class="flex-1 overflow-y-auto px-[length:var(--space-xl)] py-[length:var(--space-xl)]">
                     <div class="flex flex-col gap-8">
@@ -84,7 +84,7 @@ export function Settings(): JSX.Element {
             </div>
             <div class="flex w-[length:var(--voice-rail)] shrink-0 flex-col border-r border-border">
                 <div class="flex min-h-[length:var(--header-row)] items-center border-b border-border px-[length:var(--space-xl)]">
-                    <h1>Voice</h1>
+                    <h1 class="text-2xl">Voice</h1>
                 </div>
                 <div class="flex-1 overflow-y-auto px-[length:var(--space-xl)] py-[length:var(--space-xl)]">
                     <Show when={voice()}>

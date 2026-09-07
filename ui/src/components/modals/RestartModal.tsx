@@ -29,18 +29,18 @@ export function RestartModal(): JSX.Element {
 
     return (
         <Overlay onClose={() => setRestartOpen(false)}>
-            <div class="flex flex-col items-center gap-[length:var(--space-xl)] px-[length:var(--space-xl)] text-center">
-                <div class="flex flex-col items-center gap-6">
-                    <div class="text-[length:var(--text-h1)] font-semibold">Restart required</div>
-                    <div class="text-[length:var(--text-h2)] font-medium text-muted">
+            <div class="flex flex-col items-center gap-8 text-center">
+                <div>
+                    <div class="font-display text-3xl font-bold tracking-tight">Restart required</div>
+                    <div class="mt-3 text-sm font-semibold leading-relaxed text-muted">
                         The game must be restarted for the new display settings to apply.
                     </div>
                 </div>
-                <div class="flex gap-6">
-                    <Button kind="success" onClick={leave}>
+                <div class="flex gap-3">
+                    <Button variant="primary" onClick={leave}>
                         Exit to desktop
                     </Button>
-                    <Button kind="danger" onClick={() => setRestartOpen(false)}>
+                    <Button variant="secondary" onClick={() => setRestartOpen(false)}>
                         Later
                     </Button>
                 </div>

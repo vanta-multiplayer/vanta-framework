@@ -31,14 +31,14 @@ export function Connecting(): JSX.Element {
 
     return (
         <Overlay>
-            <div class="flex w-[min(28rem,90vw)] flex-col items-center gap-8 rounded-lg border-2 border-border bg-surface p-8 text-center">
-                <div class="flex flex-col items-center gap-3">
-                    <div class="text-[length:var(--text-h1)] font-semibold">{title()}</div>
-                    <div class="text-[length:var(--text-h2)] font-medium text-muted">{address()}</div>
+            <div class="flex flex-col items-center gap-6 text-center">
+                <div>
+                    <div class="font-display text-3xl font-bold tracking-tight">{title()}</div>
+                    <div class="mt-2 text-sm font-semibold text-muted">{address()}</div>
                 </div>
 
                 <Show when={status()}>
-                    <p class="m-0 max-w-xl text-[length:var(--text-body)] leading-relaxed whitespace-pre-line text-muted">
+                    <p class="m-0 max-w-xl text-sm leading-relaxed whitespace-pre-line text-muted">
                         {status()}
                     </p>
                 </Show>
@@ -57,12 +57,7 @@ export function Connecting(): JSX.Element {
                     </Show>
                 </div>
 
-                <Button
-                    kind="danger"
-                    onClick={() => {
-                        emit("connection:abort");
-                    }}
-                >
+                <Button variant="danger" onClick={() => emit("connection:abort")}>
                     Cancel
                 </Button>
             </div>

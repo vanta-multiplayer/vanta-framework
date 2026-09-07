@@ -1,5 +1,6 @@
 import type {JSX} from "solid-js";
 import {createEffect} from "solid-js";
+import {Label} from "../ui/label";
 
 export function Slider(props: {
     id?: string;
@@ -26,14 +27,14 @@ export function Slider(props: {
     });
 
     return (
-        <label class="block" for={props.id}>
-            <span class="mb-4 block text-[length:var(--text-h3)] font-medium tracking-tight text-muted">
+        <div>
+            <Label for={props.id}>
                 {props.label}
-                <span class="ml-2 font-mono text-[length:var(--text-label)] text-foreground">
+                <span class="ml-2 font-mono text-[11px] tracking-normal text-foreground normal-case">
                     {Math.round(props.value)}
                     {props.suffix ?? "%"}
                 </span>
-            </span>
+            </Label>
             <input
                 ref={input}
                 id={props.id}
@@ -46,16 +47,16 @@ export function Slider(props: {
                        [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:appearance-none
                        [&::-webkit-slider-runnable-track]:bg-transparent
                        [&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10
-                       [&::-webkit-slider-thumb]:mt-[-8px] [&::-webkit-slider-thumb]:size-5
+                       [&::-webkit-slider-thumb]:mt-[-8px] [&::-webkit-slider-thumb]:size-4
                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full
-                       [&::-webkit-slider-thumb]:border-[3px] [&::-webkit-slider-thumb]:border-primary-hover
-                       [&::-webkit-slider-thumb]:bg-surface-elevated"
+                       [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-primary
+                       [&::-webkit-slider-thumb]:bg-background"
                 style={{
                     background:
-                        "linear-gradient(to right, var(--color-primary-hover), var(--color-primary-hover) var(--fill), rgb(241 242 242 / 0.15) var(--fill))",
+                        "linear-gradient(to right, var(--color-primary), var(--color-primary) var(--fill), rgb(255 255 255 / 0.12) var(--fill))",
                 }}
                 onInput={(event) => props.onChange(Number.parseInt(event.currentTarget.value, 10) || 0)}
             />
-        </label>
+        </div>
     );
 }

@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import { emit, inGame, on, type ConnectionProgress, type ServerEntry, type Settings } from "./bridge";
+import { asServerEntry } from "../lib/server-entry";
 import { claimFocus } from "./focus";
 import { routes, type RoutePath } from "../routes";
 
@@ -17,6 +18,10 @@ const [download, setDownload] = createSignal<ConnectionProgress | null>(null);
 const [version, setVersion] = createSignal("0.0.0");
 const [branch, setBranch] = createSignal("develop");
 const [directOpen, setDirectOpen] = createSignal(false);
+const [joinOpen, setJoinOpen] = createSignal(false);
+const [joinServer, setJoinServer] = createSignal<ServerEntry | null>(null);
+const [inviteOpen, setInviteOpen] = createSignal(false);
+const [inviteServer, setInviteServer] = createSignal<ServerEntry | null>(null);
 const [exitOpen, setExitOpen] = createSignal(false);
 const [restartOpen, setRestartOpen] = createSignal(false);
 const [settings, setSettings] = createSignal<Settings | null>(null);
@@ -48,6 +53,10 @@ export {
     version,
     branch,
     directOpen,
+    joinOpen,
+    joinServer,
+    inviteOpen,
+    inviteServer,
     exitOpen,
     restartOpen,
     settings,
@@ -61,10 +70,21 @@ export {
     setNickname,
     setAddress,
     setDirectOpen,
+    setJoinOpen,
     setExitOpen,
     setRestartOpen,
     setErrorOpen,
 };
+
+export function netgraphEnabled(): boolean {
+    return settings()?.netgraph === true;
+}
+
+export function setNetgraphEnabled(enabled: boolean): void {
+    setSettings((current) => ({...(current ?? {}), netgraph: enabled}));
+    emit("settings:change", "netgraph", enabled);
+    emit("netgraph:enable", enabled);
+}
 
 type BootDisplay = {
     windowWidth: number;
@@ -169,6 +189,16 @@ export function handleEscape(): void {
         return;
     }
 
+    if (inviteOpen()) {
+        closeInvite();
+        return;
+    }
+
+    if (joinOpen()) {
+        closeJoin();
+        return;
+    }
+
     if (directOpen()) {
         setDirectOpen(false);
         return;
@@ -193,7 +223,30 @@ export function handleEscape(): void {
     showMenu(false);
 }
 
-export function connectTo(target: string): void {
+export function openJoin(server: ServerEntry): void {
+    setJoinServer(server);
+    setAddress(server.address);
+    setJoinOpen(true);
+}
+
+export function closeJoin(): void {
+    setJoinOpen(false);
+    setJoinServer(null);
+}
+
+export function openInvite(server: ServerEntry): void {
+    setInviteServer(server);
+    setAddress(server.address);
+    setInviteOpen(true);
+    showMenu(true);
+}
+
+export function closeInvite(): void {
+    setInviteOpen(false);
+    setInviteServer(null);
+}
+
+export function connectTo(target: string, password = ""): void {
     const trimmed = target.trim();
 
     if (trimmed === "") {
@@ -205,11 +258,14 @@ export function connectTo(target: string): void {
     const host = colon >= 0 ? trimmed.slice(0, colon) : trimmed;
     const port = colon >= 0 ? Number.parseInt(trimmed.slice(colon + 1), 10) || 22005 : 22005;
 
+    setAddress(trimmed);
     setConnecting(true);
     setErrorOpen(false);
     setStatus(`Connecting to ${trimmed}`);
+    closeJoin();
+    closeInvite();
     setDirectOpen(false);
-    emit("connection:connect", host, port, "", "", "", "", nickname().trim() || "Player", false);
+    emit("connection:connect", host, port, "", "", password, "", nickname().trim() || "Player", false);
 }
 
 export function bindSession(): () => void {
@@ -229,6 +285,12 @@ export function bindSession(): () => void {
         on("settings:currentVolume:update", (value: number) => {
             setMicLevel(typeof value === "number" ? value : 0);
         }),
+        on("settings:currentVolume:running", (running: boolean) => {
+            setMicTest(!!running);
+            if (!running) {
+                setMicLevel(0);
+            }
+        }),
         on("settings:update", (data: Settings) => {
             setSettings((current) => ({...(current ?? {}), ...data}));
             if (!bootDisplay) {
@@ -243,6 +305,13 @@ export function bindSession(): () => void {
         on("servers:update", (list: ServerEntry[] | null) => setServers(list ?? [])),
         on("servers:recent:update", (list: ServerEntry[] | null) => setRecent(list ?? [])),
         on("servers:favorite:update", (list: ServerEntry[] | null) => setFavorites(list ?? [])),
+        on("connection:invite", (payload: unknown) => {
+            const server = asServerEntry(payload);
+
+            if (server) {
+                openInvite(server);
+            }
+        }),
         on("connection:connected", () => {
             setConnecting(false);
             setConnected(true);
@@ -315,10 +384,71 @@ export function bindSession(): () => void {
         setVersion("0.1.0");
         setBranch("develop");
         setServers([
-            {name: "Local", address: "127.0.0.1:22005", players: 0, maxPlayers: 32, ping: 12},
-            {name: "Night city", address: "192.168.1.10:22005", players: 14, maxPlayers: 48, ping: 38},
+            {
+                name: "Local",
+                address: "127.0.0.1:22005",
+                players: 0,
+                maxPlayers: 32,
+                ping: 12,
+                language: "English",
+                gamemode: "Freeroam",
+                tags: ["Freeroam", "Dev"],
+                description: "Your machine. Resources load from this host.",
+            },
+            {
+                name: "Night city",
+                address: "192.168.1.10:22005",
+                players: 14,
+                maxPlayers: 48,
+                ping: 38,
+                language: "English",
+                gamemode: "Roleplay",
+                website: "night.city",
+                tags: ["Roleplay", "Voice", "Vehicles"],
+                description: "A city that does not sleep.",
+            },
         ]);
-        setRecent([{name: "Local", address: "127.0.0.1:22005", players: 0, maxPlayers: 32, ping: 12}]);
+        setRecent([
+            {
+                name: "Local",
+                address: "127.0.0.1:22005",
+                players: 0,
+                maxPlayers: 32,
+                ping: 12,
+                language: "English",
+                gamemode: "Freeroam",
+                tags: ["Freeroam", "Dev"],
+                description: "Your machine. Resources load from this host.",
+            },
+        ]);
+        setFavorites([
+            {
+                name: "Night city",
+                address: "192.168.1.10:22005",
+                players: 14,
+                maxPlayers: 48,
+                ping: 38,
+                language: "English",
+                gamemode: "Roleplay",
+                website: "night.city",
+                tags: ["Roleplay", "Voice", "Vehicles"],
+                description: "A city that does not sleep.",
+            },
+        ]);
+
+        if (window.location.hash.includes("invite")) {
+            openInvite({
+                name: "Night city",
+                address: "192.168.1.10:22005",
+                players: 14,
+                maxPlayers: 48,
+                ping: 38,
+                language: "English",
+                website: "night.city",
+                tags: ["Roleplay", "Voice"],
+                description: "A city that does not sleep.",
+            });
+        }
         setSettings({
             nickname: "Player",
             lastServer: "127.0.0.1:22005",
@@ -334,6 +464,7 @@ export function bindSession(): () => void {
             voiceOutputDevice: "default",
             voiceVolume: 1,
             voicePttKey: 0x56,
+            netgraph: false,
             display: 0,
             modes: [
                 {width: 1280, height: 720, label: "1280×720"},

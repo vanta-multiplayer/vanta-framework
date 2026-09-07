@@ -29,18 +29,16 @@ export function ExitModal(): JSX.Element {
 
     return (
         <Overlay onClose={() => setExitOpen(false)}>
-            <div class="flex flex-col items-center gap-[length:var(--space-xl)] px-[length:var(--space-xl)] text-center">
-                <div class="flex flex-col items-center gap-6">
-                    <div class="text-[length:var(--text-h1)] font-semibold">Confirm</div>
-                    <div class="text-[length:var(--text-h2)] font-medium text-muted">
-                        Exit to desktop?
-                    </div>
+            <div class="flex flex-col items-center gap-8 text-center">
+                <div>
+                    <div class="font-display text-3xl font-bold tracking-tight">Leave Vanta?</div>
+                    <div class="mt-3 text-sm font-semibold text-muted">This closes the game.</div>
                 </div>
-                <div class="flex gap-6">
-                    <Button kind="success" onClick={leave}>
+                <div class="flex gap-3">
+                    <Button variant="danger" onClick={leave}>
                         Exit to desktop
                     </Button>
-                    <Button kind="danger" onClick={() => setExitOpen(false)}>
+                    <Button variant="secondary" onClick={() => setExitOpen(false)}>
                         Cancel
                     </Button>
                 </div>

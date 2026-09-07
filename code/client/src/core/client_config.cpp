@@ -57,6 +57,7 @@ namespace VantaMP::Core {
             document["server_host"]        = config.serverHost;
             document["server_port"]        = config.serverPort;
             document["nickname"]           = config.nickname;
+            document["netgraph"]           = config.netgraph;
 
             std::ofstream file(path);
 
@@ -109,6 +110,7 @@ namespace VantaMP::Core {
         gConfig.serverHost        = parsed.GetDefault<std::string>("server_host", gConfig.serverHost);
         gConfig.serverPort        = parsed.GetDefault<std::uint32_t>("server_port", gConfig.serverPort);
         gConfig.nickname          = parsed.GetDefault<std::string>("nickname", gConfig.nickname);
+        gConfig.netgraph          = parsed.GetDefault<bool>("netgraph", gConfig.netgraph);
 
         if (gConfig.voiceInputDevice.empty()) {
             gConfig.voiceInputDevice = "default";
@@ -139,7 +141,7 @@ namespace VantaMP::Core {
             gConfig.displaySetupDone = true;
         }
 
-        const bool complete = document && document->contains("display_width") && document->contains("display_height") && document->contains("display_borderless") && document->contains("display_exclusive") && document->contains("display_adapter") && document->contains("display_setup_done") && document->contains("frame_limit") && document->contains("volume_master") && document->contains("volume_sfx") && document->contains("volume_radio") && document->contains("voice_input_device") && document->contains("voice_output_device") && document->contains("voice_volume") && document->contains("voice_ptt_key") && document->contains("server_host") && document->contains("server_port") && document->contains("nickname");
+        const bool complete = document && document->contains("display_width") && document->contains("display_height") && document->contains("display_borderless") && document->contains("display_exclusive") && document->contains("display_adapter") && document->contains("display_setup_done") && document->contains("frame_limit") && document->contains("volume_master") && document->contains("volume_sfx") && document->contains("volume_radio") && document->contains("voice_input_device") && document->contains("voice_output_device") && document->contains("voice_volume") && document->contains("voice_ptt_key") && document->contains("server_host") && document->contains("server_port") && document->contains("nickname") && document->contains("netgraph");
 
         if (!complete) {
             logger->info("{} was missing settings; filling them in", kFileName);
@@ -191,6 +193,11 @@ namespace VantaMP::Core {
             gConfig.nickname = nickname;
         }
 
+        WriteConfig(std::filesystem::path(gConfigPath) / kFileName, gConfig);
+    }
+
+    void SaveNetgraphSetting(bool enabled) {
+        gConfig.netgraph = enabled;
         WriteConfig(std::filesystem::path(gConfigPath) / kFileName, gConfig);
     }
 

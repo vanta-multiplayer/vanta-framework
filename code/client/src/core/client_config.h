@@ -80,6 +80,9 @@ namespace VantaMP::Core {
         std::string serverHost = "127.0.0.1";
         std::uint32_t serverPort = 27015;
         std::string nickname = "Player";
+
+        // Corner FPS / ping / throughput. Off until a player asks for it.
+        bool netgraph = false;
     };
 
     // Loads the config, creating it if it is absent.
@@ -110,4 +113,5 @@ namespace VantaMP::Core {
 
     void SaveVolumeSettings(float master, float sfx, float radio);
     void SaveVoiceSettings(const std::string &inputDevice, const std::string &outputDevice, float volume, int pttKey);
+    void SaveNetgraphSetting(bool enabled);
 } // namespace VantaMP::Core

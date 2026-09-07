@@ -29,6 +29,12 @@ set(VANTAMP_CLIENT_FILES
     src/core/hooks/mod_init.cpp
     src/core/hooks/render_device.cpp
     src/core/nui/nui.cpp
+    src/core/nui/nui_state.cpp
+    src/core/nui/nui_settings.cpp
+    src/core/nui/nui_console.cpp
+    src/core/nui/nui_launch.cpp
+    src/core/nui/nui_netgraph.cpp
+    src/core/nui/nui_handlers.cpp
     src/core/nui/embedded_ui.cpp
     src/core/nui/page_events.cpp
     src/core/ui/ped_debug_ui.cpp

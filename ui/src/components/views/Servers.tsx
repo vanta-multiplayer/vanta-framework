@@ -1,7 +1,9 @@
 import type {JSX} from "solid-js";
 import {For, Show, createSignal} from "solid-js";
 import {emit} from "../../state/bridge";
-import {connectTo, servers} from "../../state/session";
+import {openJoin, servers} from "../../state/session";
+import {Input} from "../ui/input";
+import {ServerAvatar} from "../ServerIdentity";
 import RefreshCw from "lucide-solid/icons/refresh-cw";
 
 export function Servers(): JSX.Element {
@@ -24,8 +26,8 @@ export function Servers(): JSX.Element {
     return (
         <div class="flex h-full min-h-0">
             <aside class="flex w-[length:var(--servers-rail)] shrink-0 flex-col border-r border-border">
-                <div class="flex items-center justify-between border-b border-border px-[length:var(--space-xl)] py-[length:var(--space-xl)]">
-                    <h1>Servers</h1>
+                <div class="flex items-center justify-between border-b border-border px-[length:var(--space-xl)] py-8">
+                    <h1 class="text-2xl">Servers</h1>
                     <button
                         type="button"
                         title="Reload"
@@ -36,10 +38,7 @@ export function Servers(): JSX.Element {
                     </button>
                 </div>
                 <div class="flex-1 border-b border-border px-[length:var(--space-xl)] py-[length:var(--space-xl)]">
-                    <input
-                        class="text-body h-[length:var(--control-height)] w-full rounded-lg border border-border
-                               bg-brown-dark px-3.5 outline-none select-text placeholder:text-muted/50
-                               focus:border-primary"
+                    <Input
                         type="search"
                         placeholder="Filter"
                         value={query()}
@@ -53,10 +52,10 @@ export function Servers(): JSX.Element {
             <div class="min-w-0 flex-1 overflow-y-auto">
                 <Show
                     when={filtered().length > 0}
-                    fallback={<p class="px-[length:var(--space-xl)] pt-12 text-muted">No servers yet. Type an address from Home.</p>}
+                    fallback={<p class="px-[length:var(--space-xl)] pt-12 text-muted">No servers yet. Use Direct connect if you have an address.</p>}
                 >
-                    <table class="w-full border-collapse text-left">
-                        <thead class="sticky top-0 bg-background text-[length:var(--text-label)] text-muted">
+                    <table class="w-full border-collapse text-left text-sm">
+                        <thead class="sticky top-0 bg-background/90 text-[11px] font-bold uppercase tracking-[.14em] text-muted backdrop-blur">
                             <tr>
                                 <th class="px-[length:var(--space-xl)] py-4 font-medium">Name</th>
                                 <th class="px-4 py-4 font-medium">Players</th>
@@ -67,13 +66,18 @@ export function Servers(): JSX.Element {
                             <For each={filtered()}>
                                 {(server) => (
                                     <tr
-                                        class="cursor-pointer border-t border-border hover:bg-surface"
-                                        onClick={() => connectTo(server.address)}
+                                        class="cursor-pointer border-t border-border-soft hover:bg-primary/[.06]"
+                                        onClick={() => openJoin(server)}
                                     >
                                         <td class="px-[length:var(--space-xl)] py-3.5">
-                                            <div class="truncate">{server.name}</div>
-                                            <div class="text-[length:var(--text-label)] text-muted">
-                                                {server.address}
+                                            <div class="flex min-w-0 items-center gap-3">
+                                                <ServerAvatar server={server} class="size-10 text-sm" />
+                                                <div class="min-w-0">
+                                                    <div class="truncate">{server.name}</div>
+                                                    <div class="text-[length:var(--text-label)] text-muted">
+                                                        {server.address}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="px-4 py-3.5 tabular-nums text-muted">

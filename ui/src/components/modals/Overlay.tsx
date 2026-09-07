@@ -1,16 +1,10 @@
 import type {JSX} from "solid-js";
+import {Dialog} from "../ui/dialog";
 
-export function Overlay(props: {children: JSX.Element; onClose?: () => void}): JSX.Element {
+export function Overlay(props: {children: JSX.Element; class?: string; onClose?: () => void}): JSX.Element {
     return (
-        <div
-            class="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-background/90"
-            onMouseDown={(event) => {
-                if (event.target === event.currentTarget) {
-                    props.onClose?.();
-                }
-            }}
-        >
+        <Dialog class={props.class} onClose={props.onClose}>
             {props.children}
-        </div>
+        </Dialog>
     );
 }
