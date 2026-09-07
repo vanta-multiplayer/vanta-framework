@@ -582,20 +582,10 @@ namespace VantaMP::SDK {
             return;
         }
 
-        ExitVehicle(slot, true);
-
-        if (vehicle->m_pDriver == ped) {
-            vehicle->m_pDriver = nullptr;
-        }
-
-        for (auto &passenger : vehicle->m_apPassengers) {
-            if (passenger == ped) {
-                passenger = nullptr;
-            }
-        }
-
-        ped->m_pVehicle = nullptr;
-        ped->bInVehicle = false;
+        // Same as EvacuateVehicle. SetPedOut / LeaveCar is a gameplay
+        // exit. Teardown, a wreck, or a dead ped must not re-enter
+        // the car through a warp-out task.
+        DetachPedFromVehicle(ped, vehicle);
     }
 
     bool PassengerDoorDistance(int slot, void *vehicleHandle, float *outDistance) {
@@ -741,8 +731,8 @@ namespace VantaMP::SDK {
                 }
             }
 
-            // Pointers only. UnlinkFromVehicle runs SetPedOut, which
-            // re-enters the vehicle while it is exploding.
+            // Pointers only. SetPedOut re-enters the vehicle while it
+            // is exploding. UnlinkFromVehicle is the same detach.
             DetachPedFromVehicle(ped, vehicle);
         }
     }

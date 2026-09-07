@@ -14,10 +14,13 @@ swap). Do not collapse them. Details: `docs/vehicles.md`.
 - Stamp a real `eTargetDoor` (8 / 9 / 11). `0` / `0xFF` freezes the walk.
 - `m_fSteerAngle` is an output. Swap the pad on `ProcessControl`. Lerp
   analogue; snap buttons.
-- `OpenDoor` only if `|current - target| > 2/255`. It slams even with
-  `playSound=false`. Skip the door the local ped is climbing through.
+- `OpenDoor` only if `|current - target| > 2/255`. Lerp over `kVehicleMs`;
+  do not hold every frame. Skip swinging/missing doors — GTA owns those.
 - Driver owns the swing. Passengers report only while entering/leaving
   on an empty car. Server ignores ratio reports when seat 0 is taken.
 - Never max-merge ratios. Status-only damage sets `applyRatios=false`.
 - Warp at `15 + 10×speed`, then `× tick/100`. Do not interpolate the
   local driver's car.
+- After `BlowUpCar`, `KeepScriptVehicle` (mission lock + 60s wreck
+  timer). Do not interpolate a wreck. Disconnect is pointer-detach
+  + `ExtinguishCarFire`, never `SetPedOut`.

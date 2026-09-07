@@ -12,6 +12,7 @@
 #include <CAutomobile.h>
 #include <CDamageManager.h>
 #include <CDoor.h>
+#include <CFireManager.h>
 
 #include <array>
 #include <algorithm>
@@ -26,11 +27,6 @@ namespace VantaMP::SDK {
         using SetPosnFn        = void(__thiscall *)(void *, float, float, float);
         using SetOrientationFn = void(__thiscall *)(void *, float, float, float);
         using WorldRemoveFn    = void(__cdecl *)(void *);
-        using SetupDamageFn    = void(__thiscall *)(CVehicle *);
-
-        // plugin-sdk's CVehicle::SetupDamageAfterLoad is vtable slot 51.
-        // The status bytes alone do not detach a door; this rebuilds the model.
-        constexpr std::size_t kSetupDamageAfterLoadSlot = 51;
 
         // CVehicle::OpenDoor. MTA's 3-arg wrapper hits this with the node
         // table below; writing CDoor::m_fAngle alone does not move the mesh.
@@ -38,8 +34,22 @@ namespace VantaMP::SDK {
 
         constexpr int kDoorNodeIndex[6] = {0x10, 0x11, 0x0A, 0x08, 0x0B, 0x09};
         constexpr int kDoorCount        = 6;
+        constexpr int kPanelCount       = 7;
+        // MTA CDamageManagerSA::GetCarNodeIndexFromPanel. Rear wings have
+        // no node; those two are status-only.
+        constexpr int kPanelNodeIndex[7] = {15, 14, -1, -1, 18, 12, 13};
 
-        using OpenDoorFn = void(__thiscall *)(CVehicle *, CPed *, int, int, float, bool);
+        constexpr unsigned char kDoorIntact   = 0;
+        constexpr unsigned char kDoorSwinging = 1;
+        constexpr unsigned char kDoorDamaged  = 2;
+        constexpr unsigned char kDoorMissing  = 4;
+
+        using OpenDoorFn        = void(__thiscall *)(CVehicle *, CPed *, int, int, float, bool);
+        using FixDoorFn         = void(__thiscall *)(CAutomobile *, int, eDoors);
+        using FixPanelFn        = void(__thiscall *)(CAutomobile *, int, ePanels);
+        using SetDoorDamageFn   = void(__thiscall *)(CAutomobile *, eDoors, bool);
+        using SetPanelDamageFn  = void(__thiscall *)(CAutomobile *, ePanels, bool);
+        using SetBumperDamageFn = void(__thiscall *)(CAutomobile *, ePanels, bool);
 
         constexpr float kSteerScale = 1.0f / 128.0f;
         constexpr float kPedalScale = 1.0f / 255.0f;
@@ -172,7 +182,11 @@ namespace VantaMP::SDK {
             return packed;
         }
 
-        constexpr unsigned char kDoorMissing = 4;
+        bool DoorRatioIsOwnedByGame(unsigned char status) {
+            // Swinging / missing: GTA's door physics owns the angle.
+            // Forcing OpenDoor here is the stutter on a hanging door.
+            return status == kDoorSwinging || status == (kDoorDamaged | kDoorSwinging) || status >= kDoorMissing;
+        }
 
         void OpenPackedDoors(CVehicle *vehicle, std::uint64_t packed, std::uint8_t skipMask) {
             auto *vtable = *reinterpret_cast<OpenDoorFn **>(vehicle);
@@ -188,7 +202,7 @@ namespace VantaMP::SDK {
                     continue;
                 }
 
-                if (damage && damage->m_anDoorsStatus[i] >= kDoorMissing) {
+                if (damage && DoorRatioIsOwnedByGame(damage->m_anDoorsStatus[i])) {
                     continue;
                 }
 
@@ -205,6 +219,10 @@ namespace VantaMP::SDK {
             }
         }
 
+        unsigned char PanelNibble(std::uint32_t packed, int index) {
+            return static_cast<unsigned char>((packed >> (index * 4)) & 0x0Fu);
+        }
+
         std::int8_t SteerToWire(float angle) {
             // Negated: stick-right is a negative steer angle in GTA.
             const float scaled = std::clamp(-angle / kSteerScale, -128.0f, 127.0f);
@@ -214,6 +232,53 @@ namespace VantaMP::SDK {
 
         std::uint8_t PedalToWire(float pedal) {
             return static_cast<std::uint8_t>(std::clamp(pedal / kPedalScale, 0.0f, 255.0f));
+        }
+
+        void ExtinguishFire(CFire *fire) {
+            if (!fire || !gPatterns.CFire__Extinguish) {
+                return;
+            }
+
+            reinterpret_cast<void(__thiscall *)(CFire *)>(gPatterns.CFire__Extinguish)(fire);
+        }
+
+        void ExtinguishCarFire(CVehicle *vehicle) {
+            if (!vehicle) {
+                return;
+            }
+
+            // MTA's vehicle destructor. Safer than walking CFire slots:
+            // Extinguish on a wreck fire whose FxSystem is already gone
+            // is how disconnect after a boom used to crash.
+            if (gPatterns.CVehicle__ExtinguishCarFire) {
+                reinterpret_cast<void(__thiscall *)(CVehicle *)>(gPatterns.CVehicle__ExtinguishCarFire)(vehicle);
+                return;
+            }
+
+            ExtinguishFire(vehicle->m_pFire);
+        }
+
+        void KeepVehicleResident(CVehicle *vehicle) {
+            if (!vehicle) {
+                return;
+            }
+
+            // CreateCarForScript sets these. BlowUpCar and the streamer
+            // clear them, and then GTA treats the wreck as disposable:
+            // CanBeDeleted, RemoveFallenCars, fade after 60 seconds.
+            vehicle->bIsLocked                    = true;
+            vehicle->bNeverUseSmallerRemovalRange = true;
+            vehicle->bFadeOut                     = false;
+            vehicle->bHasBeenOwnedByPlayer        = true;
+            vehicle->m_nCreatedBy                 = MISSION_VEHICLE;
+            vehicle->m_nTimeTillWeNeedThisCar     = 0x7FFFFFFFu;
+            vehicle->m_nTimeWhenBlowedUp          = 0x7FFFFFFFu;
+
+            vehicle->bStreamingDontDelete = true;
+            vehicle->bDontStream          = false;
+            vehicle->bDistanceFade        = false;
+            vehicle->bRemoveFromWorld     = false;
+            vehicle->bIsVisible           = true;
         }
 
         void DeleteFromVehiclePool(CVehicle *vehicle) {
@@ -344,8 +409,9 @@ namespace VantaMP::SDK {
         vehicle->m_nSecondaryColor = secondaryColour;
 
         // CreateCarForScript locks the doors: it is written for mission props.
-        // vehicleFlags.bIsLocked is a deletion guard and is left alone.
+        // vehicleFlags.bIsLocked is a deletion guard and stays set.
         vehicle->m_eDoorLock = DOORLOCK_UNLOCKED;
+        KeepVehicleResident(vehicle);
 
         return vehicle;
     }
@@ -359,10 +425,63 @@ namespace VantaMP::SDK {
 
         // Occupants first. CWorld::Remove walks the driver/passenger
         // pointers, and a Vanta CPlayerPed still sitting here is the
-        // disconnect crash.
+        // disconnect crash. Dead or alive does not matter - pointer
+        // detach only.
         EvacuateVehicle(vehicle);
+        ExtinguishCarFire(vehicle);
         reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(vehicle);
         DeleteFromVehiclePool(vehicle);
+    }
+
+    bool IsVehicleWrecked(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        return vehicle && vehicle->m_nStatus == STATUS_WRECKED;
+    }
+
+    void KeepScriptVehicle(void *handle) {
+        KeepVehicleResident(AsVehicle(handle));
+    }
+
+    void WreckVehicle(void *handle, bool hideExplosion) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle) {
+            return;
+        }
+
+        if (!IsVehicleWrecked(vehicle)) {
+            vehicle->m_fHealth = 0.0f;
+
+            // Through the live vtable so the BlowUpCar hook still empties
+            // the seats. hideExplosion is a late join: the boom already
+            // happened on the other clients.
+            auto **vtable = *reinterpret_cast<void ***>(vehicle);
+
+            reinterpret_cast<BlowUpCarFn>(vtable[kBlowUpCarSlot])(vehicle, nullptr, hideExplosion);
+        }
+
+        // BlowUpCar clears the lock and stamps m_nTimeWhenBlowedUp.
+        // Without this the hull fades ~60 seconds later.
+        KeepVehicleResident(vehicle);
+    }
+
+    void ClearTransientWorldEffects() {
+        // MTA ~CClientGame: explosions first, then projectile refs,
+        // then fires. Do not walk CFire slots - ExtinguishPoint is
+        // the manager API and ExtinguishCarFire is per wreck.
+        if (gPatterns.CExplosion__ClearAllExplosions) {
+            reinterpret_cast<void (*)()>(gPatterns.CExplosion__ClearAllExplosions)();
+        }
+
+        if (gPatterns.CProjectileInfo__RemoveAllProjectiles) {
+            reinterpret_cast<void (*)()>(gPatterns.CProjectileInfo__RemoveAllProjectiles)();
+        }
+
+        if (gPatterns.gFireManager && gPatterns.CFireManager__ExtinguishPoint) {
+            reinterpret_cast<void(__thiscall *)(void *, CVector, float)>(gPatterns.CFireManager__ExtinguishPoint)(
+                reinterpret_cast<void *>(gPatterns.gFireManager), CVector(0.0f, 0.0f, 0.0f), 20000.0f);
+        }
     }
 
     VehicleState ReadVehicle(const void *handle) {
@@ -429,30 +548,74 @@ namespace VantaMP::SDK {
     }
 
     void ApplyVehicleDamage(void *handle, std::uint8_t engine, std::uint64_t doorsPacked, std::uint32_t wheelsPacked, std::uint32_t panels, std::uint32_t lights,
-                            bool rebuildModel) {
+                            bool spawnFlying) {
         auto *vehicle = AsVehicle(handle);
         auto *damage  = DamageManagerOf(vehicle);
+        auto *car     = AsAutomobile(vehicle);
 
-        if (!damage) {
+        if (!damage || !car) {
             return;
         }
 
+        unsigned char oldDoors[6] {};
+        unsigned char newDoors[6] {};
+        unsigned char newWheels[4] {};
+
+        std::memcpy(oldDoors, damage->m_anDoorsStatus, sizeof(oldDoors));
+        const auto oldPanels = damage->m_nPanelsStatus;
+
+        UnpackDoors(doorsPacked, newDoors);
+        UnpackWheels(wheelsPacked, newWheels);
+
         damage->m_nEngineStatus = engine;
-        UnpackDoors(doorsPacked, damage->m_anDoorsStatus);
-        UnpackWheels(wheelsPacked, damage->m_anWheelsStatus);
+        std::memcpy(damage->m_anDoorsStatus, newDoors, sizeof(newDoors));
+        std::memcpy(damage->m_anWheelsStatus, newWheels, sizeof(newWheels));
         damage->m_nPanelsStatus = panels;
         damage->m_nLightsStatus = lights;
 
-        // GTA starts the blow-up sequence around 250. Rebuilding the model
-        // then, or while a ped is hitting the tank, pops components under
-        // them and the physics throws them like a ragdoll they cannot cancel.
-        if (!rebuildModel || vehicle->m_fHealth <= 250.0f) {
-            return;
+        // MTA SetDoorStatus / SetPanelStatus: FixDoor when it comes back,
+        // SetDoorDamage only for the doors that changed. SetupDamageAfterLoad
+        // on a live car respawns every missing part as a flying component.
+        const bool quiet = !spawnFlying || vehicle->m_fHealth <= 250.0f;
+
+        for (int i = 0; i < kDoorCount; ++i) {
+            if (oldDoors[i] == newDoors[i]) {
+                continue;
+            }
+
+            const auto door = static_cast<eDoors>(i);
+
+            if (newDoors[i] == kDoorIntact || newDoors[i] == kDoorSwinging) {
+                reinterpret_cast<FixDoorFn>(gPatterns.CAutomobile__FixDoor)(car, kDoorNodeIndex[i], door);
+            }
+            else {
+                reinterpret_cast<SetDoorDamageFn>(gPatterns.CAutomobile__SetDoorDamage)(car, door, quiet);
+            }
         }
 
-        auto *vtable = *reinterpret_cast<SetupDamageFn **>(vehicle);
+        for (int i = 0; i < kPanelCount; ++i) {
+            if (PanelNibble(oldPanels, i) == PanelNibble(panels, i)) {
+                continue;
+            }
 
-        vtable[kSetupDamageAfterLoadSlot](vehicle);
+            const auto panel = static_cast<ePanels>(i);
+
+            if (i == BUMP_FRONT || i == BUMP_REAR) {
+                reinterpret_cast<SetBumperDamageFn>(gPatterns.CAutomobile__SetBumperDamage)(car, panel, quiet);
+                continue;
+            }
+
+            if (kPanelNodeIndex[i] < 0) {
+                continue;
+            }
+
+            if (PanelNibble(panels, i) == 0) {
+                reinterpret_cast<FixPanelFn>(gPatterns.CAutomobile__FixPanel)(car, kPanelNodeIndex[i], panel);
+            }
+            else {
+                reinterpret_cast<SetPanelDamageFn>(gPatterns.CAutomobile__SetPanelDamage)(car, panel, false);
+            }
+        }
     }
 
     void ApplyVehicleDoorRatios(void *handle, std::uint64_t doorRatiosPacked, std::uint8_t skipMask) {

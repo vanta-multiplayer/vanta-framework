@@ -53,7 +53,9 @@ namespace VantaMP::SDK {
     // CTaskComplexEnterCar holds a raw CVehicle*. Cancel before delete.
     void CancelEntriesInto(void *vehicle);
 
-    // Warp-exit plus explicit pointer clear. Call before the ped is freed.
+    // Pointer detach only. SetPedOut re-enters the car; a wreck, a
+    // corpse, or a disconnect mid-explode is the crash. Gameplay exits
+    // still go through ExitVehicle.
     void UnlinkFromVehicle(int slot);
 
     // Take every Vanta occupant out of this vehicle and drop the seat

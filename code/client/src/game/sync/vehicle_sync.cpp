@@ -18,6 +18,8 @@
 #include <networking/replication/replication_manager.h>
 #include <utils/interpolator.h>
 
+#include <algorithm>
+#include <cmath>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -52,7 +54,12 @@ namespace VantaMP::Game {
             std::uint64_t lastRatios       = 0;
             std::uint64_t lastEntityRatios = 0;
             std::uint64_t heldRatios       = 0;
+            float         doorStart[6]     {};
+            float         doorTarget[6]    {};
+            std::uint32_t doorInterpMs     = 0;
+            bool          doorInterp       = false;
             bool          haveDamage  = false;
+            bool          wrecked     = false;
             std::uint32_t lastDamageReportMs = 0;
             std::uint32_t lastRatioReportMs  = 0;
             std::uint64_t lastSentRatios     = 0;
@@ -207,6 +214,11 @@ namespace VantaMP::Game {
             entity->health          = state.health;
             entity->engineOn        = state.engineOn;
             entity->sirenOn         = state.sirenOn;
+
+            if (entity->blown || SDK::IsVehicleWrecked(remote.handle) || state.health <= Shared::VehicleEntity::kWreckHealth) {
+                entity->LatchBlown();
+                SDK::KeepScriptVehicle(remote.handle);
+            }
             entity->steer           = state.steer;
             entity->accelerator     = state.accelerator;
             entity->brake           = state.brake;
@@ -221,34 +233,32 @@ namespace VantaMP::Game {
             }
         }
 
-        std::uint64_t WorseBytes(std::uint64_t left, std::uint64_t right, int count) {
-            std::uint64_t worse = 0;
-
-            for (int i = 0; i < count; ++i) {
-                const auto shift = static_cast<std::uint64_t>(i * 8);
-                const auto a     = static_cast<std::uint8_t>((left >> shift) & 0xFFu);
-                const auto b     = static_cast<std::uint8_t>((right >> shift) & 0xFFu);
-
-                worse |= static_cast<std::uint64_t>(a > b ? a : b) << shift;
-            }
-
-            return worse;
-        }
-
         bool DamageWorseThan(const SDK::VehicleState &local, const Shared::VehicleEntity &entity) {
-            if (local.damageEngine > entity.damageEngine || local.panels > entity.panels || local.lights > entity.lights) {
+            if (local.health + 0.5f < entity.health) {
                 return true;
             }
 
-            if (WorseBytes(local.doorsPacked, entity.doorsPacked, Shared::VehicleEntity::kDoorCount) != entity.doorsPacked) {
+            if (local.damageEngine > entity.damageEngine) {
                 return true;
             }
 
-            return WorseBytes(local.wheelsPacked, entity.wheelsPacked, Shared::VehicleEntity::kWheelCount) != entity.wheelsPacked;
+            if (Shared::VehicleEntity::WorsePacked(local.panels, entity.panels, Shared::VehicleEntity::kPanelCount, 4) != entity.panels) {
+                return true;
+            }
+
+            if (Shared::VehicleEntity::WorsePacked(local.lights, entity.lights, Shared::VehicleEntity::kLightCount, 2) != entity.lights) {
+                return true;
+            }
+
+            if (Shared::VehicleEntity::WorseBytes(local.doorsPacked, entity.doorsPacked, Shared::VehicleEntity::kDoorCount) != entity.doorsPacked) {
+                return true;
+            }
+
+            return Shared::VehicleEntity::WorseBytes(local.wheelsPacked, entity.wheelsPacked, Shared::VehicleEntity::kWheelCount) != entity.wheelsPacked;
         }
 
-        void ApplyDamageToHandle(void *handle, const Shared::VehicleEntity &entity, RemoteVehicle &remote, bool rebuildModel, bool applyRatios) {
-            SDK::ApplyVehicleDamage(handle, entity.damageEngine, entity.doorsPacked, entity.wheelsPacked, entity.panels, entity.lights, rebuildModel);
+        void ApplyDamageToHandle(void *handle, const Shared::VehicleEntity &entity, RemoteVehicle &remote, bool spawnFlying, bool applyRatios) {
+            SDK::ApplyVehicleDamage(handle, entity.damageEngine, entity.doorsPacked, entity.wheelsPacked, entity.panels, entity.lights, spawnFlying);
 
             if (applyRatios) {
                 SDK::ApplyVehicleDoorRatios(handle, entity.doorRatiosPacked);
@@ -263,6 +273,35 @@ namespace VantaMP::Game {
             remote.lastLights = entity.lights;
         }
 
+        float RatioAt(std::uint64_t packed, int index) {
+            return static_cast<float>((packed >> (index * 8)) & 0xFFu) / 255.0f;
+        }
+
+        std::uint64_t PackRatios(const float *ratios) {
+            std::uint64_t packed = 0;
+
+            for (int i = 0; i < Shared::VehicleEntity::kDoorCount; ++i) {
+                const auto byte = static_cast<std::uint8_t>(std::clamp(ratios[i], 0.0f, 1.0f) * 255.0f);
+
+                packed |= static_cast<std::uint64_t>(byte) << (i * 8);
+            }
+
+            return packed;
+        }
+
+        void BeginDoorInterp(RemoteVehicle &remote, void *handle, std::uint64_t targetPacked) {
+            const auto current = SDK::ReadVehicle(handle);
+
+            for (int i = 0; i < Shared::VehicleEntity::kDoorCount; ++i) {
+                remote.doorStart[i]  = RatioAt(current.doorRatiosPacked, i);
+                remote.doorTarget[i] = RatioAt(targetPacked, i);
+            }
+
+            remote.heldRatios    = targetPacked;
+            remote.doorInterpMs  = GetTickCount();
+            remote.doorInterp    = true;
+        }
+
         void MergeOwnerDamage(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
             const auto local = SDK::ReadVehicle(remote.handle);
 
@@ -274,12 +313,21 @@ namespace VantaMP::Game {
             // here is what made the driver's close bounce back open.
             // No model rebuild: the puncher is often still in contact.
             const bool replicaWorse = entity->damageEngine > local.damageEngine ||
-                WorseBytes(entity->doorsPacked, local.doorsPacked, Shared::VehicleEntity::kDoorCount) != local.doorsPacked ||
-                WorseBytes(entity->wheelsPacked, local.wheelsPacked, Shared::VehicleEntity::kWheelCount) != local.wheelsPacked ||
-                entity->panels > local.panels || entity->lights > local.lights;
+                Shared::VehicleEntity::WorseBytes(entity->doorsPacked, local.doorsPacked, Shared::VehicleEntity::kDoorCount) != local.doorsPacked ||
+                Shared::VehicleEntity::WorseBytes(entity->wheelsPacked, local.wheelsPacked, Shared::VehicleEntity::kWheelCount) != local.wheelsPacked ||
+                Shared::VehicleEntity::WorsePacked(entity->panels, local.panels, Shared::VehicleEntity::kPanelCount, 4) != local.panels ||
+                Shared::VehicleEntity::WorsePacked(entity->lights, local.lights, Shared::VehicleEntity::kLightCount, 2) != local.lights;
 
             if (replicaWorse) {
                 ApplyDamageToHandle(remote.handle, *entity, remote, false, false);
+            }
+
+            if (entity->health + 0.5f < local.health) {
+                remote.health = entity->health;
+
+                auto motion   = local;
+                motion.health = entity->health;
+                SDK::ApplyVehicleMotion(remote.handle, motion);
             }
         }
 
@@ -303,7 +351,7 @@ namespace VantaMP::Game {
             }
 
             Shared::RPC::VehicleDamageReport report;
-            report.FromParameters(vehicleId, local.damageEngine, local.doorsPacked, local.wheelsPacked, local.panels, local.lights, 0, false);
+            report.FromParameters(vehicleId, local.damageEngine, local.doorsPacked, local.wheelsPacked, local.panels, local.lights, 0, false, local.health);
             net->BroadcastRPC(report);
             remote.lastDamageReportMs = now;
         }
@@ -379,18 +427,51 @@ namespace VantaMP::Game {
             }
 
             Shared::RPC::VehicleDamageReport report;
-            report.FromParameters(vehicleId, local.damageEngine, local.doorsPacked, local.wheelsPacked, local.panels, local.lights, local.doorRatiosPacked, true);
+            report.FromParameters(vehicleId, local.damageEngine, local.doorsPacked, local.wheelsPacked, local.panels, local.lights, local.doorRatiosPacked, true,
+                                  local.health);
             net->BroadcastRPC(report);
             remote.lastRatioReportMs = now;
             remote.lastSentRatios    = local.doorRatiosPacked;
         }
 
-        void HoldRemoteDoorRatios(void *handle, std::uint64_t packed) {
-            // EVERY FRAME, NOT ON CHANGE. GTA shuts swinging doors on its
-            // own, so a single OpenDoor from a parked-car snapshot is gone
-            // by the next tick. MTA writes the syncer's ratios every
-            // puresync. Skip the door the local ped is climbing through.
-            SDK::ApplyVehicleDoorRatios(handle, packed, LocalOccupyingDoorMask(handle));
+        void PulseRemoteDoorRatios(void *handle, RemoteVehicle &remote) {
+            // MTA SetDoorOpenRatio(..., TICK_RATE): lerp over the send
+            // interval, then stop. Holding OpenDoor every frame fights
+            // GTA on a swinging or damaged door and is the stutter.
+            const auto skip = LocalOccupyingDoorMask(handle);
+
+            if (!remote.doorInterp) {
+                const auto current = SDK::ReadVehicle(handle);
+
+                for (int i = 0; i < Shared::VehicleEntity::kDoorCount; ++i) {
+                    if (std::fabs(RatioAt(current.doorRatiosPacked, i) - RatioAt(remote.heldRatios, i)) > (2.0f / 255.0f)) {
+                        BeginDoorInterp(remote, handle, remote.heldRatios);
+                        break;
+                    }
+                }
+
+                if (!remote.doorInterp) {
+                    return;
+                }
+            }
+
+            const std::uint32_t now     = GetTickCount();
+            const float         elapsed = static_cast<float>(now - remote.doorInterpMs);
+            const float         span    = static_cast<float>(Shared::SyncRate::kVehicleMs);
+
+            if (elapsed >= span) {
+                SDK::ApplyVehicleDoorRatios(handle, remote.heldRatios, skip);
+                remote.doorInterp = false;
+                return;
+            }
+
+            float mixed[Shared::VehicleEntity::kDoorCount] {};
+
+            for (int i = 0; i < Shared::VehicleEntity::kDoorCount; ++i) {
+                mixed[i] = remote.doorStart[i] + (remote.doorTarget[i] - remote.doorStart[i]) * (elapsed / span);
+            }
+
+            SDK::ApplyVehicleDoorRatios(handle, PackRatios(mixed), skip);
         }
 
         void EnsureSpawned(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
@@ -438,6 +519,15 @@ namespace VantaMP::Game {
             SDK::ApplyVehicleDoorRatios(remote.handle, entity->doorRatiosPacked);
             SDK::BindRemoteVehicleProcessControl(remote.handle);
 
+            if (entity->IsBlown()) {
+                // Already a wreck on the wire. Hide the boom — it happened
+                // before this client existed.
+                SDK::WreckVehicle(remote.handle, true);
+                remote.wrecked = true;
+            }
+
+            SDK::KeepScriptVehicle(remote.handle);
+
             remote.velocity = entity->velocity;
             remote.angular  = entity->angularVelocity;
             remote.health   = entity->health;
@@ -479,17 +569,47 @@ namespace VantaMP::Game {
             const std::uint32_t now     = GetTickCount();
             const bool          changed = !remote.aimed || remote.aimedPosition != entity->position || remote.aimedRotation != entity->rotation;
 
+            remote.health      = entity->health;
+            remote.engineOn    = entity->engineOn;
+            remote.sirenOn     = entity->sirenOn;
+            remote.steer       = entity->steer;
+            remote.accelerator = entity->accelerator;
+            remote.brake       = entity->brake;
+
+            const bool partsChanged = !remote.haveDamage || remote.lastEngine != entity->damageEngine || remote.lastDoors != entity->doorsPacked ||
+                remote.lastWheels != entity->wheelsPacked || remote.lastPanels != entity->panels || remote.lastLights != entity->lights;
+
+            if (partsChanged && !remote.wrecked) {
+                // One flying component per newly-missing part, not a
+                // SetupDamageAfterLoad of the whole wreck.
+                ApplyDamageToHandle(remote.handle, *entity, remote, entity->health > SDK::kWreckHealth, false);
+            }
+
+            if (!remote.wrecked && (entity->IsBlown() || SDK::IsVehicleWrecked(remote.handle))) {
+                SDK::WreckVehicle(remote.handle, false);
+                remote.wrecked = true;
+            }
+
+            if (remote.wrecked) {
+                // GTA deletes a wreck after 60 seconds and will stream
+                // the hull out if BlowUpCar dropped the mission lock.
+                // Leave it where the boom put it - interpolating a
+                // wreck is how it falls through the map.
+                SDK::KeepScriptVehicle(remote.handle);
+                return;
+            }
+
+            if (entity->doorRatiosPacked != remote.lastEntityRatios) {
+                remote.lastEntityRatios = entity->doorRatiosPacked;
+                remote.lastRatios       = entity->doorRatiosPacked;
+                BeginDoorInterp(remote, remote.handle, entity->doorRatiosPacked);
+            }
+
             if (changed) {
                 const auto current = SDK::ReadVehicle(remote.handle);
 
                 remote.velocity = entity->velocity;
                 remote.angular  = entity->angularVelocity;
-                remote.health   = entity->health;
-                remote.engineOn = entity->engineOn;
-                remote.sirenOn  = entity->sirenOn;
-                remote.steer       = entity->steer;
-                remote.accelerator = entity->accelerator;
-                remote.brake       = entity->brake;
 
                 // MTA SetTargetPosition: error = target - current, plus a
                 // few milliseconds of velocity (base 5ms), then scale the
@@ -506,19 +626,6 @@ namespace VantaMP::Game {
                 remote.interpolator.GetPosition()->SetCompensationFactor(1.5f);
                 remote.interpolator.GetPosition()->SetTargetValue(glm::vec3(current.x, current.y, current.z), target, static_cast<float>(Shared::SyncRate::kVehicleMs));
                 remote.interpolator.GetRotation()->SetTargetValue(current.rotation, entity->rotation, static_cast<float>(Shared::SyncRate::kVehicleMs));
-
-                ApplyStoredMotion(remote.handle, remote);
-
-                const bool partsChanged = !remote.haveDamage || remote.lastEngine != entity->damageEngine || remote.lastDoors != entity->doorsPacked ||
-                    remote.lastWheels != entity->wheelsPacked || remote.lastPanels != entity->panels || remote.lastLights != entity->lights;
-
-                if (partsChanged) {
-                    ApplyDamageToHandle(remote.handle, *entity, remote, true, false);
-                }
-
-                remote.lastRatios       = entity->doorRatiosPacked;
-                remote.lastEntityRatios = entity->doorRatiosPacked;
-                remote.heldRatios       = entity->doorRatiosPacked;
 
                 remote.aimedPosition = entity->position;
                 remote.aimedRotation = entity->rotation;
@@ -555,13 +662,7 @@ namespace VantaMP::Game {
             // turn - GTA had already ramped the wheels and this put
             // them back. Pedals come from the same pad.
 
-            if (entity->doorRatiosPacked != remote.lastEntityRatios) {
-                remote.lastEntityRatios = entity->doorRatiosPacked;
-                remote.lastRatios       = entity->doorRatiosPacked;
-                remote.heldRatios       = entity->doorRatiosPacked;
-            }
-
-            HoldRemoteDoorRatios(remote.handle, remote.heldRatios);
+            PulseRemoteDoorRatios(remote.handle, remote);
         }
 
         void DestroyHandle(RemoteVehicle &remote) {
@@ -766,7 +867,7 @@ namespace VantaMP::Game {
     }
 
     void ApplyRemoteVehicleDamage(std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panels, std::uint32_t lights,
-                                  std::uint64_t doorRatios, bool applyRatios) {
+                                  std::uint64_t doorRatios, bool applyRatios, float health) {
         const auto found = gVehicles.find(vehicleId);
 
         if (found == gVehicles.end() || !found->second.handle) {
@@ -780,13 +881,34 @@ namespace VantaMP::Game {
         entity.panels           = panels;
         entity.lights           = lights;
         entity.doorRatiosPacked = doorRatios;
+        entity.health           = health;
 
-        ApplyDamageToHandle(found->second.handle, entity, found->second, false, false);
+        ApplyDamageToHandle(found->second.handle, entity, found->second, health > SDK::kWreckHealth, false);
+
+        auto &remote = found->second;
+        const auto local = SDK::ReadVehicle(remote.handle);
+
+        if (health + 0.5f < local.health) {
+            remote.health = health;
+
+            auto motion   = local;
+            motion.health = health;
+            SDK::ApplyVehicleMotion(remote.handle, motion);
+        }
+
+        if (!remote.wrecked && health <= SDK::kWreckHealth) {
+            SDK::WreckVehicle(remote.handle, false);
+            remote.wrecked = true;
+        }
+
+        if (remote.wrecked) {
+            SDK::KeepScriptVehicle(remote.handle);
+        }
 
         if (applyRatios) {
-            found->second.lastRatios = doorRatios;
-            found->second.heldRatios = doorRatios;
-            HoldRemoteDoorRatios(found->second.handle, doorRatios);
+            remote.lastRatios       = doorRatios;
+            remote.lastEntityRatios = doorRatios;
+            BeginDoorInterp(remote, remote.handle, doorRatios);
         }
     }
 

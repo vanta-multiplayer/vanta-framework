@@ -25,7 +25,7 @@ namespace VantaMP::Game {
         void HandleEnter(Shared::PlayerEntity &player, std::uint64_t vehicleId, std::uint8_t seat, bool warp, std::uint8_t door);
         void HandleExit(Shared::PlayerEntity &player, bool warp, std::uint8_t door);
         void HandleDamage(std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panels, std::uint32_t lights,
-                          std::uint64_t doorRatios, bool applyRatios);
+                          std::uint64_t doorRatios, bool applyRatios, float health);
 
         // Last pose freezes: owner returns to the server. Anyone they were
         // sitting with is told they warped out.

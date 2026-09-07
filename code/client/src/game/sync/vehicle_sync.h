@@ -12,7 +12,7 @@ namespace VantaMP::Game {
     void ApplyRemoteEnterVehicle(std::uint64_t networkId, std::uint64_t vehicleId, std::uint8_t seat, bool warp, std::uint8_t door);
     void ApplyRemoteExitVehicle(std::uint64_t networkId, bool warp, std::uint8_t door);
     void ApplyRemoteVehicleDamage(std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panels, std::uint32_t lights,
-                                  std::uint64_t doorRatios, bool applyRatios);
+                                  std::uint64_t doorRatios, bool applyRatios, float health);
 
     // The replica id for a spawned CVehicle, or 0 if it is not ours.
     [[nodiscard]] std::uint64_t VehicleNetworkIdOf(const void *vehicle);

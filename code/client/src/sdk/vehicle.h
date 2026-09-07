@@ -60,10 +60,12 @@ namespace VantaMP::SDK {
     // here snaps a remote turn every packet.
     void ApplyVehicleMotion(void *vehicle, const VehicleState &state);
 
-    // rebuildModel is SetupDamageAfterLoad: needed to drop a torn-off door,
-    // unsafe while a ped is in contact (tank punch) or the car is blowing.
+    // Per door/panel, the way MTA's damage sync does it. A full
+    // SetupDamageAfterLoad on every packet respawns flying parts and
+    // slams the ratios. spawnFlying is SetDoorDamage's visual; leave
+    // it off for stream-in and while someone is in contact.
     void ApplyVehicleDamage(void *vehicle, std::uint8_t engine, std::uint64_t doorsPacked, std::uint32_t wheelsPacked, std::uint32_t panels, std::uint32_t lights,
-                            bool rebuildModel = true);
+                            bool spawnFlying = false);
 
     // skipMask bit i leaves CDoor i to the enter/leave task. Writing
     // OpenDoor over a climb is what slammed the passenger door shut.
@@ -75,6 +77,25 @@ namespace VantaMP::SDK {
 
     [[nodiscard]] bool IsLocalPlayerDriving(const void *vehicle);
     [[nodiscard]] bool VehicleHasDriver(const void *vehicle);
+
+    // GTA starts the blow-up sequence around 250. Writing health alone
+    // does not wreck the mesh; a late joiner would see a pristine car.
+    inline constexpr float kWreckHealth = 250.0f;
+
+    [[nodiscard]] bool IsVehicleWrecked(const void *vehicle);
+
+    // hideExplosion is MTA's stream-in Blow: the wreck, not another boom.
+    void WreckVehicle(void *vehicle, bool hideExplosion);
+
+    // BlowUpCar clears the mission lock and starts GTA's 60-second wreck
+    // garbage collection. Call after create and after wreck, and keep
+    // calling on a live wreck so streaming cannot delete the hull.
+    void KeepScriptVehicle(void *vehicle);
+
+    // MTA ~CClientGame: explosions, projectiles, then every fire in
+    // range. Do this before the cars go - CWorld::Remove leaves the
+    // slots burning and the next connect menu sits over them.
+    void ClearTransientWorldEffects();
 
     // Hooks this vehicle class's ProcessControl so a remote driver can
     // actually steer. m_fSteerAngle is an output: GTA recomputes it from

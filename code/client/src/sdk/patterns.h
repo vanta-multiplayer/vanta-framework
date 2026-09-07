@@ -119,6 +119,63 @@ namespace VantaMP::SDK {
         uintptr_t CCamera__SetFadeColour = 0;
         uintptr_t TheCamera              = 0;
 
+        // CameraSize (0x72FC70) rebuilds the RwCamera frame/Z rasters from
+        // RsGlobal. After a D3D Reset those rasters still wrap the old
+        // surfaces, which is the black leftover on a live resize.
+        // RwCameraClear (0x7EE340) wipes the new rasters so one uncleared
+        // frame does not flash.
+        uintptr_t CameraSize    = 0;
+        uintptr_t RwCameraClear = 0;
+
+        // CGame::Process (0x53BEE0). Live display apply runs here, not inside
+        // BeginScene/Present: Reset from a D3D method is D3DERR_INVALIDCALL
+        // even after the previous Present has returned.
+        uintptr_t CGame__Process = 0;
+
+        // gta-reversed D3D9DeviceRestoreVideoMemory / SetVideoMode (0x745C70):
+        // Release (0x7F7F70), Reset, then restore in this order. Skipping the
+        // raster-list restore left post-FX drawing through freed surfaces.
+        uintptr_t RwD3D9ReleaseVideoMemory = 0;
+        uintptr_t RwD3D9RestoreRasterList  = 0;
+        uintptr_t RwD3D9RestoreAfterReset1 = 0;
+        uintptr_t RwD3D9RestoreAfterReset2 = 0;
+        uintptr_t RwD3D9RestoreAfterReset3 = 0;
+        uintptr_t RwD3D9RestoreAfterReset4 = 0;
+        uintptr_t CPostEffects__SetupBackBufferVertex = 0;
+        uintptr_t CPostEffects__pRasterFrontBuffer    = 0;
+        uintptr_t RwRasterDestroy                     = 0;
+
+        // RW's D3DPRESENT_PARAMETERS (0xC9C040). ChangeVideoMode Resets from
+        // this block; a live apply has to write the new size here too or the
+        // next GTA Reset puts the old back buffer back.
+        uintptr_t D3DPresentParameters = 0;
+
+        // RwD3D9RenderSurface (0xC97C30). Depth stencil sits immediately
+        // before it at 0xC97C2C. Reset destroys those surfaces; the next
+        // GTA present uses the stale pointers unless they are rebound.
+        uintptr_t RwD3D9RenderSurface = 0;
+
+        // --- First-run Device Selection --------------------------------------
+        //
+        // psSelectDevice (0x746190) shows GTA's GPU + mode dialog only when
+        // there is more than one D3D adapter. The mid-function site MTA
+        // hooks (0x746219) is the compare that decides that. We land there
+        // so first setup can force the dialog on a single GPU, and every
+        // later launch can skip it.
+        uintptr_t PsSelectDeviceHook     = 0;
+        uintptr_t VidModeDialogFuncPush  = 0;
+        uintptr_t SavedVideoMode         = 0;
+        uintptr_t GcurSelVM              = 0;
+        uintptr_t RwEngineGetVideoModeInfo = 0;
+        uintptr_t RwEngineGetNumVideoModes = 0;
+
+        // SetVideoMode (0x745C70). What the pause-menu display settings
+        // call when the player confirms a resolution — not RwD3D9ChangeVideoMode
+        // itself. That function does the Reset, the post-FX rebuild and
+        // RsGlobal. Calling anything underneath it is how the last live
+        // resize crashed.
+        uintptr_t SetVideoMode = 0;
+
         // --- Input -----------------------------------------------------------
         //
         // GTA takes the mouse through DirectInput in EXCLUSIVE mode and
@@ -164,6 +221,16 @@ namespace VantaMP::SDK {
         uintptr_t CGarages__Update           = 0;
         uintptr_t CCamera__IdleProcess       = 0;
         uintptr_t CMenuManager__SaveSettings = 0;
+        uintptr_t CMenuManager__LoadSettings = 0;
+
+        // FrontEndMenuManager. SFX is +0x4F, radio +0x50, both 0-64.
+        uintptr_t CMenuManager = 0;
+
+        // AudioEngine singleton and the two master-volume thiscalls.
+        uintptr_t CAudioEngine                      = 0;
+        uintptr_t CAudioEngine__SetMusicMasterVolume = 0;
+        uintptr_t CAudioEngine__SetEffectsMasterVolume = 0;
+
         uintptr_t CGameLogic__Update         = 0;
         uintptr_t CTrain__ForbiddenCross     = 0;
         uintptr_t CSamSite__Behaviour        = 0;
@@ -449,6 +516,22 @@ namespace VantaMP::SDK {
         // is the crash.
         uintptr_t CVehicle__KillPedsInVehicle        = 0;
         uintptr_t CVehicle__KillPedsGettingInVehicle = 0;
+
+        // Per-component visuals. MTA calls these from SetDoorStatus /
+        // SetPanelStatus; a full SetupDamageAfterLoad respawns every
+        // missing part as a flying component.
+        uintptr_t CAutomobile__FixDoor         = 0;
+        uintptr_t CAutomobile__FixPanel        = 0;
+        uintptr_t CAutomobile__SetBumperDamage = 0;
+        uintptr_t CAutomobile__SetPanelDamage  = 0;
+        uintptr_t CAutomobile__SetDoorDamage   = 0;
+
+        uintptr_t gFireManager                       = 0;
+        uintptr_t CFireManager__ExtinguishPoint      = 0;
+        uintptr_t CVehicle__ExtinguishCarFire        = 0;
+        uintptr_t CFire__Extinguish                  = 0;
+        uintptr_t CExplosion__ClearAllExplosions     = 0;
+        uintptr_t CProjectileInfo__RemoveAllProjectiles = 0;
 
         uintptr_t CStreaming__StreamPedsAndCars  = 0;
         uintptr_t CStreaming__AmbientModelsJump  = 0;

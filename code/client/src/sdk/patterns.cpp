@@ -92,6 +92,30 @@ namespace VantaMP::SDK {
 
         gPatterns.CWorld__PlayerInFocus = OperandAt(hook::get_pattern("3B F8 75 19 0F B6 0D"), 7); // site 0x004B5C58 -> 0x00B7CD74
         gPatterns.TheCamera             = OperandAt(hook::get_pattern("50 56 B9 ? ? ? ? C6"), 3); // site 0x00520D82 -> 0x00B6F028
+        gPatterns.CameraSize            = Resolve("83 EC 34 57 8B 7C 24 3C 85 FF"); // 0x0072FC70
+        gPatterns.RwCameraClear         = Resolve("8B 4C 24 0C A1 24 7B C9 00"); // 0x007EE340
+        gPatterns.CGame__Process        = Resolve("83 EC 0C 53 56 57 E8"); // 0x0053BEE0
+
+        gPatterns.RwD3D9ReleaseVideoMemory = Resolve("53 83 C9 FF 33 DB"); // 0x007F7F70
+        gPatterns.RwD3D9RestoreRasterList  = Resolve("83 EC 60 E9 3D 90"); // 0x004CC970
+        gPatterns.RwD3D9RestoreAfterReset1 = Resolve("8B 0D 1C BF C9 00 53"); // 0x007F58D0
+        gPatterns.RwD3D9RestoreAfterReset2 = Resolve("83 EC 0C A1 F0 92"); // 0x007FD100
+        gPatterns.RwD3D9RestoreAfterReset3 = Resolve("A1 1C BF C9 00 83 EC 20"); // 0x007FB480
+        gPatterns.RwD3D9RestoreAfterReset4 = Resolve("A1 1C BF C9 00 83 EC 28"); // 0x0080E020
+        gPatterns.CPostEffects__SetupBackBufferVertex = Resolve("55 8B EC 83 E4 F8 83 EC 20 D9"); // 0x007043D0
+        gPatterns.CPostEffects__pRasterFrontBuffer    = OperandAt(hook::get_pattern("8B F8 A1 ? ? ? ? 85 C0 89 7C 24 24 74"), 3); // site 0x0070446D -> 0x00C402D8
+        gPatterns.RwRasterDestroy                     = Resolve("56 8B 74 24 08 56 68 ? ? ? ? E8 ? ? ? ? A1 24 7B C9 00 6A 00 56 6A 00"); // 0x007FB020
+        gPatterns.D3DPresentParameters     = OperandAt(hook::get_pattern("BE ? ? ? ? 8D 7C 24 20 F3 A5"), 1); // site 0x007F867D -> 0x00C9C040
+        gPatterns.RwD3D9RenderSurface      = OperandAt(hook::get_pattern("68 ? ? ? ? 57 50 8B 10 FF 92 98"), 1); // site 0x007F86DC -> 0x00C97C30
+
+        // mov eax, [GnumSubSystems]; mov edi, 1; cmp eax, edi; jle single
+        gPatterns.PsSelectDeviceHook    = Resolve("A1 ? ? ? ? BF 01 00 00 00 3B C7 7E"); // 0x00746219
+        gPatterns.VidModeDialogFuncPush = Resolve("68 ? ? ? ? 55 6A 68 53 FF 15"); // 0x00746238
+        gPatterns.SavedVideoMode        = OperandAt(hook::get_pattern("75 29 E8 ? ? ? ? 8B 0D ? ? ? ? 83 3C 88 00"), 9); // site 0x0074629A -> 0x00BA6820
+        gPatterns.GcurSelVM             = OperandAt(hook::get_pattern("89 0D ? ? ? ? 8B 15 ? ? ? ? 52 8D 44 24 18"), 2); // site 0x007462BF -> 0x008D6220
+        gPatterns.RwEngineGetVideoModeInfo = Resolve("8B 44 24 08 8B 0D ? ? ? ? 56 8B 74 24 08 50 6A 00 56 83 C1 10 6A 06"); // 0x007F2CF0
+        gPatterns.RwEngineGetNumVideoModes = Resolve("51 8B 0D ? ? ? ? 6A 00 8D 44 24 04 6A 00 50 83 C1 10 6A 05"); // 0x007F2CC0
+        gPatterns.SetVideoMode             = Resolve("8B 44 24 04 50 E8 ? ? ? ? 83 C4 04 E8 ? ? ? ? A1"); // 0x00745C70
 
         // --- Input -----------------------------------------------------------
 
@@ -127,6 +151,20 @@ namespace VantaMP::SDK {
         gPatterns.CGarages__Update           = Resolve("E8 ? ? ? ? E8 4F 4C"); // 0x0053C0B7
         gPatterns.CCamera__IdleProcess       = Resolve("51 56 8B F1 E8 77"); // 0x00522C80
         gPatterns.CMenuManager__SaveSettings = Resolve("83 EC 0C 56 57 8B F9 E8"); // 0x0057C660
+        gPatterns.CMenuManager__LoadSettings = Resolve("83 EC 44 56 57 8B"); // 0x0057C8F0
+
+        // Pause sits at CMenuManager+0x5C. The two volume bytes are earlier
+        // in that same object; writing them without this base is a guess.
+        gPatterns.CMenuManager = gPatterns.CMenuManager__Pause - 0x5C;
+
+        // mov ecx, AudioEngine immediately after the Process call.
+        gPatterns.CAudioEngine = OperandAt(reinterpret_cast<const void *>(gPatterns.CMenuManager__ProcessCall), 6); // 0x00B6BC90
+
+        // The two functions share a prologue. The last byte of the relative
+        // call is what separates music from effects.
+        gPatterns.CAudioEngine__SetMusicMasterVolume   = Resolve("0F BE 44 24 04 89 44 24 04 51 B9 B8 F8 B5 00 DB 44 24 08 D8 0D D4 A7 85 00 D9 1C 24 E8 2F"); // 0x00506DE0
+        gPatterns.CAudioEngine__SetEffectsMasterVolume = Resolve("0F BE 44 24 04 89 44 24 04 51 B9 B8 F8 B5 00 DB 44 24 08 D8 0D D4 A7 85 00 D9 1C 24 E8 0F"); // 0x00506E10
+
         gPatterns.CGameLogic__Update         = Resolve("83 EC 4C 53 55 56 57 33"); // 0x00442AD0
         gPatterns.CTrain__ForbiddenCross     = Resolve("83 EC 18 53 56 68"); // 0x004418E0
         gPatterns.CSamSite__Behaviour        = Resolve("83 EC 34 53 56 57 8B F9 8B 87 40"); // 0x005A07D0
@@ -304,6 +342,19 @@ namespace VantaMP::SDK {
             "64 A1 00 00 00 00 6A FF 68 ? ? ? ? 50 64 89 25 00 00 00 00 83 EC 28 53 56 8B F1 8B 86 60 04 00 00"); // 0x006D1C80
         gPatterns.CVehicle__KillPedsGettingInVehicle = Resolve(
             "6A FF 68 ? ? ? ? 64 A1 00 00 00 00 50 64 89 25 00 00 00 00 83 EC 64 53 89 4C 24 0C 8B 0D"); // 0x006D82F0
+
+        gPatterns.CAutomobile__FixDoor         = Resolve("64 A1 00 00 00 00 6A FF 68 28 7F"); // 0x006A35A0
+        gPatterns.CAutomobile__FixPanel        = Resolve("64 A1 00 00 00 00 6A FF 68 48 7F"); // 0x006A3670
+        gPatterns.CAutomobile__SetBumperDamage = Resolve("53 55 56 57 8B 7C 24 14 8B F1 57 90"); // 0x006B1350
+        gPatterns.CAutomobile__SetPanelDamage  = Resolve("53 55 56 57 8B 7C 24 14 8B F1 57 8D"); // 0x006B1480
+        gPatterns.CAutomobile__SetDoorDamage   = Resolve("6A FF 68 78 81 84"); // 0x006B1600
+
+        gPatterns.gFireManager = OperandAt(hook::get_pattern("50 B9 ? ? ? ? E8 FD 93"), 2); // site 0x0042FB38 -> 0x00B71F80
+        gPatterns.CFireManager__ExtinguishPoint = Resolve("56 57 8B F1 BF 3C 00 00 00 8D A4 24 00 00 00 00 8A"); // 0x00539450
+        gPatterns.CVehicle__ExtinguishCarFire = Resolve("56 8B F1 8A 46 36 24 F8 3C 28"); // 0x006D2460
+        gPatterns.CFire__Extinguish = Resolve("56 8B F1 8A 06 A8"); // 0x005393F0
+        gPatterns.CExplosion__ClearAllExplosions = Resolve("83 EC 0C 53 55 56 57 C7 44 24 10 00 00 00 00 8B 6C"); // 0x00736840
+        gPatterns.CProjectileInfo__RemoveAllProjectiles = Resolve("53 55 56 57 E9 64"); // 0x007399B0
 
         gPatterns.CStreaming__StreamPedsAndCars  = Resolve("6A 00 6A FF E8 77 2A"); // 0x0040B650
         gPatterns.CStreaming__AmbientModelsJump  = Resolve("75 1A E8 1A CF FF"); // 0x0040E7DF

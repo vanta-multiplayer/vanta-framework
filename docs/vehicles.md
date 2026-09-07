@@ -70,8 +70,29 @@ Only the driver writes pose. Remotes interpolate.
   from the correction can kill the speed the game just integrated.
 
 Health, engine, siren and packed damage ride the replica. Status is
-worse-wins. Do not call `SetupDamageAfterLoad` if `health <= 250` or
-someone is tank-punching — that rebuild drops peds.
+worse-wins **per GTA field** (doors/wheels per byte, panels per nibble,
+lights per 2 bits). Apply health and parts even when the car has not
+moved. Do not call `SetupDamageAfterLoad` on a live car — MTA applies
+each door/panel through `FixDoor` / `SetDoorDamage`. `health <= 250`
+or a tank punch stays quiet so parts do not spawn under a ped.
+
+A late joiner must see an already-blown car as a wreck. Writing
+`health = 0` on a fresh `CreateCarForScript` does not change the mesh;
+call `BlowUpCar` with the explosion hidden (MTA's stream-in `Blow`).
+The replica latches `blown` so the server still knows after the last
+driver leaves.
+
+`BlowUpCar` clears the mission lock and stamps `m_nTimeWhenBlowedUp`.
+GTA then fades the hull after 60 seconds and the streamer can drop it.
+`KeepScriptVehicle` puts the lock back (`bIsLocked`, `MISSION_VEHICLE`,
+`bStreamingDontDelete`) and parks the 60-second timer. Remotes do not
+interpolate a wreck — that is how it falls through the map.
+
+Disconnect is a world reset, not a warp-exit. Explosions and projectiles
+first, then remotes, then cars (`Evacuate` + `ExtinguishCarFire` +
+`CWorld::Remove`). `UnlinkFromVehicle` is pointer-only; dead or seated
+does not change the order. Fires are put out through `ExtinguishPoint`
+and `ExtinguishCarFire`, not by walking `CFire` slots.
 
 ## Steering
 
@@ -111,9 +132,11 @@ Rules that keep the doors quiet:
   sent ratios as 0 used to slam every door.
 - Never max-merge ratios. Open vs shut is not "worse". Replace.
 
-Remotes hold the last good ratios every frame so GTA does not shut a
-parked door on its own. The hold is a no-op when the door is already
-there, which is what keeps it silent.
+Remotes lerp the last good ratios over `kVehicleMs`, the same window
+MTA uses for `SetDoorOpenRatio(..., TICK_RATE)`. A per-frame `OpenDoor`
+fights a swinging or damaged door and stutters. Skip those statuses;
+GTA owns the angle. If a parked door drifts, start a new lerp — do
+not snap.
 
 ## Script spawn
 

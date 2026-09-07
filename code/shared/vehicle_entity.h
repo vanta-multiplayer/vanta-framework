@@ -24,6 +24,40 @@ namespace VantaMP::Shared {
         static constexpr std::uint8_t  kMaxSeat    = 8;
         static constexpr std::uint8_t  kDoorCount  = 6;
         static constexpr std::uint8_t  kWheelCount = 4;
+        static constexpr std::uint8_t  kPanelCount  = 7;
+        static constexpr std::uint8_t  kLightCount  = 4;
+        static constexpr float         kWreckHealth = 250.0f;
+
+        // Worse-wins per GTA field, not the packed integer. panels is seven
+        // 4-bit states; a numeric > compared the windscreen to the bumper.
+        static std::uint64_t WorseBytes(std::uint64_t left, std::uint64_t right, int count) {
+            std::uint64_t worse = 0;
+
+            for (int i = 0; i < count; ++i) {
+                const auto shift = static_cast<std::uint64_t>(i * 8);
+                const auto a     = static_cast<std::uint8_t>((left >> shift) & 0xFFu);
+                const auto b     = static_cast<std::uint8_t>((right >> shift) & 0xFFu);
+
+                worse |= static_cast<std::uint64_t>(a > b ? a : b) << shift;
+            }
+
+            return worse;
+        }
+
+        static std::uint32_t WorsePacked(std::uint32_t left, std::uint32_t right, int count, int bits) {
+            std::uint32_t       worse = 0;
+            const std::uint32_t mask  = (1u << bits) - 1u;
+
+            for (int i = 0; i < count; ++i) {
+                const auto shift = i * bits;
+                const auto a     = (left >> shift) & mask;
+                const auto b     = (right >> shift) & mask;
+
+                worse |= (a > b ? a : b) << shift;
+            }
+
+            return worse;
+        }
 
         // --- Construction ------------------------------------------------------
 
@@ -39,6 +73,11 @@ namespace VantaMP::Shared {
 
         bool engineOn = true;
         bool sirenOn  = false;
+
+        // Latch, not health. GTA blows around 250; the server has to
+        // remember the wreck after the last driver leaves or a late
+        // joiner gets a fresh CreateCarForScript at health 0.
+        bool blown = false;
 
         // Driver pad, not wheel angles. ProcessControl recomputes steering
         // from whoever it believes is driving; a remote car has no local
@@ -58,6 +97,20 @@ namespace VantaMP::Shared {
         // broken; these say how far the hood, boot and doors are swung.
         // A popped hood is almost always this, not a damage flag.
         std::uint64_t doorRatiosPacked = 0;
+
+        [[nodiscard]] bool IsBlown() const {
+            return blown || health <= kWreckHealth;
+        }
+
+        void LatchBlown() {
+            if (!IsBlown()) {
+                return;
+            }
+
+            blown    = true;
+            health   = 0.0f;
+            engineOn = false;
+        }
 
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;

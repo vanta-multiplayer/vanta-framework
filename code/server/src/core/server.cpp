@@ -104,7 +104,7 @@ namespace VantaMP {
                 }
 
                 _vehicles.HandleDamage(incoming.vehicleId, incoming.damageEngine, incoming.doorsPacked, incoming.wheelsPacked, incoming.panels, incoming.lights,
-                                       incoming.doorRatiosPacked, incoming.applyRatios);
+                                       incoming.doorRatiosPacked, incoming.applyRatios, incoming.health);
             });
         }
 

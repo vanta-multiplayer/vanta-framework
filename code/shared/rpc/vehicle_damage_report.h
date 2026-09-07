@@ -21,12 +21,13 @@ namespace VantaMP::Shared::RPC {
         std::uint32_t panels           = 0;
         std::uint32_t lights           = 0;
         std::uint64_t doorRatiosPacked = 0;
+        float         health           = 1000.0f;
         // Status-only reports must not zero the swing. A hood punch used
         // to send ratios as 0, and replacing with that slammed every door.
         bool applyRatios = false;
 
         void FromParameters(std::uint64_t id, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panelBits, std::uint32_t lightBits,
-                            std::uint64_t ratios, bool ratiosLive = false) {
+                            std::uint64_t ratios, bool ratiosLive = false, float hp = 1000.0f) {
             vehicleId        = id;
             damageEngine     = engine;
             doorsPacked      = doors;
@@ -35,6 +36,7 @@ namespace VantaMP::Shared::RPC {
             lights           = lightBits;
             doorRatiosPacked = ratios;
             applyRatios      = ratiosLive;
+            health           = hp;
         }
 
         void Serialize(MafiaNet::BitStream *bs, bool write) {
@@ -46,6 +48,7 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, lights);
             bs->Serialize(write, doorRatiosPacked);
             bs->Serialize(write, applyRatios);
+            bs->Serialize(write, health);
         }
     };
 } // namespace VantaMP::Shared::RPC

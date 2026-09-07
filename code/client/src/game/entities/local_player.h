@@ -18,9 +18,10 @@ namespace VantaMP::Game {
     // lifts the fade. DestroyLocalPlayer ends the session, not the GTA ped.
     void CreateLocalPlayer();
 
-    // Ends the multiplayer session. The ped is unlinked, unregistered and
-    // hidden. It is not removed from the world and not freed - that is the
-    // 0x571B73 crash (RegisterReference on a null player).
+    // Ends the multiplayer session. The ped is detached (never SetPedOut),
+    // stood back up at the placeholder, unregistered and hidden. It is not
+    // removed from the world and not freed - that is the 0x571B73 crash
+    // (RegisterReference on a null player).
     void DestroyLocalPlayer();
 
     [[nodiscard]] bool IsPlayerSpawned();

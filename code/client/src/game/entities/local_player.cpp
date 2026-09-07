@@ -102,8 +102,12 @@ namespace VantaMP::Game {
         // Always out of the seat first. The ped exists from the first
         // gameplay frame, so they can be in a car before a spawn, and
         // deleting that car with them still named as driver is a crash.
+        // Pointer detach only - dead, wrecked, or mid-explode must not
+        // run SetPedOut. Then stand them up at the placeholder so the
+        // next server is not joining onto a corpse.
         if (FindLocalPed()) {
             SDK::UnlinkFromVehicle(kLocalPlayerSlot);
+            SDK::ReviveLocalPed(gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z, 0.0f, 100.0f, 0.0f);
         }
 
         if (!gPlayerSpawned.exchange(false, std::memory_order_acq_rel)) {

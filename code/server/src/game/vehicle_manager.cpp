@@ -43,6 +43,7 @@ namespace VantaMP::Game {
         vehicle->rotation        = glm::quat(glm::vec3(0.0f, 0.0f, heading));
         vehicle->health          = 1000.0f;
         vehicle->engineOn        = true;
+        vehicle->blown           = false;
 
         const auto id = static_cast<std::uint64_t>(vehicle->GetNetworkID());
 
@@ -219,24 +220,8 @@ namespace VantaMP::Game {
         }
     }
 
-    namespace {
-        std::uint64_t WorseBytes(std::uint64_t left, std::uint64_t right, int count) {
-            std::uint64_t worse = 0;
-
-            for (int i = 0; i < count; ++i) {
-                const auto shift = static_cast<std::uint64_t>(i * 8);
-                const auto a     = static_cast<std::uint8_t>((left >> shift) & 0xFFu);
-                const auto b     = static_cast<std::uint8_t>((right >> shift) & 0xFFu);
-
-                worse |= static_cast<std::uint64_t>(a > b ? a : b) << shift;
-            }
-
-            return worse;
-        }
-    } // namespace
-
     void VehicleManager::HandleDamage(std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panels, std::uint32_t lights,
-                                      std::uint64_t doorRatios, bool applyRatios) {
+                                      std::uint64_t doorRatios, bool applyRatios, float health) {
         auto *vehicle = Find(vehicleId);
 
         if (!vehicle) {
@@ -244,10 +229,12 @@ namespace VantaMP::Game {
         }
 
         vehicle->damageEngine = engine > vehicle->damageEngine ? engine : vehicle->damageEngine;
-        vehicle->doorsPacked  = WorseBytes(vehicle->doorsPacked, doors, Shared::VehicleEntity::kDoorCount);
-        vehicle->wheelsPacked = static_cast<std::uint32_t>(WorseBytes(vehicle->wheelsPacked, wheels, Shared::VehicleEntity::kWheelCount));
-        vehicle->panels       = panels > vehicle->panels ? panels : vehicle->panels;
-        vehicle->lights       = lights > vehicle->lights ? lights : vehicle->lights;
+        vehicle->doorsPacked  = Shared::VehicleEntity::WorseBytes(vehicle->doorsPacked, doors, Shared::VehicleEntity::kDoorCount);
+        vehicle->wheelsPacked = static_cast<std::uint32_t>(Shared::VehicleEntity::WorseBytes(vehicle->wheelsPacked, wheels, Shared::VehicleEntity::kWheelCount));
+        vehicle->panels       = Shared::VehicleEntity::WorsePacked(vehicle->panels, panels, Shared::VehicleEntity::kPanelCount, 4);
+        vehicle->lights       = Shared::VehicleEntity::WorsePacked(vehicle->lights, lights, Shared::VehicleEntity::kLightCount, 2);
+        vehicle->health       = health < vehicle->health ? health : vehicle->health;
+        vehicle->LatchBlown();
 
         // REPLACE, DO NOT MAX - and only when nobody is driving.
         // A passenger report used to stomp the owner's close, then the
@@ -273,7 +260,7 @@ namespace VantaMP::Game {
 
         Shared::RPC::VehicleDamageReport report;
         report.FromParameters(vehicleId, vehicle->damageEngine, vehicle->doorsPacked, vehicle->wheelsPacked, vehicle->panels, vehicle->lights, vehicle->doorRatiosPacked,
-                              applyRatios && !hasDriver);
+                              applyRatios && !hasDriver, vehicle->health);
         net->BroadcastRPC(report, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
     }
 

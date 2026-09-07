@@ -31,7 +31,7 @@
 #include "game/entities/local_player.h"
 #include "game/entities/remote_players.h"
 #include "game/patches/script.h"
-#include "sdk/vehicle_occupancy.h"
+#include "sdk/vehicle.h"
 #include "shared/constants.h"
 #include "shared/version.h"
 
@@ -73,7 +73,7 @@ namespace VantaMP::Core {
 
             net->RegisterRPC<Shared::RPC::VehicleDamageReport>([](const Shared::RPC::VehicleDamageReport &report, MafiaNet::Packet *) {
                 Game::ApplyRemoteVehicleDamage(report.vehicleId, report.damageEngine, report.doorsPacked, report.wheelsPacked, report.panels, report.lights,
-                                               report.doorRatiosPacked, report.applyRatios);
+                                               report.doorRatiosPacked, report.applyRatios, report.health);
             });
         }
 
@@ -110,15 +110,14 @@ namespace VantaMP::Core {
             Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Disconnected from the server: {}", reason);
         }
 
-        // Remotes first: their clothes copy is taken from the local ped.
-        // DestroyLocalPlayer ends the session only - the GTA ped stays, or
-        // the next frame's RegisterReference is a null-pointer crash.
-        //
-        // Occupants before vehicles. World::Remove on a car that still
-        // names this client's ped (or a remote that just dropped) is the
-        // crash that used to ride along with a regular disconnect.
+        // MTA ~CClientGame: explosions and projectiles first, then every
+        // script entity, then the local session. Dead or seated does not
+        // change the order - Unlink is pointer-only, Evacuate empties
+        // wrecks, ExtinguishCarFire is the vehicle destructor. The GTA
+        // ped stays allocated or the next frame's RegisterReference is
+        // a null-pointer crash.
         Game::SuspendRemotePlayers();
-        SDK::UnlinkFromVehicle(0);
+        SDK::ClearTransientWorldEffects();
         Game::ClearRemotePlayers();
         Game::ClearRemoteVehicles();
         Game::DestroyLocalPlayer();
