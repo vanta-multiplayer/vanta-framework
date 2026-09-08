@@ -14,6 +14,10 @@ namespace VantaMP::Shared {
     inline constexpr std::uint16_t kWorldEnvFog            = 64;
     inline constexpr std::uint16_t kWorldEnvRain           = 128;
     inline constexpr std::uint16_t kWorldEnvWave           = 256;
+    inline constexpr std::uint16_t kWorldEnvSky            = 512;
+    inline constexpr std::uint16_t kWorldEnvMoon           = 1024;
+    inline constexpr std::uint16_t kWorldEnvSunColor       = 2048;
+    inline constexpr std::uint16_t kWorldEnvSunSize        = 4096;
 
     // Always on join. Optional visual overrides are OR'd when script has set them.
     inline constexpr std::uint16_t kWorldEnvCoreFlags =
@@ -22,6 +26,7 @@ namespace VantaMP::Shared {
     inline constexpr std::uint32_t kDefaultMinuteDuration = 1000;
     inline constexpr float         kDefaultGameSpeed      = 1.0f;
     inline constexpr float         kDefaultGravity        = 0.008f;
+    inline constexpr std::uint8_t  kDefaultMoonSize       = 3;
 } // namespace VantaMP::Shared
 
 namespace VantaMP::Shared::RPC {
@@ -42,6 +47,12 @@ namespace VantaMP::Shared::RPC {
         float         fogDistance    = 0.0f;
         float         rainLevel      = 0.0f;
         float         waveHeight     = 0.0f;
+        std::uint8_t  skyTopR = 0, skyTopG = 0, skyTopB = 0;
+        std::uint8_t  skyBotR = 0, skyBotG = 0, skyBotB = 0;
+        std::uint8_t  moonSize       = Shared::kDefaultMoonSize;
+        std::uint8_t  sunCoreR = 0, sunCoreG = 0, sunCoreB = 0;
+        std::uint8_t  sunCoronaR = 0, sunCoronaG = 0, sunCoronaB = 0;
+        float         sunSize        = 1.0f;
 
         void Serialize(MafiaNet::BitStream *bs, bool write) {
             bs->Serialize(write, flags);
@@ -55,6 +66,20 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, fogDistance);
             bs->Serialize(write, rainLevel);
             bs->Serialize(write, waveHeight);
+            bs->Serialize(write, skyTopR);
+            bs->Serialize(write, skyTopG);
+            bs->Serialize(write, skyTopB);
+            bs->Serialize(write, skyBotR);
+            bs->Serialize(write, skyBotG);
+            bs->Serialize(write, skyBotB);
+            bs->Serialize(write, moonSize);
+            bs->Serialize(write, sunCoreR);
+            bs->Serialize(write, sunCoreG);
+            bs->Serialize(write, sunCoreB);
+            bs->Serialize(write, sunCoronaR);
+            bs->Serialize(write, sunCoronaG);
+            bs->Serialize(write, sunCoronaB);
+            bs->Serialize(write, sunSize);
         }
     };
 } // namespace VantaMP::Shared::RPC
