@@ -84,4 +84,10 @@ namespace VantaMP::SDK {
 
     void SetLocalPlayerOxygen(float breath);
     [[nodiscard]] float LocalPlayerOxygen();
+
+    void SetLocalPedAlpha(std::uint8_t alpha);
+    void SetLocalPedWalkingStyle(std::uint16_t style);
+    [[nodiscard]] std::uint16_t LocalPedWalkingStyle();
+    void SetLocalPedOnFire(bool on);
+    [[nodiscard]] bool LocalPedOnFire();
 } // namespace VantaMP::SDK

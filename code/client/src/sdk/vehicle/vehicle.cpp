@@ -818,7 +818,7 @@ namespace VantaMP::SDK {
     }
 
     void ApplyVehicleExtras(void *handle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof,
-                            bool collisions, bool landingGearDown) {
+                            bool collisions, bool landingGearDown, bool lightsOn) {
         auto *vehicle = AsVehicle(handle);
 
         if (!vehicle) {
@@ -833,6 +833,7 @@ namespace VantaMP::SDK {
         vehicle->bDisableMoveForce = frozen;
         vehicle->bDisableTurnForce = frozen;
         vehicle->bUsesCollision    = collisions;
+        vehicle->bLightsOn         = lightsOn;
 
         if (frozen) {
             vehicle->m_vecMoveSpeed = CVector();
@@ -854,6 +855,18 @@ namespace VantaMP::SDK {
         }
     }
 
+    void SetVehicleAlpha(void *handle, std::uint8_t alpha) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !vehicle->m_pRwObject) {
+            return;
+        }
+
+        using SetAlphaFn = void(__cdecl *)(void *, int);
+
+        reinterpret_cast<SetAlphaFn>(gPatterns.CVisibilityPlugins__SetClumpAlpha)(vehicle->m_pRwObject, static_cast<int>(alpha));
+    }
+
     bool VehicleLandingGearDown(const void *handle) {
         const auto *vehicle = AsVehicle(handle);
 
@@ -866,6 +879,18 @@ namespace VantaMP::SDK {
         }
 
         return static_cast<const CPlane *>(vehicle)->m_fLandingGearStatus < 0.5f;
+    }
+
+    bool VehicleLightsOn(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        return vehicle && vehicle->bLightsOn;
+    }
+
+    bool VehicleOnGround(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        return vehicle && vehicle->bOnSolidSurface;
     }
 
     bool IsLocalPlayerDriving(const void *handle) {

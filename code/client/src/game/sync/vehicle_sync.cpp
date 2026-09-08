@@ -87,6 +87,7 @@ namespace VantaMP::Game {
             bool         lastDamageProof     = false;
             bool         lastCollisions      = true;
             bool         lastLandingGear     = true;
+            bool         lastLightsOn        = false;
             bool         haveExtras          = false;
         };
 
@@ -351,6 +352,8 @@ namespace VantaMP::Game {
             // Landing gear is a GTA fact on planes (the key toggles it).
             // Cars stay true and this read is a no-op.
             entity->landingGearDown = SDK::VehicleLandingGearDown(remote.handle);
+            entity->lightsOn        = SDK::VehicleLightsOn(remote.handle);
+            entity->onGround        = SDK::VehicleOnGround(remote.handle);
         }
 
         void ApplyCosmetics(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
@@ -404,12 +407,12 @@ namespace VantaMP::Game {
 
             if (remote.haveExtras && remote.lastDirt == entity->dirtLevel && remote.lastTaxiLight == entity->taxiLight &&
                 remote.lastHeadlight == entity->headlightColor && remote.lastFrozen == entity->frozen && remote.lastDamageProof == entity->damageProof &&
-                remote.lastCollisions == entity->collisions && remote.lastLandingGear == entity->landingGearDown) {
+                remote.lastCollisions == entity->collisions && remote.lastLandingGear == entity->landingGearDown && remote.lastLightsOn == entity->lightsOn) {
                 return;
             }
 
             SDK::ApplyVehicleExtras(remote.handle, entity->dirtLevel, entity->taxiLight, entity->headlightColor, entity->frozen, entity->damageProof,
-                                    entity->collisions, entity->landingGearDown);
+                                    entity->collisions, entity->landingGearDown, entity->lightsOn);
             remote.lastDirt        = entity->dirtLevel;
             remote.lastTaxiLight   = entity->taxiLight;
             remote.lastHeadlight   = entity->headlightColor;
@@ -417,6 +420,7 @@ namespace VantaMP::Game {
             remote.lastDamageProof = entity->damageProof;
             remote.lastCollisions  = entity->collisions;
             remote.lastLandingGear = entity->landingGearDown;
+            remote.lastLightsOn    = entity->lightsOn;
             remote.haveExtras      = true;
         }
 
@@ -909,6 +913,7 @@ namespace VantaMP::Game {
                 ApplyCosmetics(vehicle, remote);
                 ApplyScriptState(vehicle, remote);
                 ApplyExtras(vehicle, remote);
+                SDK::SetVehicleAlpha(remote.handle, vehicle->alpha);
                 MergeOwnerDamage(vehicle, remote);
                 PushOwnedVehicle(vehicle, remote);
                 return;
@@ -917,6 +922,7 @@ namespace VantaMP::Game {
             ReportBystanderDamage(id, vehicle, remote);
             ReportOccupantDoorRatios(id, vehicle, remote);
             ApplyRemoteVehicle(vehicle, remote);
+            SDK::SetVehicleAlpha(remote.handle, vehicle->alpha);
         });
 
         for (auto it = gVehicles.begin(); it != gVehicles.end();) {

@@ -367,6 +367,14 @@ namespace VantaMP::SDK {
         uintptr_t CPed__SetCurrentWeapon = 0;
         uintptr_t CPed__ClearWeapon      = 0;
 
+        // Rebuilds the walk anim from m_nAnimGroup. Writing the group
+        // alone leaves them on the old clip until the next state change.
+        uintptr_t CPed__SetMoveAnim = 0;
+
+        // Clump plugin alpha. GTA rewrites it from ProcessControl, so
+        // the caller has to set it every frame.
+        uintptr_t CVisibilityPlugins__SetClumpAlpha = 0;
+
         // --- Streaming ----------------------------------------------------------
         //
         // MODELS HAVE TO BE IN MEMORY BEFORE ANYTHING IS TOLD TO WEAR ONE.
@@ -547,6 +555,7 @@ namespace VantaMP::SDK {
         uintptr_t CAutomobile__SetDoorDamage   = 0;
 
         uintptr_t gFireManager                       = 0;
+        uintptr_t CFireManager__StartFire            = 0;
         uintptr_t CFireManager__ExtinguishPoint      = 0;
         uintptr_t CVehicle__ExtinguishCarFire        = 0;
         uintptr_t CFire__Extinguish                  = 0;

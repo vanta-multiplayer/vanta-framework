@@ -84,6 +84,51 @@ namespace VantaMP::SDK::Internal {
         return running && TaskIdOf(running) == TASK_COMPLEX_IN_WATER;
     }
 
+    inline void SetClumpAlpha(CEntity *entity, std::uint8_t alpha) {
+        if (!entity || !entity->m_pRwObject) {
+            return;
+        }
+
+        using SetAlphaFn = void(__cdecl *)(void *, int);
+
+        reinterpret_cast<SetAlphaFn>(gPatterns.CVisibilityPlugins__SetClumpAlpha)(entity->m_pRwObject, static_cast<int>(alpha));
+    }
+
+    inline void SetPedWalkingStyle(CPed *ped, std::uint16_t style) {
+        if (!ped || ped->m_nAnimGroup == style) {
+            return;
+        }
+
+        ped->m_nAnimGroup = style;
+        reinterpret_cast<void(__thiscall *)(CPed *)>(gPatterns.CPed__SetMoveAnim)(ped);
+    }
+
+    inline bool PedOnFire(const CPed *ped) {
+        return ped && ped->m_pFire != nullptr;
+    }
+
+    inline void SetPedOnFire(CPed *ped, bool on) {
+        if (!ped) {
+            return;
+        }
+
+        if (!on) {
+            if (ped->m_pFire) {
+                reinterpret_cast<void(__thiscall *)(CFire *)>(gPatterns.CFire__Extinguish)(ped->m_pFire);
+            }
+
+            return;
+        }
+
+        if (ped->m_pFire) {
+            return;
+        }
+
+        using StartFireFn = CFire *(__thiscall *)(void *, CEntity *, CEntity *, float, unsigned char, unsigned int, signed char);
+
+        reinterpret_cast<StartFireFn>(gPatterns.CFireManager__StartFire)(reinterpret_cast<void *>(gPatterns.gFireManager), ped, ped, 0.8f, 1, 0xFFFFFFFFu, 0);
+    }
+
     inline CPed *LocalPed() {
         // Slot 0, out of the RELOCATED array. Reading gPatterns.CWorld__Players
         // instead would find the array the game shipped with, which nothing

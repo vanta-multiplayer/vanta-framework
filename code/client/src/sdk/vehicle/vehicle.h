@@ -97,10 +97,15 @@ namespace VantaMP::SDK {
     // landing gear. plate is stored on the replica; GTA has no
     // per-instance plate string we can write without a texture.
     void ApplyVehicleExtras(void *vehicle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof,
-                            bool collisions, bool landingGearDown);
+                            bool collisions, bool landingGearDown, bool lightsOn);
+
+    // GTA rewrites clump alpha from UpdateClumpAlpha. Call every frame.
+    void SetVehicleAlpha(void *vehicle, std::uint8_t alpha);
 
     // True when the gear is down, or when this is not a plane.
     [[nodiscard]] bool VehicleLandingGearDown(const void *vehicle);
+    [[nodiscard]] bool VehicleLightsOn(const void *vehicle);
+    [[nodiscard]] bool VehicleOnGround(const void *vehicle);
 
     [[nodiscard]] bool IsLocalPlayerDriving(const void *vehicle);
     [[nodiscard]] bool VehicleHasDriver(const void *vehicle);

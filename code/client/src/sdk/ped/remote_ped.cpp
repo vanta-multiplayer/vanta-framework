@@ -460,4 +460,16 @@ namespace VantaMP::SDK {
             info->m_PlayerData.m_fBreath = breath;
         }
     }
+
+    void SetRemotePedAlpha(int slot, std::uint8_t alpha) {
+        Internal::SetClumpAlpha(PedAt(slot), alpha);
+    }
+
+    void SetRemotePedWalkingStyle(int slot, std::uint16_t style) {
+        Internal::SetPedWalkingStyle(PedAt(slot), style);
+    }
+
+    void SetRemotePedOnFire(int slot, bool on) {
+        Internal::SetPedOnFire(PedAt(slot), on);
+    }
 } // namespace VantaMP::SDK

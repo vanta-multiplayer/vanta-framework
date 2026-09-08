@@ -253,6 +253,9 @@ namespace VantaMP::SDK {
         gPatterns.CPed__GiveWeapon       = Resolve("51 53 8B 5C 24 0C 55 56 57"); // 0x005E6080
         gPatterns.CPed__SetCurrentWeapon = Resolve("53 8B 5C 24 08 83 FB FF 56 8B"); // 0x005E61F0
         gPatterns.CPed__ClearWeapon      = Resolve("56 57 8B 7C 24 0C 6A 01 57 8B F1 E8 A0"); // 0x005E62B0
+        gPatterns.CPed__SetMoveAnim      = Resolve("56 8B F1 8B 86 30 05 00 00 83 F8 36 0F"); // 0x005E4A00
+        // mov eax, alpha; mov ecx, clump; mov edx, [ms_clumpPluginOffset]; mov [edx+ecx+4], eax
+        gPatterns.CVisibilityPlugins__SetClumpAlpha = Resolve("8B 44 24 08 8B 4C 24 04 8B 15 ? ? ? ? 89 44 0A 04"); // 0x00732B00
 
         // --- Streaming ----------------------------------------------------------
 
@@ -361,6 +364,7 @@ namespace VantaMP::SDK {
         gPatterns.CAutomobile__SetDoorDamage   = Resolve("6A FF 68 78 81 84"); // 0x006B1600
 
         gPatterns.gFireManager = OperandAt(hook::get_pattern("50 B9 ? ? ? ? E8 FD 93"), 2); // site 0x0042FB38 -> 0x00B71F80
+        gPatterns.CFireManager__StartFire = Resolve("56 57 8B 7C 24 0C 8A 47 36 24 07 3C 03 8B F1 75 1C"); // 0x0053A050
         gPatterns.CFireManager__ExtinguishPoint = Resolve("56 57 8B F1 BF 3C 00 00 00 8D A4 24 00 00 00 00 8A"); // 0x00539450
         gPatterns.CVehicle__ExtinguishCarFire = Resolve("56 8B F1 8A 46 36 24 F8 3C 28"); // 0x006D2460
         gPatterns.CFire__Extinguish = Resolve("56 8B F1 8A 06 A8"); // 0x005393F0

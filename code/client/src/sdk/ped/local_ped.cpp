@@ -224,4 +224,26 @@ namespace VantaMP::SDK {
 
         return 0.0f;
     }
+
+    void SetLocalPedAlpha(std::uint8_t alpha) {
+        Internal::SetClumpAlpha(Internal::LocalPed(), alpha);
+    }
+
+    void SetLocalPedWalkingStyle(std::uint16_t style) {
+        Internal::SetPedWalkingStyle(Internal::LocalPed(), style);
+    }
+
+    std::uint16_t LocalPedWalkingStyle() {
+        const auto *ped = Internal::LocalPed();
+
+        return ped ? static_cast<std::uint16_t>(ped->m_nAnimGroup) : 0;
+    }
+
+    void SetLocalPedOnFire(bool on) {
+        Internal::SetPedOnFire(Internal::LocalPed(), on);
+    }
+
+    bool LocalPedOnFire() {
+        return Internal::PedOnFire(Internal::LocalPed());
+    }
 } // namespace VantaMP::SDK

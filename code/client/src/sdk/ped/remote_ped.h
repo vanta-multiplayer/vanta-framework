@@ -116,6 +116,9 @@ namespace VantaMP::SDK {
     void SetRemotePedFrozen(int slot, bool frozen);
     void SetRemotePedFightingStyle(int slot, std::uint8_t style);
     void SetRemotePedOxygen(int slot, float breath);
+    void SetRemotePedAlpha(int slot, std::uint8_t alpha);
+    void SetRemotePedWalkingStyle(int slot, std::uint16_t style);
+    void SetRemotePedOnFire(int slot, bool on);
 
     // What a remote player HOLDS is in sdk/ped/weapon.h, not here.
 } // namespace VantaMP::SDK

@@ -38,6 +38,7 @@ namespace VantaMP::Game {
         // rather than by pointer: an entity can be destroyed and its memory
         // reused, and a stale pointer would silently match the wrong player.
         std::unordered_map<std::uint64_t, int> gSlotByNetworkId;
+        std::unordered_map<int, std::uint8_t>  gRemoteAlpha;
         std::uint64_t gLocalNetworkId = 0;
         LocalWorldSpace gLocalWorld {};
 
@@ -422,6 +423,9 @@ namespace VantaMP::Game {
             entity->wantedLevel    = SDK::LocalPlayerWanted();
             entity->fightingStyle  = SDK::LocalPedFightingStyle();
             entity->oxygen         = SDK::LocalPlayerOxygen();
+            entity->walkingStyle   = SDK::LocalPedWalkingStyle();
+            entity->onFire         = SDK::LocalPedOnFire();
+            SDK::SetLocalPedAlpha(entity->alpha);
 
             // TEMPORARY TELEMETRY - remove once the desync is closed.
             static std::uint32_t lastSendReportMs = 0;
@@ -476,6 +480,10 @@ namespace VantaMP::Game {
                 SDK::SetRemotePedFrozen(slot, entity->frozen);
                 SDK::SetRemotePedFightingStyle(slot, entity->fightingStyle);
                 SDK::SetRemotePedOxygen(slot, entity->oxygen);
+                SDK::SetRemotePedWalkingStyle(slot, entity->walkingStyle);
+                SDK::SetRemotePedOnFire(slot, entity->onFire);
+                SDK::SetRemotePedAlpha(slot, entity->alpha);
+                gRemoteAlpha[slot] = entity->alpha;
                 SDK::SetRemotePedWeapon(slot, entity->weaponType, entity->ammoClip, entity->ammoTotal);
 
                 if (entity->vehicleNetworkId != 0) {
@@ -602,6 +610,10 @@ namespace VantaMP::Game {
                 SDK::SetRemotePedCollision(slot, entity->collisions);
                 SDK::SetRemotePedFightingStyle(slot, entity->fightingStyle);
                 SDK::SetRemotePedOxygen(slot, entity->oxygen);
+                SDK::SetRemotePedWalkingStyle(slot, entity->walkingStyle);
+                SDK::SetRemotePedOnFire(slot, entity->onFire);
+                SDK::SetRemotePedAlpha(slot, entity->alpha);
+                gRemoteAlpha[slot] = entity->alpha;
 
                 // On the update path rather than per-frame. It costs nothing
                 // when the weapon has not changed, but the frame path runs six
@@ -755,6 +767,7 @@ namespace VantaMP::Game {
             Framework::Logging::GetLogger("Sync")->info("Player {} left slot {}", it->first, it->second);
 
             gInterpolationBySlot.erase(it->second);
+            gRemoteAlpha.erase(it->second);
             gAimedBySlot.erase(it->second);
 
             ClearRemoteOccupancy(it->second);
@@ -764,6 +777,10 @@ namespace VantaMP::Game {
     }
 
     void CorrectRemotePlayer(int slot) {
+        if (const auto found = gRemoteAlpha.find(slot); found != gRemoteAlpha.end()) {
+            SDK::SetRemotePedAlpha(slot, found->second);
+        }
+
         if (SDK::IsPedOccupyingVehicle(slot)) {
             return;
         }
@@ -898,7 +915,8 @@ namespace VantaMP::Game {
                 SDK::ApplyVehicleDoorRatios(handle, vehicle->doorRatiosPacked);
                 SDK::ApplyVehicleScriptState(handle, vehicle->engineOn, vehicle->sirenOn, vehicle->overrideLights, vehicle->locked);
                 SDK::ApplyVehicleExtras(handle, vehicle->dirtLevel, vehicle->taxiLight, vehicle->headlightColor, vehicle->frozen, vehicle->damageProof,
-                                        vehicle->collisions, vehicle->landingGearDown);
+                                        vehicle->collisions, vehicle->landingGearDown, vehicle->lightsOn);
+                SDK::SetVehicleAlpha(handle, vehicle->alpha);
 
                 if (vehicle->IsBlown()) {
                     SDK::WreckVehicle(handle, true);
@@ -921,6 +939,7 @@ namespace VantaMP::Game {
         gSlotByNetworkId.clear();
         gInterpolationBySlot.clear();
         gAimedBySlot.clear();
+        gRemoteAlpha.clear();
     }
 
     int SlotOfNetworkId(std::uint64_t networkId) {
@@ -1022,6 +1041,18 @@ namespace VantaMP::Game {
             SDK::SetLocalPlayerOxygen(script.oxygen);
         }
 
+        if ((script.flags2 & Shared::kPlayerScript2WalkingStyle) != 0) {
+            SDK::SetLocalPedWalkingStyle(script.walkingStyle);
+        }
+
+        if ((script.flags2 & Shared::kPlayerScript2Alpha) != 0) {
+            SDK::SetLocalPedAlpha(script.alpha);
+        }
+
+        if ((script.flags2 & Shared::kPlayerScript2OnFire) != 0) {
+            SDK::SetLocalPedOnFire(script.onFire);
+        }
+
         if (auto *player = OwnedPlayer(Framework::CoreModules::GetReplication())) {
             if ((script.flags & Shared::kPlayerScriptHealth) != 0) {
                 player->health = script.health;
@@ -1057,6 +1088,18 @@ namespace VantaMP::Game {
 
             if ((script.flags2 & Shared::kPlayerScript2Oxygen) != 0) {
                 player->oxygen = script.oxygen;
+            }
+
+            if ((script.flags2 & Shared::kPlayerScript2WalkingStyle) != 0) {
+                player->walkingStyle = script.walkingStyle;
+            }
+
+            if ((script.flags2 & Shared::kPlayerScript2Alpha) != 0) {
+                player->alpha = script.alpha;
+            }
+
+            if ((script.flags2 & Shared::kPlayerScript2OnFire) != 0) {
+                player->onFire = script.onFire;
             }
         }
     }
