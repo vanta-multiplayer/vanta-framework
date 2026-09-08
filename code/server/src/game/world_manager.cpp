@@ -93,6 +93,61 @@ namespace VantaMP::Game {
         Broadcast(Shared::kWorldEnvWave);
     }
 
+    void WorldManager::GetSkyGradient(std::uint8_t &topR, std::uint8_t &topG, std::uint8_t &topB, std::uint8_t &botR, std::uint8_t &botG,
+                                      std::uint8_t &botB) const {
+        topR = _skyTopR;
+        topG = _skyTopG;
+        topB = _skyTopB;
+        botR = _skyBotR;
+        botG = _skyBotG;
+        botB = _skyBotB;
+    }
+
+    void WorldManager::SetSkyGradient(std::uint8_t topR, std::uint8_t topG, std::uint8_t topB, std::uint8_t botR, std::uint8_t botG, std::uint8_t botB) {
+        _skyTopR = topR;
+        _skyTopG = topG;
+        _skyTopB = topB;
+        _skyBotR = botR;
+        _skyBotG = botG;
+        _skyBotB = botB;
+        _skySet  = true;
+        Broadcast(Shared::kWorldEnvSky);
+    }
+
+    void WorldManager::SetMoonSize(std::uint8_t size) {
+        _moonSize = size;
+        _moonSet  = true;
+        Broadcast(Shared::kWorldEnvMoon);
+    }
+
+    void WorldManager::GetSunColor(std::uint8_t &coreR, std::uint8_t &coreG, std::uint8_t &coreB, std::uint8_t &coronaR, std::uint8_t &coronaG,
+                                   std::uint8_t &coronaB) const {
+        coreR   = _sunCoreR;
+        coreG   = _sunCoreG;
+        coreB   = _sunCoreB;
+        coronaR = _sunCoronaR;
+        coronaG = _sunCoronaG;
+        coronaB = _sunCoronaB;
+    }
+
+    void WorldManager::SetSunColor(std::uint8_t coreR, std::uint8_t coreG, std::uint8_t coreB, std::uint8_t coronaR, std::uint8_t coronaG,
+                                   std::uint8_t coronaB) {
+        _sunCoreR    = coreR;
+        _sunCoreG    = coreG;
+        _sunCoreB    = coreB;
+        _sunCoronaR  = coronaR;
+        _sunCoronaG  = coronaG;
+        _sunCoronaB  = coronaB;
+        _sunColorSet = true;
+        Broadcast(Shared::kWorldEnvSunColor);
+    }
+
+    void WorldManager::SetSunSize(float size) {
+        _sunSize    = std::max(0.0f, size);
+        _sunSizeSet = true;
+        Broadcast(Shared::kWorldEnvSunSize);
+    }
+
     std::uint16_t WorldManager::JoinFlags() const {
         auto flags = Shared::kWorldEnvCoreFlags;
 
@@ -112,6 +167,22 @@ namespace VantaMP::Game {
             flags |= Shared::kWorldEnvWave;
         }
 
+        if (_skySet) {
+            flags |= Shared::kWorldEnvSky;
+        }
+
+        if (_moonSet) {
+            flags |= Shared::kWorldEnvMoon;
+        }
+
+        if (_sunColorSet) {
+            flags |= Shared::kWorldEnvSunColor;
+        }
+
+        if (_sunSizeSet) {
+            flags |= Shared::kWorldEnvSunSize;
+        }
+
         return flags;
     }
 
@@ -127,6 +198,20 @@ namespace VantaMP::Game {
         packet.fogDistance    = _fogDistance;
         packet.rainLevel      = _rainLevel;
         packet.waveHeight     = _waveHeight;
+        packet.skyTopR        = _skyTopR;
+        packet.skyTopG        = _skyTopG;
+        packet.skyTopB        = _skyTopB;
+        packet.skyBotR        = _skyBotR;
+        packet.skyBotG        = _skyBotG;
+        packet.skyBotB        = _skyBotB;
+        packet.moonSize       = _moonSize;
+        packet.sunCoreR       = _sunCoreR;
+        packet.sunCoreG       = _sunCoreG;
+        packet.sunCoreB       = _sunCoreB;
+        packet.sunCoronaR     = _sunCoronaR;
+        packet.sunCoronaG     = _sunCoronaG;
+        packet.sunCoronaB     = _sunCoronaB;
+        packet.sunSize        = _sunSize;
         return packet;
     }
 

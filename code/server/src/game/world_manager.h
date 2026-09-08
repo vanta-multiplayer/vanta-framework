@@ -55,6 +55,24 @@ namespace VantaMP::Game {
         }
         void SetWaveHeight(float height);
 
+        void GetSkyGradient(std::uint8_t &topR, std::uint8_t &topG, std::uint8_t &topB, std::uint8_t &botR, std::uint8_t &botG,
+                            std::uint8_t &botB) const;
+        void SetSkyGradient(std::uint8_t topR, std::uint8_t topG, std::uint8_t topB, std::uint8_t botR, std::uint8_t botG, std::uint8_t botB);
+
+        [[nodiscard]] std::uint8_t GetMoonSize() const {
+            return _moonSize;
+        }
+        void SetMoonSize(std::uint8_t size);
+
+        void GetSunColor(std::uint8_t &coreR, std::uint8_t &coreG, std::uint8_t &coreB, std::uint8_t &coronaR, std::uint8_t &coronaG,
+                         std::uint8_t &coronaB) const;
+        void SetSunColor(std::uint8_t coreR, std::uint8_t coreG, std::uint8_t coreB, std::uint8_t coronaR, std::uint8_t coronaG, std::uint8_t coronaB);
+
+        [[nodiscard]] float GetSunSize() const {
+            return _sunSize;
+        }
+        void SetSunSize(float size);
+
         // Full snapshot to one peer (join). Partial broadcast for script sets.
         void SendTo(MafiaNet::PeerGuid guid) const;
         void Broadcast(std::uint16_t flags) const;
@@ -72,10 +90,20 @@ namespace VantaMP::Game {
         float         _fogDistance    = 0.0f;
         float         _rainLevel      = 0.0f;
         float         _waveHeight     = 0.0f;
+        std::uint8_t  _skyTopR = 0, _skyTopG = 0, _skyTopB = 0;
+        std::uint8_t  _skyBotR = 0, _skyBotG = 0, _skyBotB = 0;
+        std::uint8_t  _moonSize       = Shared::kDefaultMoonSize;
+        std::uint8_t  _sunCoreR = 0, _sunCoreG = 0, _sunCoreB = 0;
+        std::uint8_t  _sunCoronaR = 0, _sunCoronaG = 0, _sunCoronaB = 0;
+        float         _sunSize        = 1.0f;
         bool          _haveMidnight   = false;
         bool          _farClipSet     = false;
         bool          _fogSet         = false;
         bool          _rainSet        = false;
         bool          _waveSet        = false;
+        bool          _skySet         = false;
+        bool          _moonSet        = false;
+        bool          _sunColorSet    = false;
+        bool          _sunSizeSet     = false;
     };
 } // namespace VantaMP::Game

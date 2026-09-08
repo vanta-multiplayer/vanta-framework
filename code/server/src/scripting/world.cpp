@@ -136,6 +136,26 @@ namespace VantaMP::Scripting {
         }
     }
 
+    std::uint8_t World::GetMoonSize() {
+        return gWorld ? gWorld->GetMoonSize() : Shared::kDefaultMoonSize;
+    }
+
+    void World::SetMoonSize(std::uint8_t size) {
+        if (gWorld) {
+            gWorld->SetMoonSize(size);
+        }
+    }
+
+    float World::GetSunSize() {
+        return gWorld ? gWorld->GetSunSize() : 1.0f;
+    }
+
+    void World::SetSunSize(float size) {
+        if (gWorld) {
+            gWorld->SetSunSize(size);
+        }
+    }
+
     void World::JS_SetTime(const v8::FunctionCallbackInfo<v8::Value> &info) {
         if (info.Length() < 2) {
             return;
@@ -143,6 +163,66 @@ namespace VantaMP::Scripting {
 
         auto *isolate = info.GetIsolate();
         SetTime(v8pp::from_v8<std::uint8_t>(isolate, info[0]), v8pp::from_v8<std::uint8_t>(isolate, info[1]));
+    }
+
+    void World::JS_SetSkyGradient(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        if (!gWorld || info.Length() < 6) {
+            return;
+        }
+
+        auto *isolate = info.GetIsolate();
+        gWorld->SetSkyGradient(v8pp::from_v8<std::uint8_t>(isolate, info[0]), v8pp::from_v8<std::uint8_t>(isolate, info[1]),
+                               v8pp::from_v8<std::uint8_t>(isolate, info[2]), v8pp::from_v8<std::uint8_t>(isolate, info[3]),
+                               v8pp::from_v8<std::uint8_t>(isolate, info[4]), v8pp::from_v8<std::uint8_t>(isolate, info[5]));
+    }
+
+    void World::JS_GetSkyGradient(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto  ctx     = isolate->GetCurrentContext();
+        auto  arr     = v8::Array::New(isolate, 6);
+
+        std::uint8_t topR = 0, topG = 0, topB = 0, botR = 0, botG = 0, botB = 0;
+        if (gWorld) {
+            gWorld->GetSkyGradient(topR, topG, topB, botR, botG, botB);
+        }
+
+        arr->Set(ctx, 0, v8pp::to_v8(isolate, topR)).Check();
+        arr->Set(ctx, 1, v8pp::to_v8(isolate, topG)).Check();
+        arr->Set(ctx, 2, v8pp::to_v8(isolate, topB)).Check();
+        arr->Set(ctx, 3, v8pp::to_v8(isolate, botR)).Check();
+        arr->Set(ctx, 4, v8pp::to_v8(isolate, botG)).Check();
+        arr->Set(ctx, 5, v8pp::to_v8(isolate, botB)).Check();
+        info.GetReturnValue().Set(arr);
+    }
+
+    void World::JS_SetSunColor(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        if (!gWorld || info.Length() < 6) {
+            return;
+        }
+
+        auto *isolate = info.GetIsolate();
+        gWorld->SetSunColor(v8pp::from_v8<std::uint8_t>(isolate, info[0]), v8pp::from_v8<std::uint8_t>(isolate, info[1]),
+                            v8pp::from_v8<std::uint8_t>(isolate, info[2]), v8pp::from_v8<std::uint8_t>(isolate, info[3]),
+                            v8pp::from_v8<std::uint8_t>(isolate, info[4]), v8pp::from_v8<std::uint8_t>(isolate, info[5]));
+    }
+
+    void World::JS_GetSunColor(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto  ctx     = isolate->GetCurrentContext();
+        auto  arr     = v8::Array::New(isolate, 6);
+
+        std::uint8_t coreR = 0, coreG = 0, coreB = 0, coronaR = 0, coronaG = 0, coronaB = 0;
+        if (gWorld) {
+            gWorld->GetSunColor(coreR, coreG, coreB, coronaR, coronaG, coronaB);
+        }
+
+        arr->Set(ctx, 0, v8pp::to_v8(isolate, coreR)).Check();
+        arr->Set(ctx, 1, v8pp::to_v8(isolate, coreG)).Check();
+        arr->Set(ctx, 2, v8pp::to_v8(isolate, coreB)).Check();
+        arr->Set(ctx, 3, v8pp::to_v8(isolate, coronaR)).Check();
+        arr->Set(ctx, 4, v8pp::to_v8(isolate, coronaG)).Check();
+        arr->Set(ctx, 5, v8pp::to_v8(isolate, coronaB)).Check();
+        info.GetReturnValue().Set(arr);
     }
 
     namespace {
@@ -190,6 +270,14 @@ namespace VantaMP::Scripting {
         put("setRainLevel", &JS_Set<&World::SetRainLevel, float>);
         put("getWaveHeight", &JS_Get<&World::GetWaveHeight>);
         put("setWaveHeight", &JS_Set<&World::SetWaveHeight, float>);
+        put("setSkyGradient", &World::JS_SetSkyGradient);
+        put("getSkyGradient", &World::JS_GetSkyGradient);
+        put("getMoonSize", &JS_Get<&World::GetMoonSize>);
+        put("setMoonSize", &JS_Set<&World::SetMoonSize, std::uint8_t>);
+        put("setSunColor", &World::JS_SetSunColor);
+        put("getSunColor", &World::JS_GetSunColor);
+        put("getSunSize", &JS_Get<&World::GetSunSize>);
+        put("setSunSize", &JS_Set<&World::SetSunSize, float>);
 
         global->Set(ctx, v8pp::to_v8(isolate, "World"), world).Check();
     }
