@@ -61,6 +61,10 @@ namespace VantaMP::Shared {
         fields.Field(collisions);
         fields.Field(fightingStyle);
         fields.Field(oxygen);
+
+        fields.Field(walkingStyle);
+        fields.Field(alpha);
+        fields.Field(onFire);
     }
 
     Framework::Networking::Replication::NetworkEntity *PlayerEntity::GetInterestDependency() {

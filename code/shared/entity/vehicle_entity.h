@@ -140,6 +140,15 @@ namespace VantaMP::Shared {
         // 0 on CPlane::m_fLandingGearStatus is down.
         bool landingGearDown = true;
 
+        // Headlights the driver toggled. Owner reports bLightsOn.
+        bool lightsOn = false;
+
+        // Clump alpha 0–255. Script-owned. Applied every frame.
+        std::uint8_t alpha = 255;
+
+        // CPhysical::bOnSolidSurface. Owner reports. Script is read-only.
+        bool onGround = true;
+
         static std::uint8_t PackedByte(std::uint64_t packed, int index) {
             return static_cast<std::uint8_t>((packed >> (index * 8)) & 0xFFu);
         }

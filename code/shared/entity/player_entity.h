@@ -174,6 +174,16 @@ namespace VantaMP::Shared {
         // it). Script set sends PlayerScript first.
         float oxygen = 1000.0f;
 
+        // CPed::m_nAnimGroup. Script-owned. 0 is the default player walk.
+        std::uint16_t walkingStyle = 0;
+
+        // Clump alpha 0–255. Script-owned. Applied every frame — GTA
+        // rewrites it from ProcessControl.
+        std::uint8_t alpha = 255;
+
+        // On fire. The owner reports m_pFire; script set sends PlayerScript.
+        bool onFire = false;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnStateForced() override;
