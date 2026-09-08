@@ -5,30 +5,34 @@
 #include <cstdint>
 
 namespace VantaMP::Shared {
-    inline constexpr std::uint16_t kWorldEnvTime           = 1;
-    inline constexpr std::uint16_t kWorldEnvMinuteDuration = 2;
-    inline constexpr std::uint16_t kWorldEnvGameSpeed      = 4;
-    inline constexpr std::uint16_t kWorldEnvWeather        = 8;
-    inline constexpr std::uint16_t kWorldEnvGravity        = 16;
-    inline constexpr std::uint16_t kWorldEnvFarClip        = 32;
-    inline constexpr std::uint16_t kWorldEnvFog            = 64;
-    inline constexpr std::uint16_t kWorldEnvRain           = 128;
-    inline constexpr std::uint16_t kWorldEnvWave           = 256;
-    inline constexpr std::uint16_t kWorldEnvSky            = 512;
-    inline constexpr std::uint16_t kWorldEnvMoon           = 1024;
-    inline constexpr std::uint16_t kWorldEnvSunColor       = 2048;
-    inline constexpr std::uint16_t kWorldEnvSunSize        = 4096;
-    inline constexpr std::uint16_t kWorldEnvWaterColor     = 8192;
-    inline constexpr std::uint16_t kWorldEnvHeatHaze       = 16384;
+    inline constexpr std::uint32_t kWorldEnvTime           = 1;
+    inline constexpr std::uint32_t kWorldEnvMinuteDuration = 2;
+    inline constexpr std::uint32_t kWorldEnvGameSpeed      = 4;
+    inline constexpr std::uint32_t kWorldEnvWeather        = 8;
+    inline constexpr std::uint32_t kWorldEnvGravity        = 16;
+    inline constexpr std::uint32_t kWorldEnvFarClip        = 32;
+    inline constexpr std::uint32_t kWorldEnvFog            = 64;
+    inline constexpr std::uint32_t kWorldEnvRain           = 128;
+    inline constexpr std::uint32_t kWorldEnvWave           = 256;
+    inline constexpr std::uint32_t kWorldEnvSky            = 512;
+    inline constexpr std::uint32_t kWorldEnvMoon           = 1024;
+    inline constexpr std::uint32_t kWorldEnvSunColor       = 2048;
+    inline constexpr std::uint32_t kWorldEnvSunSize        = 4096;
+    inline constexpr std::uint32_t kWorldEnvWaterColor     = 8192;
+    inline constexpr std::uint32_t kWorldEnvHeatHaze       = 16384;
+    inline constexpr std::uint32_t kWorldEnvClouds         = 32768;
+    inline constexpr std::uint32_t kWorldEnvJetpackHeight  = 65536;
+    inline constexpr std::uint32_t kWorldEnvWind           = 131072;
 
     // Always on join. Optional visual overrides are OR'd when script has set them.
-    inline constexpr std::uint16_t kWorldEnvCoreFlags =
+    inline constexpr std::uint32_t kWorldEnvCoreFlags =
         kWorldEnvTime | kWorldEnvMinuteDuration | kWorldEnvGameSpeed | kWorldEnvWeather | kWorldEnvGravity;
 
     inline constexpr std::uint32_t kDefaultMinuteDuration = 1000;
     inline constexpr float         kDefaultGameSpeed      = 1.0f;
     inline constexpr float         kDefaultGravity        = 0.008f;
     inline constexpr std::uint8_t  kDefaultMoonSize       = 3;
+    inline constexpr float         kDefaultJetpackHeight  = 100.0f;
 } // namespace VantaMP::Shared
 
 namespace VantaMP::Shared::RPC {
@@ -38,7 +42,7 @@ namespace VantaMP::Shared::RPC {
     struct WorldEnv {
         static constexpr const char *kIdentifier = "VantaMP::WorldEnv";
 
-        std::uint16_t flags          = 0;
+        std::uint32_t flags          = 0;
         std::uint8_t  hour           = 12;
         std::uint8_t  minute         = 0;
         std::uint32_t minuteDuration = Shared::kDefaultMinuteDuration;
@@ -65,6 +69,9 @@ namespace VantaMP::Shared::RPC {
         std::uint16_t hazeRenderX    = 80;
         std::uint16_t hazeRenderY    = 85;
         bool          hazeInsideBuilding = false;
+        bool          cloudsEnabled  = true;
+        float         jetpackMaxHeight = Shared::kDefaultJetpackHeight;
+        float         windX = 0, windY = 0, windZ = 0;
 
         void Serialize(MafiaNet::BitStream *bs, bool write) {
             bs->Serialize(write, flags);
@@ -105,6 +112,11 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, hazeRenderX);
             bs->Serialize(write, hazeRenderY);
             bs->Serialize(write, hazeInsideBuilding);
+            bs->Serialize(write, cloudsEnabled);
+            bs->Serialize(write, jetpackMaxHeight);
+            bs->Serialize(write, windX);
+            bs->Serialize(write, windY);
+            bs->Serialize(write, windZ);
         }
     };
 } // namespace VantaMP::Shared::RPC
