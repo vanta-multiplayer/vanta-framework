@@ -148,4 +148,6 @@ namespace VantaMP::SDK {
     // those even when BlowUpCar is not taken through the vtable we patch.
     void InstallVehicleExplosionHooks();
     void InstallVehicleColorHooks();
+    // Headlight tint — game/patches/vehicle_lights.cpp (framework inject_hook).
+    void InstallVehicleHeadlightHooks();
 } // namespace VantaMP::SDK

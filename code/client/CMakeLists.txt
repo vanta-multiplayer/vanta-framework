@@ -53,6 +53,7 @@ set(VANTAMP_CLIENT_FILES
     src/game/patches/input.cpp
     src/game/patches/population.cpp
     src/game/patches/script.cpp
+    src/game/patches/vehicle_lights.cpp
 
     # Things in the world, and the slots they live in.
     src/game/camera.cpp
