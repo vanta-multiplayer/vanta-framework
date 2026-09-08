@@ -6,6 +6,7 @@
 #include "shared/vehicle/colors.h"
 #include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
+#include "shared/vehicle/rotation.h"
 #include "shared/vehicle/upgrades.h"
 
 #include <core_modules.h>
@@ -282,6 +283,24 @@ namespace VantaMP::Scripting {
         }
     }
 
+    Vector3 Vehicle::GetRotationDegrees() const {
+        auto *vehicle = ResolveVehicle();
+
+        if (!vehicle) {
+            return Vector3(0, 0, 0);
+        }
+
+        const auto degrees = Shared::MtaDegreesFromQuat(vehicle->rotation);
+        return Vector3(degrees.x, degrees.y, degrees.z);
+    }
+
+    void Vehicle::SetRotationDegrees(const Vector3 &degrees) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->rotation = Shared::QuatFromMtaDegrees(degrees.vec());
+            vehicle->ForceState();
+        }
+    }
+
     void Vehicle::Destroy() {
         if (gVehicles) {
             gVehicles->Destroy(_id);
@@ -330,31 +349,45 @@ namespace VantaMP::Scripting {
             }
         }
 
-        const auto heading = info.Length() > arg ? v8pp::from_v8<float>(isolate, info[arg]) : 0.0f;
+        glm::quat rotation = Shared::QuatFromHeadingRadians(0.0f);
+
+        if (info.Length() > arg) {
+            if (auto *degrees = v8pp::class_<Vector3>::unwrap_object(isolate, info[arg])) {
+                rotation = Shared::QuatFromMtaDegrees(degrees->vec());
+                ++arg;
+            }
+            else if (info[arg]->IsNumber()) {
+                rotation = Shared::QuatFromHeadingRadians(v8pp::from_v8<float>(isolate, info[arg]));
+                ++arg;
+            }
+        }
+
         std::uint8_t primary   = 0;
         std::uint8_t secondary = 0;
         std::uint32_t colour1  = Shared::PaletteRgb(0);
         std::uint32_t colour2  = Shared::PaletteRgb(0);
         bool haveColour        = false;
 
-        if (info.Length() > arg + 1 && ReadColorValue(isolate, info[arg + 1], colour1)) {
+        if (info.Length() > arg && ReadColorValue(isolate, info[arg], colour1)) {
             haveColour = true;
-            if (info[arg + 1]->IsNumber()) {
-                primary = v8pp::from_v8<std::uint8_t>(isolate, info[arg + 1]);
+            if (info[arg]->IsNumber()) {
+                primary = v8pp::from_v8<std::uint8_t>(isolate, info[arg]);
             }
+            ++arg;
         }
 
-        if (info.Length() > arg + 2 && ReadColorValue(isolate, info[arg + 2], colour2)) {
+        if (info.Length() > arg && ReadColorValue(isolate, info[arg], colour2)) {
             haveColour = true;
-            if (info[arg + 2]->IsNumber()) {
-                secondary = v8pp::from_v8<std::uint8_t>(isolate, info[arg + 2]);
+            if (info[arg]->IsNumber()) {
+                secondary = v8pp::from_v8<std::uint8_t>(isolate, info[arg]);
             }
+            ++arg;
         }
 
-        const auto interior  = info.Length() > arg + 3 ? v8pp::from_v8<std::uint8_t>(isolate, info[arg + 3]) : std::uint8_t {0};
-        const auto dimension = info.Length() > arg + 4 ? v8pp::from_v8<std::uint16_t>(isolate, info[arg + 4]) : std::uint16_t {0};
+        const auto interior  = info.Length() > arg ? v8pp::from_v8<std::uint8_t>(isolate, info[arg++]) : std::uint8_t {0};
+        const auto dimension = info.Length() > arg ? v8pp::from_v8<std::uint16_t>(isolate, info[arg]) : std::uint16_t {0};
 
-        const auto id = gVehicles->Create(model, x, y, z, heading, primary, secondary, interior, dimension);
+        const auto id = gVehicles->Create(model, x, y, z, rotation, primary, secondary, interior, dimension);
 
         if (id == 0) {
             return;
@@ -450,6 +483,25 @@ namespace VantaMP::Scripting {
         gVehicles->SetColors(*vehicle, colours[0], colours[1], colours[2], colours[3]);
     }
 
+    void Vehicle::JS_SetRotation(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto *self    = v8pp::class_<Vehicle>::unwrap_object(isolate, info.This());
+
+        if (!self || info.Length() < 1) {
+            return;
+        }
+
+        if (auto *degrees = v8pp::class_<Vector3>::unwrap_object(isolate, info[0])) {
+            self->SetRotationDegrees(*degrees);
+            return;
+        }
+
+        if (info.Length() >= 3 && info[0]->IsNumber() && info[1]->IsNumber() && info[2]->IsNumber()) {
+            self->SetRotationDegrees(Vector3(v8pp::from_v8<float>(isolate, info[0]), v8pp::from_v8<float>(isolate, info[1]),
+                                             v8pp::from_v8<float>(isolate, info[2])));
+        }
+    }
+
     v8pp::class_<Vehicle> &Vehicle::GetClass(v8::Isolate *isolate) {
         auto found = gClasses.find(isolate);
 
@@ -459,10 +511,11 @@ namespace VantaMP::Scripting {
 
         Framework::Scripting::Builtins::Entity::GetClass(isolate);
         Color::GetClass(isolate);
+        Vector3::GetClass(isolate);
 
         auto &cls = gClasses[isolate];
         cls       = std::make_unique<v8pp::class_<Vehicle>>(isolate, Framework::Scripting::GetScriptingCatalog(isolate), "Vehicle",
-                                                     "A GTA vehicle. Position and rotation are the Framework Entity ones. "
+                                                     "A GTA vehicle. Rotation is MTA degrees X, Y, Z, not a heading. "
                                                      "Colour is any RGB, not a palette index.");
 
         cls->inherit<Framework::Scripting::Builtins::Entity>()
@@ -471,6 +524,7 @@ namespace VantaMP::Scripting {
             .function("addUpgrade", &Vehicle::AddUpgrade)
             .function("removeUpgrade", &Vehicle::RemoveUpgrade)
             .function("removeAllUpgrades", &Vehicle::RemoveAllUpgrades)
+            .function("getRotation", &Vehicle::GetRotationDegrees)
             .property("model", &Vehicle::GetModel)
             .property("color", &Vehicle::GetColor1, &Vehicle::SetColor1)
             .property("color2", &Vehicle::GetColor2, &Vehicle::SetColor2)
@@ -485,9 +539,11 @@ namespace VantaMP::Scripting {
             .property("locked", &Vehicle::GetLocked, &Vehicle::SetLocked)
             .property("overrideLights", &Vehicle::GetOverrideLights, &Vehicle::SetOverrideLights)
             .property("velocity", &Vehicle::GetVelocity, &Vehicle::SetVelocity)
-            .property("turnVelocity", &Vehicle::GetTurnVelocity, &Vehicle::SetTurnVelocity);
+            .property("turnVelocity", &Vehicle::GetTurnVelocity, &Vehicle::SetTurnVelocity)
+            .property("rotation", &Vehicle::GetRotationDegrees, &Vehicle::SetRotationDegrees);
 
         cls->prototype_function("setColor", &Vehicle::JS_SetColor);
+        cls->prototype_function("setRotation", &Vehicle::JS_SetRotation);
         cls->prototype_function("getOccupant", [](const v8::FunctionCallbackInfo<v8::Value> &info) {
             auto *isolate = info.GetIsolate();
             auto *self    = v8pp::class_<Vehicle>::unwrap_object(isolate, info.This());

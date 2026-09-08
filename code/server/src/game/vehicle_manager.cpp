@@ -9,6 +9,7 @@
 #include "shared/rpc/vehicle_damage_report.h"
 #include "shared/catalog/model_catalog.h"
 #include "shared/entity/vehicle_entity.h"
+#include "shared/vehicle/rotation.h"
 #include "shared/vehicle/upgrades.h"
 #include "shared/rpc/world_space.h"
 #include "shared/world/world_space.h"
@@ -39,6 +40,11 @@ namespace VantaMP::Game {
 
     std::uint64_t VehicleManager::Create(std::uint32_t modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour,
                                          std::uint8_t interior, std::uint16_t dimension) {
+        return Create(modelId, x, y, z, Shared::QuatFromHeadingRadians(heading), primaryColour, secondaryColour, interior, dimension);
+    }
+
+    std::uint64_t VehicleManager::Create(std::uint32_t modelId, float x, float y, float z, const glm::quat &rotation, std::uint8_t primaryColour,
+                                         std::uint8_t secondaryColour, std::uint8_t interior, std::uint16_t dimension) {
         if (!Shared::ModelCatalog::IsVehicle(modelId)) {
             Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle model {} — not in the catalog", modelId);
             return 0;
@@ -62,9 +68,9 @@ namespace VantaMP::Game {
         vehicle->secondaryColour = secondaryColour;
         vehicle->FillColoursFromPalette();
         vehicle->position        = glm::vec3(x, y, z);
-        vehicle->rotation        = glm::quat(glm::vec3(0.0f, 0.0f, heading));
+        vehicle->rotation        = rotation;
         vehicle->health          = 1000.0f;
-        vehicle->engineOn        = true;
+        vehicle->engineOn        = false;
         vehicle->blown           = false;
         vehicle->interior        = interior;
         vehicle->dimension       = dimension;

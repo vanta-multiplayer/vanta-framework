@@ -2,6 +2,8 @@
 
 #include <mafianet/types.h>
 
+#include <glm/gtc/quaternion.hpp>
+
 #include <cstdint>
 #include <unordered_map>
 
@@ -17,8 +19,11 @@ namespace VantaMP::Game {
       public:
         explicit VehicleManager(PlayerManager &players);
 
-        // heading is radians, matching Player.spawn.
+        // heading is radians, matching Player.spawn. The quat form is the
+        // full MTA rotation (script Vector3 degrees converted at the edge).
         std::uint64_t Create(std::uint32_t modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour,
+                             std::uint8_t interior = 0, std::uint16_t dimension = 0);
+        std::uint64_t Create(std::uint32_t modelId, float x, float y, float z, const glm::quat &rotation, std::uint8_t primaryColour, std::uint8_t secondaryColour,
                              std::uint8_t interior = 0, std::uint16_t dimension = 0);
 
         void SetInterior(Shared::VehicleEntity &vehicle, std::uint8_t interior);

@@ -19,9 +19,9 @@ namespace VantaMP::Shared {
 }
 
 namespace VantaMP::Scripting {
-    // Script handle for a VehicleEntity. Position and rotation are the
-    // Framework Entity ones (ForceState). Colours are Framework Color —
-    // any RGB, not a GTA palette index.
+    // Script handle for a VehicleEntity. Position is the Framework Entity
+    // one (ForceState). Rotation is MTA degrees X, Y, Z. Colours are
+    // Framework Color — any RGB, not a GTA palette index.
     class Vehicle final: public Framework::Scripting::Builtins::Entity {
       public:
         explicit Vehicle(std::uint64_t networkId);
@@ -76,6 +76,11 @@ namespace VantaMP::Scripting {
         Framework::Scripting::Builtins::Vector3 GetTurnVelocity() const;
         void SetTurnVelocity(const Framework::Scripting::Builtins::Vector3 &velocity);
 
+        // MTA degrees about X, Y, Z — not the Entity quaternion, and not
+        // GLM's euler constructor. The replica still stores a quat.
+        Framework::Scripting::Builtins::Vector3 GetRotationDegrees() const;
+        void SetRotationDegrees(const Framework::Scripting::Builtins::Vector3 &degrees);
+
         void Destroy();
 
         static void Bind(Game::VehicleManager &vehicles);
@@ -93,6 +98,7 @@ namespace VantaMP::Scripting {
 
       private:
         static void JS_SetColor(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_SetRotation(const v8::FunctionCallbackInfo<v8::Value> &info);
 
         inline static Game::VehicleManager *gVehicles = nullptr;
         inline static std::unordered_map<v8::Isolate *, std::unique_ptr<v8pp::class_<Vehicle>>> gClasses;
