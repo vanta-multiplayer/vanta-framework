@@ -51,7 +51,6 @@ namespace VantaMP::Eac {
                 return;
             }
 
-            Framework::Logging::GetLogger("EAC")->debug("EAC c->s send len={} crc=0x{:08x}", opaque.length, BlobCrc(opaque.data, opaque.length));
             auto copy = opaque;
             net->SendRPC(copy, guid, MafiaNet::Priority::Immediate, MafiaNet::Reliability::ReliableOrdered);
         }
@@ -102,20 +101,9 @@ namespace VantaMP::Eac {
             }
 
             if (!Eos::GetManager().IsEacEligible()) {
-                if (!gIdentityRejected) {
-                    gIdentityRejected = true;
-                    Framework::Logging::GetLogger("EAC")->error(
-                        "Cannot start Easy Anti-Cheat without a stable Vanta OpenID identity. "
-                        "Current source: {} (Epic Account login is disabled)",
-                        Eos::GetManager().GetAuthSourceName());
-                }
+                gIdentityRejected = true;
                 return;
             }
-
-            Framework::Logging::GetLogger("EOS")->info("Identity authenticated");
-            Framework::Logging::GetLogger("EOS")->info("ProductUserId: {}", puid);
-            Framework::Logging::GetLogger("EOS")->info("Identity source: {}", Eos::GetManager().GetAuthSourceName());
-            Framework::Logging::GetLogger("EAC")->info("Starting protected client session");
 
             {
                 EOS_AntiCheatClient_AddNotifyMessageToServerOptions options {};
@@ -129,20 +117,19 @@ namespace VantaMP::Eac {
             begin.Mode        = EOS_EAntiCheatClientMode::EOS_ACCM_ClientServer;
 
             if (!EOS_ProductUserId_IsValid(begin.LocalUserId)) {
-                Framework::Logging::GetLogger("EAC")->error("BeginSession refused: ProductUserId is invalid");
                 return;
             }
 
             const auto result = EOS_AntiCheatClient_BeginSession(ac, &begin);
             if (result != EOS_EResult::EOS_Success) {
-                Framework::Logging::GetLogger("EAC")->error("BeginSession failed: {}", static_cast<int>(result));
                 return;
             }
 
             SendRegister(puid, jwt, 1);
             gActive           = true;
             gProtectedSession = true;
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("EAC client session started");
+
+            Framework::Logging::GetLogger("EAC")->info("EAC session begin");
         }
 #endif
     } // namespace
@@ -188,8 +175,10 @@ namespace VantaMP::Eac {
             Framework::Logging::GetLogger("EAC")->error("EAC cannot start: EOS authentication failed");
         }
         else {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("EAC waiting for stable EOS identity before BeginSession");
+            Framework::Logging::GetLogger("EAC")->info("EAC waiting for stable EOS identity before BeginSession");
         }
+
+        Framework::Logging::GetLogger("EAC")->info("EAC game connected");
 #endif
     }
 
@@ -207,6 +196,8 @@ namespace VantaMP::Eac {
                 end.ApiVersion = EOS_ANTICHEATCLIENT_ENDSESSION_API_LATEST;
                 EOS_AntiCheatClient_EndSession(ac, &end);
             }
+
+            Framework::Logging::GetLogger("EAC")->info("EAC session end");
         }
 #endif
         gActive           = false;
@@ -224,8 +215,6 @@ namespace VantaMP::Eac {
         if (!ac || !gActive || !gProtectedSession || msg.length == 0) {
             return;
         }
-
-        Framework::Logging::GetLogger("EAC")->debug("EAC s->c recv len={} crc=0x{:08x}", msg.length, BlobCrc(msg.data, msg.length));
 
         EOS_AntiCheatClient_ReceiveMessageFromServerOptions options {};
         options.ApiVersion      = EOS_ANTICHEATCLIENT_RECEIVEMESSAGEFROMSERVER_API_LATEST;

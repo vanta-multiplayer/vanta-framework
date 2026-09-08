@@ -148,8 +148,8 @@ Server: gameplay + EAC relay only
 
 Epic Account Auth is not used. Device ID is not used for protected Anti-Cheat.
 
-Per-packet EAC opaque `len=` / `crc=` traces are **debug** only (client + server).
-Session start/stop and failures stay at info/error.
+Per-packet EAC opaque traces are omitted. EOS SDK AntiCheat logging is set to
+**Warning** (client + server); session start/stop and failures stay at info/error.
 
 Note: an earlier post-join `C0000005` was misattributed to `BeginSession`; it was
 a bad `ms_modelInfoPtrs` dereference in `SetVehiclePlateText` (fixed to match

@@ -79,8 +79,6 @@ namespace VantaMP::Eac {
                 return;
             }
 
-            Framework::Logging::GetLogger("EAC")->debug("EAC c→s deliver id={} len={} crc=0x{:08x}", networkId, length, BlobCrc(data, length));
-
             EOS_AntiCheatServer_ReceiveMessageFromClientOptions options {};
             options.ApiVersion      = EOS_ANTICHEATSERVER_RECEIVEMESSAGEFROMCLIENT_API_LATEST;
             options.ClientHandle    = HandleOf(networkId);
@@ -98,11 +96,25 @@ namespace VantaMP::Eac {
             if (!message || !message->Message) {
                 return;
             }
-            // AntiCheat category only — keep noise down while diagnosing InvalidMessage.
+            // AntiCheat category only.
             if (message->Category && std::strstr(message->Category, "AntiCheat") == nullptr) {
                 return;
             }
-            Framework::Logging::GetLogger("EOS")->info("[{}] {}", message->Category ? message->Category : "EOS", message->Message);
+            const auto logger = Framework::Logging::GetLogger("EOS");
+            const char *cat    = message->Category ? message->Category : "EOS";
+            switch (message->Level) {
+                case EOS_ELogLevel::EOS_LOG_Fatal:
+                case EOS_ELogLevel::EOS_LOG_Error:
+                    logger->error("[{}] {}", cat, message->Message);
+                    break;
+                case EOS_ELogLevel::EOS_LOG_Warning:
+                    logger->warn("[{}] {}", cat, message->Message);
+                    break;
+                default:
+                    // Filtered by SetLogLevel(Warning); keep as debug if anything slips through.
+                    logger->debug("[{}] {}", cat, message->Message);
+                    break;
+            }
         }
 
         void FlushPendingOpaque(MafiaNet::PeerGuid guid, std::uint64_t networkId) {
@@ -138,18 +150,16 @@ namespace VantaMP::Eac {
 
             if (info->MessageDataSizeBytes > Shared::RPC::kEacOpaqueMax) {
                 Framework::Logging::GetLogger("EAC")->error(
-                    "EAC s→c drop: EOS message {} bytes exceeds max {}", info->MessageDataSizeBytes, Shared::RPC::kEacOpaqueMax);
+                    "EAC s->c drop: EOS message {} bytes exceeds max {}", info->MessageDataSizeBytes, Shared::RPC::kEacOpaqueMax);
                 return;
             }
 
             Shared::RPC::EacOpaque opaque;
             opaque.Set(info->MessageData, info->MessageDataSizeBytes);
             if (opaque.length == 0) {
-                Framework::Logging::GetLogger("EAC")->error("EAC s→c drop: Set() rejected {} bytes", info->MessageDataSizeBytes);
+                Framework::Logging::GetLogger("EAC")->error("EAC s->c drop: Set() rejected {} bytes", info->MessageDataSizeBytes);
                 return;
             }
-            Framework::Logging::GetLogger("EAC")->debug("EAC s→c send id={} len={} crc=0x{:08x}", networkId, opaque.length,
-                                                       BlobCrc(opaque.data, opaque.length));
             net->SendRPC(opaque, MafiaNet::ToGuid(foundGuid->second), MafiaNet::Priority::Immediate, MafiaNet::Reliability::ReliableOrdered);
         }
 
@@ -174,7 +184,7 @@ namespace VantaMP::Eac {
                 action.details    = info->ActionReasonDetailsString ? info->ActionReasonDetailsString : "";
                 net->SendRPC(action, MafiaNet::ToGuid(foundGuid->second), MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
 
-                const std::string reason = action.details.empty() ? "eac" : ("eac:" + action.details);
+                const std::string reason = action.details.empty() ? "AC: Unknown" : ("AC: " + action.details);
                 net->KickPlayer(MafiaNet::ToGuid(foundGuid->second), Framework::Networking::DisconnectionReason::KICKED_CUSTOM, reason);
             }
 
@@ -263,7 +273,8 @@ namespace VantaMP::Eac {
 
         EOS_Logging_SetCallback(OnEosLog);
         EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_ALL_CATEGORIES, EOS_ELogLevel::EOS_LOG_Off);
-        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_AntiCheat, EOS_ELogLevel::EOS_LOG_VeryVerbose);
+        // Opaque traffic and auth tokens must not hit the log.
+        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_AntiCheat, EOS_ELogLevel::EOS_LOG_Off);
 
         EOS_Platform_ClientCredentials credentials {};
         credentials.ClientId     = Shared::Eos::kClientCredentialsId;
@@ -483,8 +494,6 @@ namespace VantaMP::Eac {
         if (found == gGuidToHandle.end()) {
             auto &queue = gPendingOpaque[key];
             queue.emplace_back(msg.data, msg.data + msg.length);
-            Framework::Logging::GetLogger("EAC")->debug("EAC c→s queue (pre-register) guid={} len={} crc=0x{:08x} queued={}", key, msg.length,
-                                                       BlobCrc(msg.data, msg.length), queue.size());
             return;
         }
 

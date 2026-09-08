@@ -71,11 +71,22 @@ namespace VantaMP::Eos {
             }
             // Never echo bearer/access tokens if a category includes them.
             if (std::strstr(message->Message, "eyJ") != nullptr || std::strstr(message->Message, "Bearer ") != nullptr) {
-                Framework::Logging::GetLogger("EOS")->info("[{}] <redacted token-bearing message>",
-                                                           message->Category ? message->Category : "EOS");
                 return;
             }
-            Framework::Logging::GetLogger("EOS")->info("[{}] {}", message->Category ? message->Category : "EOS", message->Message);
+            const auto logger = Framework::Logging::GetLogger("EOS");
+            const char *cat    = message->Category ? message->Category : "EOS";
+            switch (message->Level) {
+                case EOS_ELogLevel::EOS_LOG_Fatal:
+                case EOS_ELogLevel::EOS_LOG_Error:
+                    logger->error("[{}] {}", cat, message->Message);
+                    break;
+                case EOS_ELogLevel::EOS_LOG_Warning:
+                    logger->warn("[{}] {}", cat, message->Message);
+                    break;
+                default:
+                    logger->info("[{}] {}", cat, message->Message);
+                    break;
+            }
         }
 
         void CacheConnectIdToken(EOS_ProductUserId userId);
@@ -137,8 +148,6 @@ namespace VantaMP::Eos {
                         if (!legacyAccountOnly && !gInstallId.empty() && gInstallSecret.size() >= 32) {
                             return true;
                         }
-                        Framework::Logging::GetLogger("EOS")->info(
-                            "Invalidating legacy install credentials; re-registering with Vanta Auth Backend");
                     }
                     catch (...) {
                     }
@@ -157,10 +166,9 @@ namespace VantaMP::Eos {
                 document["secret"]         = gInstallSecret;
                 std::ofstream out(path, std::ios::trunc);
                 out << document.dump(2);
-                Framework::Logging::GetLogger("EOS")->info("Created silent install credentials at {}", path);
             }
             catch (...) {
-                Framework::Logging::GetLogger("EOS")->error("Failed to persist install credentials to {}", path);
+                Framework::Logging::GetLogger("EOS")->error("Failed to install credentials");
                 return false;
             }
             return true;
@@ -203,8 +211,7 @@ namespace VantaMP::Eos {
             nlohmann::json document;
             int status = 0;
             if (!PostJson("/identity/register", body, document, status)) {
-                Framework::Logging::GetLogger("EOS")->error(
-                    "Auth register failed (is Vanta Auth Backend running at {}?)", gConfig.authUrl);
+                Framework::Logging::GetLogger("EOS")->error("Auth register failed");
                 return false;
             }
             if (status != 200 && status != 201) {
@@ -213,15 +220,13 @@ namespace VantaMP::Eos {
             }
             const auto data    = ResponseData(document);
             gServerAccountId = data.value("accountId", data.value("account_id", ""));
-            Framework::Logging::GetLogger("EOS")->info(
-                "Auth register OK (created={} account id length={})", data.value("created", false),
-                gServerAccountId.size());
+            Framework::Logging::GetLogger("EOS")->info("Auth register OK");
             return true;
         }
 
         bool FetchVantaAccessToken() {
             if (gConfig.authUrl.empty()) {
-                Framework::Logging::GetLogger("EOS")->error("auth_url / auth_service_url is empty; cannot mint Vanta OpenID token");
+                Framework::Logging::GetLogger("EOS")->error("auth_url / auth_service_url is empty");
                 return false;
             }
             if (!LoadOrCreateInstallCredentials()) {
@@ -233,8 +238,6 @@ namespace VantaMP::Eos {
                 return false;
             }
 
-            Framework::Logging::GetLogger("EOS")->info("Requesting opaque OpenID token from {}/identity/token", gConfig.authUrl);
-
             nlohmann::json body;
             body["installationId"]     = gInstallId;
             body["installationSecret"] = gInstallSecret;
@@ -243,8 +246,6 @@ namespace VantaMP::Eos {
             nlohmann::json document;
             int status = 0;
             if (!PostJson("/identity/token", body, document, status)) {
-                Framework::Logging::GetLogger("EOS")->error(
-                    "Identity token request failed (start Vanta Auth Backend at {} — not the game server)", gConfig.authUrl);
                 return false;
             }
             if (status != 200) {
@@ -261,9 +262,6 @@ namespace VantaMP::Eos {
                 return false;
             }
 
-            Framework::Logging::GetLogger("EOS")->info(
-                "Opaque OpenID access token acquired (silent); expiresIn={} account id length={}",
-                data.value("expiresIn", data.value("expires_in", 0)), gServerAccountId.size());
             return true;
         }
 
@@ -291,10 +289,6 @@ namespace VantaMP::Eos {
                 return;
             }
 
-            Framework::Logging::GetLogger("EOS")->info(
-                "EOS_Connect_Login callback: result={} hasLocalUserId={} hasContinuanceToken={}",
-                ResultString(info->ResultCode), info->LocalUserId != nullptr, info->ContinuanceToken != nullptr);
-
             if (info->ResultCode == EOS_EResult::EOS_Success && info->LocalUserId) {
                 gAuthAttemptInFlight = false;
                 CacheConnectIdToken(info->LocalUserId);
@@ -302,15 +296,12 @@ namespace VantaMP::Eos {
             }
 
             if (info->ResultCode == EOS_EResult::EOS_InvalidUser && info->ContinuanceToken) {
-                Framework::Logging::GetLogger("EOS")->info(
-                    "EOS_InvalidUser + ContinuanceToken → EOS_Connect_CreateUser (first-time OpenID user)");
                 gConnectContinuance = info->ContinuanceToken;
 
                 EOS_Connect_CreateUserOptions options {};
                 options.ApiVersion       = EOS_CONNECT_CREATEUSER_API_LATEST;
                 options.ContinuanceToken = gConnectContinuance;
                 EOS_Connect_CreateUser(gConnect, &options, nullptr, OnCreateUser);
-                Framework::Logging::GetLogger("EOS")->info("EOS_Connect_CreateUser submitted");
                 return;
             }
 
@@ -318,15 +309,10 @@ namespace VantaMP::Eos {
             gOpenIdAccessToken.clear();
 
             if (info->ResultCode == EOS_EResult::EOS_AlreadyPending) {
-                Framework::Logging::GetLogger("EOS")->info("Connect login already pending");
                 gAuthAttemptInFlight = true;
                 return;
             }
 
-            Framework::Logging::GetLogger("EOS")->error(
-                "Connect login failed: {} — verify Epic OpenID IdP UserInfo is public HTTPS "
-                "(not localhost) and Client policy allows Connect+OpenID",
-                ResultString(info->ResultCode));
             gState           = State::PlatformReady;
             gNextAuthAttempt = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         }
@@ -345,29 +331,21 @@ namespace VantaMP::Eos {
                 return;
             }
 
-            Framework::Logging::GetLogger("EOS")->info(
-                "Starting Connect login: type=EOS_ECT_OPENID_ACCESS_TOKEN token_len={} UserLoginInfo=NULL",
-                gOpenIdAccessToken.size());
-
             EOS_Connect_Credentials credentials {};
             credentials.ApiVersion = EOS_CONNECT_CREDENTIALS_API_LATEST;
             credentials.Type       = EOS_EExternalCredentialType::EOS_ECT_OPENID_ACCESS_TOKEN;
             credentials.Token      = gOpenIdAccessToken.c_str();
 
-            // OpenID must NOT pass UserLoginInfo — SDK requires NULL for OpenID
-            // (UserLoginInfo is only for Amazon/Apple/Google/Nintendo/Oculus/DeviceID).
             EOS_Connect_LoginOptions options {};
             options.ApiVersion    = EOS_CONNECT_LOGIN_API_LATEST;
             options.Credentials   = &credentials;
             options.UserLoginInfo = nullptr;
 
             EOS_Connect_Login(gConnect, &options, nullptr, OnConnectLogin);
-            Framework::Logging::GetLogger("EOS")->info("EOS_Connect_Login submitted (await callback)");
         }
 
         void CacheConnectIdToken(EOS_ProductUserId userId) {
             if (!gConnect || !userId || !EOS_ProductUserId_IsValid(userId)) {
-                Framework::Logging::GetLogger("EOS")->error("Connect returned invalid ProductUserId");
                 gState = State::Failed;
                 return;
             }
@@ -379,7 +357,6 @@ namespace VantaMP::Eos {
             EOS_Connect_IdToken *token = nullptr;
             const auto result          = EOS_Connect_CopyIdToken(gConnect, &options, &token);
             if (result != EOS_EResult::EOS_Success || !token || !token->JsonWebToken) {
-                Framework::Logging::GetLogger("EOS")->error("Connect CopyIdToken failed: {}", ResultString(result));
                 gState = State::Failed;
                 return;
             }
@@ -395,10 +372,6 @@ namespace VantaMP::Eos {
             gOpenIdAccessToken.clear();
 
             gState = State::Connected;
-            Framework::Logging::GetLogger("EOS")->info("Identity authenticated (EOS_ProductUserId_IsValid=true)");
-            Framework::Logging::GetLogger("EOS")->info("ProductUserId: {}", gProductUserId);
-            Framework::Logging::GetLogger("EOS")->info("Identity source: VantaOpenId");
-            Framework::Logging::GetLogger("EOS")->info("EAC BeginSession may proceed after game connect");
         }
 
         void ReleasePlatform() {
@@ -450,8 +423,6 @@ namespace VantaMP::Eos {
         }
 
         if (gConfig.connectProvider != "vanta") {
-            Framework::Logging::GetLogger("EOS")->error(
-                "Unsupported connect_provider '{}' (only 'vanta' — silent OpenID, no Epic Account login)", gConfig.connectProvider);
             gState = State::Failed;
             return false;
         }
@@ -470,18 +441,16 @@ namespace VantaMP::Eos {
 
         EOS_Logging_SetCallback(OnEosLog);
         EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_ALL_CATEGORIES, EOS_ELogLevel::EOS_LOG_Warning);
-        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Core, EOS_ELogLevel::EOS_LOG_Verbose);
-        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Auth, EOS_ELogLevel::EOS_LOG_VeryVerbose);
-        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Connect, EOS_ELogLevel::EOS_LOG_VeryVerbose);
-        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_HTTP, EOS_ELogLevel::EOS_LOG_Verbose);
-        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_AntiCheat, EOS_ELogLevel::EOS_LOG_VeryVerbose);
+        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Core, EOS_ELogLevel::EOS_LOG_Info);
+        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Auth, EOS_ELogLevel::EOS_LOG_Info);
+        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Connect, EOS_ELogLevel::EOS_LOG_Info);
+        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_HTTP, EOS_ELogLevel::EOS_LOG_Warning);
+        EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_AntiCheat, EOS_ELogLevel::EOS_LOG_Off);
         EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Ecom, EOS_ELogLevel::EOS_LOG_Off);
         EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Friends, EOS_ELogLevel::EOS_LOG_Off);
         EOS_Logging_SetLogLevel(EOS_ELogCategory::EOS_LC_Presence, EOS_ELogLevel::EOS_LOG_Off);
 
         Framework::Logging::GetLogger("EOS")->info("SDK initialized");
-        Framework::Logging::GetLogger("EOS")->info(
-            "Creating platform (connect_provider=vanta auth_url={} silent OpenID)", gConfig.authUrl);
 
         EOS_Platform_ClientCredentials credentials {};
         credentials.ClientId     = gConfig.clientId.c_str();
@@ -498,7 +467,7 @@ namespace VantaMP::Eos {
 
         gPlatform = EOS_Platform_Create(&platformOptions);
         if (!gPlatform) {
-            Framework::Logging::GetLogger("EOS")->error("EOS_Platform_Create failed (check Product/Sandbox/Deployment/Client credentials)");
+            Framework::Logging::GetLogger("EOS")->error("EOS_Platform_Create failed");
             gState = State::Failed;
             return false;
         }
@@ -514,15 +483,8 @@ namespace VantaMP::Eos {
         }
 
         {
-            const auto eacRoot = projectPath + "\\EasyAntiCheat";
-            Framework::Logging::GetLogger("EAC")->info("EAC runtime root: {}", eacRoot);
             if (gAc) {
-                Framework::Logging::GetLogger("EAC")->info("Anti-Cheat client interface acquired");
                 RegisterIntegrityNotify();
-            }
-            else {
-                Framework::Logging::GetLogger("EAC")->info(
-                    "Anti-Cheat client interface unavailable (GetAntiCheatClientInterface returned null)");
             }
         }
 
