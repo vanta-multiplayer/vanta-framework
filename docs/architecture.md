@@ -91,10 +91,10 @@ Entity `position` / `rotation`) with spawn and world-space hung on it.
 Vehicle `rotation` is MTA degrees X, Y, Z; a numeric heading on create
 is still radians. Players expose health, armour, model, money, wanted,
 weapons, freeze, collision, fighting style, oxygen, walking style,
-alpha, fire, max health, drowning and occupancy. Vehicles expose dirt,
+alpha, fire, max health, drowning, jetpack and occupancy. Vehicles expose dirt,
 taxi light, plate, freeze, damage-proof, collision, landing gear,
-headlights, alpha, engine broken, tyre burst, can-be-damaged, nitro,
-door/wheel/light/panel state, `fix()`, `blow()`, occupants and
+headlights (RGB tint), alpha, engine broken, tyre burst, can-be-damaged, nitro,
+variants, door/wheel/light/panel state, `fix()`, `blow()`, occupants and
 upgrades. Script writes the owner reports
 (health, wanted, weapons, fighting, oxygen) go out as `PlayerScript` /
 `PlayerWeapon` so the next snapshot does not stomp them. RPC

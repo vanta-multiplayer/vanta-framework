@@ -46,6 +46,7 @@ by the on-foot interpolator.
 | `onFire` | `m_pFire`. The owner reports it; script set starts or extinguishes |
 | `maxHealth` | Script-owned. The owner echoes; script set sends `PlayerScript` first |
 | `isDrowning` | `bIsDrowning`. The owner reports underwater damage |
+| `hasJetPack` / `jetpack` | Script-owned. Installs `TASK_SIMPLE_JETPACK` on the primary slot (MTA `SetHasJetPack`) |
 
 Position, velocity and rotation live on `NetworkEntity`, not on `PlayerEntity`.
 Re-declaring them would put the same numbers on the wire twice.

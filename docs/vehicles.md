@@ -182,6 +182,9 @@ car.engineBroken = false;
 car.wheelsCanBurst = true;
 car.canBeDamaged = true;
 car.nitroCount = 3;
+car.variant = 0;   // 255 = random extras at create
+car.variant2 = 255;
+car.headlightColor = { r: 0, g: 128, b: 255 }; // tints beams/coronas
 car.fix();
 car.blow();
 car.getCompatibleUpgrades(12); // wheel ids, not filtered by model
