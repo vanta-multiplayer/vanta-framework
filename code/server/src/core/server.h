@@ -2,6 +2,7 @@
 
 #include "game/player_manager.h"
 #include "game/vehicle_manager.h"
+#include "game/world_manager.h"
 
 #include <integrations/server/instance.h>
 
@@ -33,8 +34,13 @@ namespace VantaMP {
             return _vehicles;
         }
 
+        [[nodiscard]] Game::WorldManager &World() {
+            return _world;
+        }
+
       private:
         Game::PlayerManager  _players;
         Game::VehicleManager _vehicles;
+        Game::WorldManager   _world;
     };
 } // namespace VantaMP

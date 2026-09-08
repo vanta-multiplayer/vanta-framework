@@ -29,6 +29,10 @@ namespace VantaMP {
 
         Net::Register(*this);
 
+        // Start the wall clock at noon so GetTime advances before any script
+        // call. Broadcast is a no-op with zero peers.
+        _world.SetTime(12, 0);
+
         Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("VantaMP server ready");
     }
 
@@ -39,7 +43,7 @@ namespace VantaMP {
     }
 
     void Server::ModuleRegister(Framework::Scripting::Engine *engine) {
-        Scripting::Register(engine, _players, _vehicles);
+        Scripting::Register(engine, _players, _vehicles, _world);
     }
 
     void Server::OnPlayerConnect(const Framework::Integrations::Server::PlayerConnectionData &data) {
@@ -51,6 +55,8 @@ namespace VantaMP {
         // place in the world. A resource listening for playerReady decides
         // whether they appear, and where. The C++ spawn below is only the
         // fallback for a server with no resource loaded.
+        _world.SendTo(guid);
+
         auto *player = _players.Find(guid);
 
         if (player && Scripting::EmitPlayerReady(static_cast<std::uint64_t>(player->GetNetworkID()))) {

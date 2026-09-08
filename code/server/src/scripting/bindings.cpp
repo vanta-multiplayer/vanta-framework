@@ -2,11 +2,13 @@
 
 #include "scripting/player.h"
 #include "scripting/vehicle.h"
+#include "scripting/world.h"
 
 #include <scripting/engine.h>
 
 namespace VantaMP::Scripting {
-    void Register(Framework::Scripting::Engine *engine, Game::PlayerManager &players, Game::VehicleManager &vehicles) {
+    void Register(Framework::Scripting::Engine *engine, Game::PlayerManager &players, Game::VehicleManager &vehicles,
+                  Game::WorldManager &world) {
         if (!engine) {
             return;
         }
@@ -28,6 +30,9 @@ namespace VantaMP::Scripting {
 
         Vehicle::Bind(vehicles);
         Vehicle::Register(isolate, global);
+
+        World::Bind(world);
+        World::Register(isolate, global);
     }
 
     bool EmitPlayerReady(std::uint64_t networkId) {

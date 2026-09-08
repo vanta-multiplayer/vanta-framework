@@ -4,9 +4,11 @@ set(VANTAMP_SERVER_FILES
     src/core/net.cpp
     src/game/player_manager.cpp
     src/game/vehicle_manager.cpp
+    src/game/world_manager.cpp
     src/scripting/bindings.cpp
     src/scripting/player.cpp
     src/scripting/vehicle.cpp
+    src/scripting/world.cpp
 
     ../shared/entity/player_entity.cpp
     ../shared/entity/vehicle_entity.cpp
