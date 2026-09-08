@@ -3,7 +3,9 @@
 #include "game/world_manager.h"
 #include "shared/rpc/world_env.h"
 
+#include <scripting/scripting_catalog.h>
 #include <v8pp/convert.hpp>
+#include <v8pp/metadata.hpp>
 
 namespace VantaMP::Scripting {
     void World::Bind(Game::WorldManager &world) {
@@ -415,5 +417,98 @@ namespace VantaMP::Scripting {
         put("getWindVelocity", &World::JS_GetWindVelocity);
 
         global->Set(ctx, v8pp::to_v8(isolate, "World"), world).Check();
+
+        auto &meta = Framework::Scripting::GetScriptingCatalog(isolate).global_object(
+            "World", "Server-authoritative clock, weather, gravity, and world visuals.");
+
+        const auto getNum  = [](const char *desc) {
+            return v8pp::metadata::docs("number", {}, desc, "Current value.");
+        };
+        const auto setNum  = [](const char *param, const char *desc) {
+            return v8pp::metadata::docs("void", {v8pp::metadata::param(param, "number", false, desc)}, "Updates the shared world value.");
+        };
+        const auto getBool = [](const char *desc) {
+            return v8pp::metadata::docs("boolean", {}, desc, "Current value.");
+        };
+
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setTime", v8pp::metadata::docs("void",
+                               {v8pp::metadata::param("hour", "number", false, "Hour 0..23."),
+                                   v8pp::metadata::param("minute", "number", false, "Minute 0..59.")},
+                               "Sets the shared clock.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getHour", getNum("Reads the shared clock hour.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setHour", setNum("hour", "Hour 0..23.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getMinute", getNum("Reads the shared clock minute.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setMinute", setNum("minute", "Minute 0..59.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getMinuteDuration", getNum("Real milliseconds per in-game minute.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setMinuteDuration", setNum("ms", "Real milliseconds per in-game minute.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getGameSpeed", getNum("Simulation timescale (0..10).")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setGameSpeed", setNum("speed", "Simulation timescale 0..10.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getWeather", getNum("ForceWeatherNow weather id.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setWeather", setNum("weather", "ForceWeatherNow weather id.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getGravity", getNum("Global gravity (default 0.008).")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setGravity", setNum("gravity", "Global gravity 0..1.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getFarClip", getNum("Far clip distance.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setFarClip", setNum("distance", "Far clip distance.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getFogDistance", getNum("Fog start distance.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setFogDistance", setNum("distance", "Fog start distance.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getRainLevel", getNum("Rain level 0..1.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setRainLevel", setNum("level", "Rain level 0..1.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getWaveHeight", getNum("Water wave height.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setWaveHeight", setNum("height", "Water wave height.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setSkyGradient",
+            v8pp::metadata::docs("void",
+                {v8pp::metadata::param("topR", "number", false, "Sky top red 0..255."), v8pp::metadata::param("topG", "number", false, "Sky top green 0..255."),
+                    v8pp::metadata::param("topB", "number", false, "Sky top blue 0..255."), v8pp::metadata::param("botR", "number", false, "Sky bottom red 0..255."),
+                    v8pp::metadata::param("botG", "number", false, "Sky bottom green 0..255."), v8pp::metadata::param("botB", "number", false, "Sky bottom blue 0..255.")},
+                "Sets the sky top and bottom RGB gradient.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "getSkyGradient", v8pp::metadata::docs("number[]", {}, "Reads the sky gradient.", "[topR, topG, topB, botR, botG, botB].")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getMoonSize", getNum("Moon sprite size (default 3).")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setMoonSize", setNum("size", "Moon sprite size.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setSunColor",
+            v8pp::metadata::docs("void",
+                {v8pp::metadata::param("coreR", "number", false, "Sun core red."), v8pp::metadata::param("coreG", "number", false, "Sun core green."),
+                    v8pp::metadata::param("coreB", "number", false, "Sun core blue."), v8pp::metadata::param("coronaR", "number", false, "Corona red."),
+                    v8pp::metadata::param("coronaG", "number", false, "Corona green."), v8pp::metadata::param("coronaB", "number", false, "Corona blue.")},
+                "Sets sun core and corona RGB.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "getSunColor", v8pp::metadata::docs("number[]", {}, "Reads sun colours.", "[coreR, coreG, coreB, coronaR, coronaG, coronaB].")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getSunSize", getNum("Sun size (script float; GTA stores value * 10).")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setSunSize", setNum("size", "Sun size.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setWaterColor",
+            v8pp::metadata::docs("void",
+                {v8pp::metadata::param("r", "number", false, "Red 0..255."), v8pp::metadata::param("g", "number", false, "Green 0..255."),
+                    v8pp::metadata::param("b", "number", false, "Blue 0..255."), v8pp::metadata::param("a", "number", true, "Alpha 0..255 (default 255).")},
+                "Sets surface and underwater water colour.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "getWaterColor", v8pp::metadata::docs("number[]", {}, "Reads water colour.", "[r, g, b, a].")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setHeatHaze",
+            v8pp::metadata::docs("void",
+                {v8pp::metadata::param("intensity", "number", false, "Heat haze intensity."),
+                    v8pp::metadata::param("randomShift", "number", true, "Optional FX param."), v8pp::metadata::param("speedMin", "number", true, "Optional FX param."),
+                    v8pp::metadata::param("speedMax", "number", true, "Optional FX param."), v8pp::metadata::param("scanX", "number", true, "Optional FX param."),
+                    v8pp::metadata::param("scanY", "number", true, "Optional FX param."), v8pp::metadata::param("renderX", "number", true, "Optional FX param."),
+                    v8pp::metadata::param("renderY", "number", true, "Optional FX param."), v8pp::metadata::param("bInsideBuilding", "boolean", true, "Optional inside-building flag.")},
+                "Sets heat haze post-FX parameters.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "getHeatHaze", v8pp::metadata::docs("number[]", {}, "Reads heat haze parameters.", "[intensity, randomShift, speedMin, speedMax, scanX, scanY, renderX, renderY, inside].")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getCloudsEnabled", getBool("Whether volumetric/bottom/skyline clouds are enabled.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setCloudsEnabled", v8pp::metadata::docs("void", {v8pp::metadata::param("enabled", "boolean", false, "Enable cloud rendering.")}, "Toggles cloud rendering patches.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("getJetpackMaxHeight", getNum("Jetpack ceiling height (default 100).")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>("setJetpackMaxHeight", setNum("height", "Jetpack ceiling height.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setWindVelocity",
+            v8pp::metadata::docs("void",
+                {v8pp::metadata::param("x", "number", false, "Wind X."), v8pp::metadata::param("y", "number", false, "Wind Y."),
+                    v8pp::metadata::param("z", "number", false, "Wind Z.")},
+                "Sets weather wind velocity.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "getWindVelocity", v8pp::metadata::docs("number[]", {}, "Reads wind velocity.", "[x, y, z].")));
     }
 } // namespace VantaMP::Scripting

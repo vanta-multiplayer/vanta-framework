@@ -392,15 +392,21 @@ namespace VantaMP::Scripting {
             }
         }
 
-        if (info.Length() > arg) {
-            heading = v8pp::from_v8<float>(isolate, info[arg]);
+        const auto hasNumber = [&](int index) {
+            return info.Length() > index && info[index]->IsNumber();
+        };
+
+        if (hasNumber(arg)) {
+            heading = static_cast<float>(info[arg]->NumberValue(isolate->GetCurrentContext()).FromMaybe(heading));
         }
 
-        const auto model     = info.Length() > arg + 1 ? v8pp::from_v8<std::uint32_t>(isolate, info[arg + 1]) : 0u;
-        const auto health    = info.Length() > arg + 2 ? v8pp::from_v8<float>(isolate, info[arg + 2]) : 100.0f;
-        const auto armour    = info.Length() > arg + 3 ? v8pp::from_v8<float>(isolate, info[arg + 3]) : 0.0f;
-        const auto interior  = info.Length() > arg + 4 ? v8pp::from_v8<std::uint8_t>(isolate, info[arg + 4]) : std::uint8_t {0};
-        const auto dimension = info.Length() > arg + 5 ? v8pp::from_v8<std::uint16_t>(isolate, info[arg + 5]) : std::uint16_t {0};
+        // Optional trailing args: skip undefined/null so JS `spawn(x,y,z,h, undefined, hp)`
+        // does not throw from from_v8 and abort the process (0xE06D7363).
+        const auto model     = hasNumber(arg + 1) ? static_cast<std::uint32_t>(info[arg + 1]->NumberValue(isolate->GetCurrentContext()).FromMaybe(0)) : 0u;
+        const auto health    = hasNumber(arg + 2) ? static_cast<float>(info[arg + 2]->NumberValue(isolate->GetCurrentContext()).FromMaybe(100.0)) : 100.0f;
+        const auto armour    = hasNumber(arg + 3) ? static_cast<float>(info[arg + 3]->NumberValue(isolate->GetCurrentContext()).FromMaybe(0.0)) : 0.0f;
+        const auto interior  = hasNumber(arg + 4) ? static_cast<std::uint8_t>(info[arg + 4]->NumberValue(isolate->GetCurrentContext()).FromMaybe(0)) : std::uint8_t {0};
+        const auto dimension = hasNumber(arg + 5) ? static_cast<std::uint16_t>(info[arg + 5]->NumberValue(isolate->GetCurrentContext()).FromMaybe(0)) : std::uint16_t {0};
 
         gPlayers->Spawn(player->ownerGUID, x, y, z, heading, model, health, armour, interior, dimension);
     }
@@ -432,6 +438,7 @@ namespace VantaMP::Scripting {
                                                      "plus spawn, vitals, money, wanted, weapons and occupancy.");
 
         cls->inherit<Framework::Scripting::Builtins::Player>()
+            .document_base("Player")
             .ctor<std::uint64_t>()
             .property("nickname", &Player::GetNickname, &Player::SetNickname)
             .property("health", &Player::GetHealth, &Player::SetHealth)
@@ -468,8 +475,20 @@ namespace VantaMP::Scripting {
             .function("setWeaponAmmo", &Player::SetWeaponAmmo)
             .function("kill", &Player::Kill);
 
-        cls->prototype_function("spawn", &Player::JS_Spawn);
-        cls->prototype_function("getOccupiedVehicle", &Player::JS_GetOccupiedVehicle);
+        cls->prototype_function("spawn", &Player::JS_Spawn,
+                                v8pp::metadata::docs("void",
+                                    {v8pp::metadata::param("xOrPos", "number | Vector3", false, "X or a Vector3 position."),
+                                        v8pp::metadata::param("y", "number", true, "Y when position is components."),
+                                        v8pp::metadata::param("z", "number", true, "Z when position is components."),
+                                        v8pp::metadata::param("heading", "number", true, "Optional heading radians."),
+                                        v8pp::metadata::param("model", "number", true, "Optional ped model."),
+                                        v8pp::metadata::param("health", "number", true, "Optional health."),
+                                        v8pp::metadata::param("armour", "number", true, "Optional armour."),
+                                        v8pp::metadata::param("interior", "number", true, "Optional interior."),
+                                        v8pp::metadata::param("dimension", "number", true, "Optional dimension.")},
+                                    "Spawns the player at a position."));
+        cls->prototype_function("getOccupiedVehicle", &Player::JS_GetOccupiedVehicle,
+                                v8pp::metadata::docs("Vehicle | null", {}, "Returns the vehicle this player occupies, if any.", "Vehicle handle or null."));
 
         return *cls;
     }

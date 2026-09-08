@@ -330,6 +330,7 @@ namespace VantaMP::Scripting {
     void Vehicle::SetPlateText(const std::string &text) {
         if (auto *vehicle = ResolveVehicle()) {
             vehicle->plateText = text.substr(0, 8);
+            vehicle->ForceState();
         }
     }
 
@@ -925,6 +926,7 @@ namespace VantaMP::Scripting {
                                                      "Colour is any RGB, not a palette index.");
 
         cls->inherit<Framework::Scripting::Builtins::Entity>()
+            .document_base("Entity")
             .ctor<std::uint64_t>()
             .function("destroy", &Vehicle::Destroy)
             .function("addUpgrade", &Vehicle::AddUpgrade)
@@ -1086,6 +1088,38 @@ namespace VantaMP::Scripting {
                           .ToLocalChecked())
             .Check();
         global->Set(ctx, v8pp::to_v8(isolate, "Vehicles"), vehicles).Check();
+
+        auto &meta = Framework::Scripting::GetScriptingCatalog(isolate).global_object(
+            "Vehicles", "Factory helpers for creating and destroying GTA vehicles.");
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "create",
+            v8pp::metadata::docs("Vehicle",
+                {v8pp::metadata::param("model", "number", false, "Vehicle model id."),
+                    v8pp::metadata::param("xOrPos", "number | Vector3", true, "X or a Vector3 position."),
+                    v8pp::metadata::param("y", "number", true, "Y when position is components."),
+                    v8pp::metadata::param("z", "number", true, "Z when position is components."),
+                    v8pp::metadata::param("rotOrHeading", "number | Vector3", true, "MTA degrees Vector3 or heading radians."),
+                    v8pp::metadata::param("color1", "number | Color", true, "Primary colour."),
+                    v8pp::metadata::param("color2", "number | Color", true, "Secondary colour."),
+                    v8pp::metadata::param("interior", "number", true, "Interior id."),
+                    v8pp::metadata::param("dimension", "number", true, "Dimension id.")},
+                "Spawns a vehicle and returns its handle.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "destroy", v8pp::metadata::docs("void", {v8pp::metadata::param("id", "number", false, "Network id of the vehicle.")}, "Destroys a vehicle by network id.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setInterior",
+            v8pp::metadata::docs("void",
+                {v8pp::metadata::param("id", "number", false, "Network id."), v8pp::metadata::param("interior", "number", false, "Interior id.")},
+                "Sets a vehicle's interior.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "setDimension",
+            v8pp::metadata::docs("void",
+                {v8pp::metadata::param("id", "number", false, "Network id."), v8pp::metadata::param("dimension", "number", false, "Dimension id.")},
+                "Sets a vehicle's dimension.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "getInterior", v8pp::metadata::docs("number", {v8pp::metadata::param("id", "number", false, "Network id.")}, "Reads a vehicle's interior.", "Interior id.")));
+        meta.record(v8pp::metadata::function_of<v8::FunctionCallback>(
+            "getDimension", v8pp::metadata::docs("number", {v8pp::metadata::param("id", "number", false, "Network id.")}, "Reads a vehicle's dimension.", "Dimension id.")));
     }
 
     namespace {
