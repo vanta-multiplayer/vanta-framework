@@ -156,6 +156,12 @@ namespace VantaMP::Shared {
         bool         canBeDamaged   = true;
         std::uint8_t nitroCount     = 0;
 
+        // Component variants. Written into ms_compsToUse before create.
+        // 255 means game-default random (0xFE). Changing them recreates
+        // the local handle — extras are baked at construction.
+        std::uint8_t variant  = 255;
+        std::uint8_t variant2 = 255;
+
         static std::uint8_t PackedByte(std::uint64_t packed, int index) {
             return static_cast<std::uint8_t>((packed >> (index * 8)) & 0xFFu);
         }

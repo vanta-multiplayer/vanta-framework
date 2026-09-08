@@ -68,6 +68,7 @@ namespace VantaMP::Shared {
 
         fields.Field(maxHealth);
         fields.Field(isDrowning);
+        fields.Field(hasJetPack);
     }
 
     Framework::Networking::Replication::NetworkEntity *PlayerEntity::GetInterestDependency() {

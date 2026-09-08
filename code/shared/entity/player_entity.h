@@ -191,6 +191,10 @@ namespace VantaMP::Shared {
         // Ped is drowning (underwater damage). Owner reports bIsDrowning.
         bool isDrowning = false;
 
+        // Jetpack. Script-owned. Owner installs via PlayerScript; remotes
+        // run TASK_SIMPLE_JETPACK on the primary slot (MTA SetHasJetPack).
+        bool hasJetPack = false;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnStateForced() override;

@@ -65,6 +65,8 @@ namespace VantaMP::Shared {
         fields.Field(wheelsCanBurst);
         fields.Field(canBeDamaged);
         fields.Field(nitroCount);
+        fields.Field(variant);
+        fields.Field(variant2);
     }
 
     void VehicleEntity::OnStateForced() {
