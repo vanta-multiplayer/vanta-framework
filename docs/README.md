@@ -12,6 +12,8 @@ still the source of truth for *why a line exists*; this folder is the map.
 | [Voice](voice.md) | Proximity talk, devices, PTT, mic test |
 | [World space](world-space.md) | Interiors, dimensions, `player.interior` / `player.dimension` |
 | [World env](world-env.md) | Server clock, speed, weather, gravity, sky, water, wind, … |
+| [Easy Anti-Cheat (EOS)](eac.md) | Anti-Cheat session on top of EOS Connect |
+| [EOS / EAC identity](eos.md) | Silent Vanta Auth Backend → Connect PUID (no Epic login) |
 | [Scripting types](scripting-types.md) | `@vantamp/types` for server/client resource IntelliSense |
 | [SDK and patterns](sdk-and-patterns.md) | Call into GTA, or add a signature |
 | [Setup](setup.md) | Clone or fork this repo on a new machine |

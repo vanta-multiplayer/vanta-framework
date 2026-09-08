@@ -134,6 +134,8 @@ Kill `VantaMPLauncher`, `gta_sa`, `cef_subprocess` before a client link
 | Voice, PTT, mic test | [`docs/voice.md`](docs/voice.md) |
 | Interiors / dimensions | [`docs/world-space.md`](docs/world-space.md) |
 | Clock / weather / gravity / visuals | [`docs/world-env.md`](docs/world-env.md) |
+| Easy Anti-Cheat (EOS) | [`docs/eac.md`](docs/eac.md) |
+| Silent OpenID / Vanta Auth | [`docs/eos.md`](docs/eos.md) |
 | Scripting IntelliSense (`@vantamp/types`) | [`docs/scripting-types.md`](docs/scripting-types.md) |
 | Menu, console, `vanta://` | [`docs/ui.md`](docs/ui.md) |
 | Core <-> page events | [`docs/events.md`](docs/events.md) |
