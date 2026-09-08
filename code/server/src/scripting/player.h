@@ -70,6 +70,9 @@ namespace VantaMP::Scripting {
         float GetMaxHealth() const;
         void SetMaxHealth(float maxHealth);
 
+        bool GetJetPack() const;
+        void SetJetPack(bool hasJetPack);
+
         bool IsOnGround() const;
         bool IsDrowning() const;
 

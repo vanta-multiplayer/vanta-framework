@@ -130,6 +130,12 @@ namespace VantaMP::Scripting {
         std::uint8_t GetNitroCount() const;
         void SetNitroCount(std::uint8_t count);
 
+        std::uint8_t GetVariant() const;
+        void SetVariant(std::uint8_t variant);
+
+        std::uint8_t GetVariant2() const;
+        void SetVariant2(std::uint8_t variant);
+
         std::string GetName() const;
         std::string GetVehicleType() const;
         std::uint8_t GetMaxPassengers() const;

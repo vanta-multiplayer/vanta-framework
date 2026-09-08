@@ -504,6 +504,30 @@ namespace VantaMP::Scripting {
         }
     }
 
+    std::uint8_t Vehicle::GetVariant() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? vehicle->variant : 255;
+    }
+
+    void Vehicle::SetVariant(std::uint8_t variant) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->variant = variant;
+        }
+    }
+
+    std::uint8_t Vehicle::GetVariant2() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? vehicle->variant2 : 255;
+    }
+
+    void Vehicle::SetVariant2(std::uint8_t variant) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->variant2 = variant;
+        }
+    }
+
     std::string Vehicle::GetName() const {
         auto *vehicle = ResolveVehicle();
 
@@ -940,6 +964,8 @@ namespace VantaMP::Scripting {
             .property("wheelsCanBurst", &Vehicle::GetWheelsCanBurst, &Vehicle::SetWheelsCanBurst)
             .property("canBeDamaged", &Vehicle::GetCanBeDamaged, &Vehicle::SetCanBeDamaged)
             .property("nitroCount", &Vehicle::GetNitroCount, &Vehicle::SetNitroCount)
+            .property("variant", &Vehicle::GetVariant, &Vehicle::SetVariant)
+            .property("variant2", &Vehicle::GetVariant2, &Vehicle::SetVariant2)
             .property("color", &Vehicle::GetColor1, &Vehicle::SetColor1)
             .property("color2", &Vehicle::GetColor2, &Vehicle::SetColor2)
             .property("color3", &Vehicle::GetColor3, &Vehicle::SetColor3)

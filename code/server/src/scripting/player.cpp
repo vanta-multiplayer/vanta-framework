@@ -210,6 +210,19 @@ namespace VantaMP::Scripting {
         }
     }
 
+    bool Player::GetJetPack() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->hasJetPack;
+    }
+
+    void Player::SetJetPack(bool hasJetPack) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->hasJetPack = hasJetPack;
+            gPlayers->SendScript(*player, 0, Shared::kPlayerScript2HasJetPack);
+        }
+    }
+
     bool Player::IsOnGround() const {
         auto *player = ResolvePlayer();
 
@@ -434,6 +447,7 @@ namespace VantaMP::Scripting {
             .property("alpha", &Player::GetAlpha, &Player::SetAlpha)
             .property("onFire", &Player::GetOnFire, &Player::SetOnFire)
             .property("maxHealth", &Player::GetMaxHealth, &Player::SetMaxHealth)
+            .property("jetpack", &Player::GetJetPack, &Player::SetJetPack)
             .property("onGround", &Player::IsOnGround)
             .property("drowning", &Player::IsDrowning)
             .property("weapon", &Player::GetWeapon)
