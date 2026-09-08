@@ -2,12 +2,13 @@
 
 Server clock, minute length, game speed, weather, gravity, and optional
 visual overrides (far clip, fog, rain, waves, sky, moon, sun, water colour,
-heat haze). One authority for everyone — not a per-player replica field.
+heat haze, clouds, jetpack height, wind). One authority for everyone — not a
+per-player replica field.
 
 ## Wire
 
-`WorldEnv` (`shared/rpc/world_env.h`) is a reliable RPC. Flags say which
-fields are live in this packet:
+`WorldEnv` (`shared/rpc/world_env.h`) is a reliable RPC. Flags are `uint32`
+and say which fields are live in this packet:
 
 | Flag | Field | Meaning |
 |------|-------|---------|
@@ -26,6 +27,9 @@ fields are live in this packet:
 | sunSize | unscaled float | stored as `value * 10` in GTA |
 | waterColor | RGBA floats `0..255` | surface + underwater tint |
 | heatHaze | intensity + FX params | `CPostEffects` heat haze |
+| clouds | bool | volumetric / bottom / skyline / trails |
+| jetpackHeight | float (default `100`) | jetpack ceiling |
+| wind | xyz floats | weather wind velocity |
 
 Join gets core flags (time / duration / speed / weather / gravity) plus any
 visual overrides script has already set. Script changes broadcast only the
@@ -38,7 +42,7 @@ the sim up does not make the server day race ahead of what scripts read —
 same idea as MTA's `CClock`.
 
 Default: noon, 1000 ms per game minute, speed `1`, weather `0`, gravity
-`0.008`. Visual overrides stay off until script sets them.
+`0.008`, clouds on. Visual overrides stay off until script sets them.
 
 ## Anti-cheat (speed and gravity)
 
@@ -51,31 +55,20 @@ cannot stomp them without MTA-style Update nops.
 ## Script
 
 ```js
-World.setTime(18, 30)
-World.setGameSpeed(1.0)
-World.setWeather(8)
-World.setGravity(0.008)
-World.setFarClip(800)
-World.setFogDistance(200)
-World.setRainLevel(0.5)
-World.setWaveHeight(0.6)
-World.setSkyGradient(30, 60, 120, 10, 20, 40)
-World.setMoonSize(3)
-World.setSunColor(255, 200, 100, 255, 255, 200)
-World.setSunSize(1.0)
-World.setWaterColor(64, 128, 200, 200)          // RGB[A], 0..255
-World.setHeatHaze(80)                           // intensity; rest optional
-World.setHeatHaze(80, 0, 12, 18, 75, 80, 80, 85, false)
+World.setCloudsEnabled(false)
+World.setJetpackMaxHeight(100)
+World.setWindVelocity(0.2, 0.1, 0.0)
 
-World.getWaterColor()   // [r, g, b, a]
-World.getHeatHaze()     // [intensity, randomShift, speedMin, speedMax, scanX, scanY, renderX, renderY, inside]
-World.getSkyGradient()
-World.getSunColor()
-// …plus the scalar getters from earlier waves
+World.getCloudsEnabled()
+World.getJetpackMaxHeight()
+World.getWindVelocity()   // [x, y, z]
+// …plus earlier World.* getters/setters
 ```
 
 ## Backlog (MTA world features not here yet)
 
-Water level vertex rewrites / `createWater` triangles, blur (often
-per-player in MTA), traffic density. Those land as more `WorldEnv` flags or
-sibling RPCs when needed.
+- **Water levels / `createWater` triangles** — needs a client water vertex
+  manager (MTA's `CWaterManagerSA`), not a single float.
+- Aircraft max height / velocity (multiplayer pointer redirects).
+- Blur level — Vanta already NOPs speed blur in `gameplay.cpp`.
+- Traffic density — not a first-class MTA world sync.
