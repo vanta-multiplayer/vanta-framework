@@ -426,8 +426,9 @@ namespace VantaMP::Game {
             entity->walkingStyle   = SDK::LocalPedWalkingStyle();
             entity->onFire         = SDK::LocalPedOnFire();
             entity->isDrowning     = local.drowning;
-            // maxHealth is script-owned — echo, do not invent from GTA.
+            // maxHealth / jetpack are script-owned — echo, do not invent from GTA.
             SDK::SetLocalPedAlpha(entity->alpha);
+            SDK::SetLocalPedJetPack(entity->hasJetPack);
 
             // TEMPORARY TELEMETRY - remove once the desync is closed.
             static std::uint32_t lastSendReportMs = 0;
@@ -484,6 +485,7 @@ namespace VantaMP::Game {
                 SDK::SetRemotePedOxygen(slot, entity->oxygen);
                 SDK::SetRemotePedWalkingStyle(slot, entity->walkingStyle);
                 SDK::SetRemotePedOnFire(slot, entity->onFire);
+                SDK::SetRemotePedJetPack(slot, entity->hasJetPack);
                 SDK::SetRemotePedAlpha(slot, entity->alpha);
                 gRemoteAlpha[slot] = entity->alpha;
                 SDK::SetRemotePedWeapon(slot, entity->weaponType, entity->ammoClip, entity->ammoTotal);
@@ -614,6 +616,7 @@ namespace VantaMP::Game {
                 SDK::SetRemotePedOxygen(slot, entity->oxygen);
                 SDK::SetRemotePedWalkingStyle(slot, entity->walkingStyle);
                 SDK::SetRemotePedOnFire(slot, entity->onFire);
+                SDK::SetRemotePedJetPack(slot, entity->hasJetPack);
                 SDK::SetRemotePedAlpha(slot, entity->alpha);
                 gRemoteAlpha[slot] = entity->alpha;
 
@@ -1060,6 +1063,10 @@ namespace VantaMP::Game {
             SDK::SetLocalPedMaxHealth(script.maxHealth);
         }
 
+        if ((script.flags2 & Shared::kPlayerScript2HasJetPack) != 0) {
+            SDK::SetLocalPedJetPack(script.hasJetPack);
+        }
+
         if (auto *player = OwnedPlayer(Framework::CoreModules::GetReplication())) {
             if ((script.flags & Shared::kPlayerScriptHealth) != 0) {
                 player->health = script.health;
@@ -1111,6 +1118,10 @@ namespace VantaMP::Game {
 
             if ((script.flags2 & Shared::kPlayerScript2MaxHealth) != 0) {
                 player->maxHealth = script.maxHealth;
+            }
+
+            if ((script.flags2 & Shared::kPlayerScript2HasJetPack) != 0) {
+                player->hasJetPack = script.hasJetPack;
             }
         }
     }

@@ -304,6 +304,9 @@ namespace VantaMP::SDK {
         // a TASK_SIMPLE_DUCK rather than setting the flag.
         uintptr_t CTask__operator_new            = 0;
         uintptr_t CTaskSimpleDuck__Constructor   = 0;
+        uintptr_t CTaskSimpleJetPack__Constructor = 0;
+        uintptr_t CPedIntelligence__GetTaskJetPack = 0;
+        uintptr_t CTaskManager__GetSimplestActiveTask = 0;
         uintptr_t CTaskManager__SetTaskSecondary = 0;
         uintptr_t CTaskManager__GetTaskSecondary = 0;
 
@@ -516,6 +519,23 @@ namespace VantaMP::SDK {
         // four table slots for the duration of that call, then restored.
         uintptr_t CVehicle__SetupRender                      = 0;
         uintptr_t CVehicleModelInfo__ms_vehicleColourTable   = 0;
+
+        // Written immediately before CreateCarForScript. GTA copies the
+        // pair into CVehicle::m_anExtras and shows/hides extra_* frames.
+        // MTA: VAR_CVehicle_Variation1/2.
+        uintptr_t CVehicleModelInfo__ms_compsToUse = 0;
+
+        // Headlight beam / corona / reflection. Mid-function sites tint
+        // the colours MTA patches; DoVehicleLights captures `this`.
+        uintptr_t CVehicle__DoVehicleLights              = 0;
+        uintptr_t CVehicle__DoHeadLightBeam              = 0;
+        uintptr_t CVehicle__DoHeadLightBeam_Verts        = 0;
+        uintptr_t CVehicle__DoHeadLightEffect_Corona1    = 0;
+        uintptr_t CVehicle__DoHeadLightEffect_Corona2    = 0;
+        uintptr_t CVehicle__DoHeadLightReflectionSingle_Shadow = 0;
+        uintptr_t CVehicle__DoHeadLightReflectionTwin_Shadow = 0;
+        uintptr_t CCoronas__RegisterCorona               = 0;
+        uintptr_t CShadows__StoreCarLightShadow          = 0;
 
         // CPools::ms_pVehiclePool. CreateCarForScript allocates from it;
         // operator delete has no unique body, so we free through the pool

@@ -129,6 +129,93 @@ namespace VantaMP::SDK::Internal {
         reinterpret_cast<StartFireFn>(gPatterns.CFireManager__StartFire)(reinterpret_cast<void *>(gPatterns.gFireManager), ped, ped, 0.8f, 1, 0xFFFFFFFFu, 0);
     }
 
+    // CTask::MakeAbortable — after GetId (slot 4) and StopTimer (slot 5).
+    inline constexpr std::size_t kTaskMakeAbortableSlot = 6;
+
+    // Primary priority. MTA installs the jetpack here.
+    inline constexpr int kTaskPriorityPrimary = 3;
+    inline constexpr int kTaskPriorityEventResponseTemp = 1;
+
+    inline bool PedHasJetPack(CPed *ped) {
+        if (!ped || !ped->m_pIntelligence || !gPatterns.CPedIntelligence__GetTaskJetPack) {
+            return false;
+        }
+
+        using GetJetFn = void *(__thiscall *)(void *);
+
+        auto *task = reinterpret_cast<GetJetFn>(gPatterns.CPedIntelligence__GetTaskJetPack)(ped->m_pIntelligence);
+
+        if (!task || TaskIdOf(task) != TASK_SIMPLE_JETPACK) {
+            return false;
+        }
+
+        // m_bIsFinished at +0x8. MTA treats a finished pack as not worn.
+        return !*reinterpret_cast<bool *>(reinterpret_cast<std::uint8_t *>(task) + 0x8);
+    }
+
+    inline void AbortPrimaryTask(CPed *ped, int priority, int /*abortPriority*/) {
+        if (!ped || !ped->m_pIntelligence) {
+            return;
+        }
+
+        auto *tasks = &ped->m_pIntelligence->m_TaskMgr;
+
+        if (!tasks->m_aPrimaryTasks[priority]) {
+            return;
+        }
+
+        using SetTaskFn = void(__thiscall *)(void *, void *, int, bool);
+
+        // SetTask(nullptr) aborts and deletes the occupant of the slot.
+        reinterpret_cast<SetTaskFn>(gPatterns.CTaskManager__SetTask)(tasks, nullptr, priority, false);
+    }
+
+    inline void SetPedJetPack(CPed *ped, bool hasJetPack) {
+        if (!ped || !ped->m_pIntelligence || !gPatterns.CTaskSimpleJetPack__Constructor) {
+            return;
+        }
+
+        if (!hasJetPack) {
+            if (PedHasJetPack(ped)) {
+                using GetJetFn = void *(__thiscall *)(void *);
+                using MakeAbortableFn = bool(__thiscall *)(void *, CPed *, int, void *);
+
+                auto *task = reinterpret_cast<GetJetFn>(gPatterns.CPedIntelligence__GetTaskJetPack)(ped->m_pIntelligence);
+
+                if (task) {
+                    reinterpret_cast<MakeAbortableFn>(TaskVirtual(task, kTaskMakeAbortableSlot))(task, ped, ABORT_PRIORITY_URGENT, nullptr);
+                }
+            }
+
+            return;
+        }
+
+        if (PedHasJetPack(ped) || ped->bInVehicle) {
+            return;
+        }
+
+        AbortPrimaryTask(ped, kTaskPriorityPrimary, ABORT_PRIORITY_IMMEDIATE);
+        AbortPrimaryTask(ped, kTaskPriorityEventResponseTemp, ABORT_PRIORITY_IMMEDIATE);
+        AbortPrimaryTask(ped, kTaskPriorityEventResponseNonTemp, ABORT_PRIORITY_IMMEDIATE);
+
+        constexpr unsigned int kJetPackBytes = 0x70;
+
+        auto *storage = reinterpret_cast<OperatorNewFn>(gPatterns.CTask__operator_new)(kJetPackBytes);
+
+        if (!storage) {
+            return;
+        }
+
+        // MTA: push pTargetEnt=0, nHoverTime, fCruiseHeight, pVecTargetPos.
+        using JetCtorFn = void(__thiscall *)(void *, const CVector *, float, int, CEntity *);
+
+        reinterpret_cast<JetCtorFn>(gPatterns.CTaskSimpleJetPack__Constructor)(storage, nullptr, 10.0f, 0, nullptr);
+
+        using SetTaskFn = void(__thiscall *)(void *, void *, int, bool);
+
+        reinterpret_cast<SetTaskFn>(gPatterns.CTaskManager__SetTask)(&ped->m_pIntelligence->m_TaskMgr, storage, kTaskPriorityPrimary, true);
+    }
+
     inline CPed *LocalPed() {
         // Slot 0, out of the RELOCATED array. Reading gPatterns.CWorld__Players
         // instead would find the array the game shipped with, which nothing

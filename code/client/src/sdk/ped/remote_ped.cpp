@@ -472,4 +472,12 @@ namespace VantaMP::SDK {
     void SetRemotePedOnFire(int slot, bool on) {
         Internal::SetPedOnFire(PedAt(slot), on);
     }
+
+    void SetRemotePedJetPack(int slot, bool hasJetPack) {
+        Internal::SetPedJetPack(PedAt(slot), hasJetPack);
+    }
+
+    bool RemotePedHasJetPack(int slot) {
+        return Internal::PedHasJetPack(PedAt(slot));
+    }
 } // namespace VantaMP::SDK

@@ -120,5 +120,9 @@ namespace VantaMP::SDK {
     void SetRemotePedWalkingStyle(int slot, std::uint16_t style);
     void SetRemotePedOnFire(int slot, bool on);
 
+    // Primary TASK_SIMPLE_JETPACK. MTA SetHasJetPack.
+    void SetRemotePedJetPack(int slot, bool hasJetPack);
+    [[nodiscard]] bool RemotePedHasJetPack(int slot);
+
     // What a remote player HOLDS is in sdk/ped/weapon.h, not here.
 } // namespace VantaMP::SDK

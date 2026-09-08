@@ -330,10 +330,225 @@ namespace VantaMP::SDK {
         };
 
         std::unordered_map<const void *, VehicleRgb> gVehicleRgb;
+        std::unordered_map<const void *, std::uint32_t> gVehicleHeadlight;
 
         PaletteRgba *ColourTable() {
             return reinterpret_cast<PaletteRgba *>(gPatterns.CVehicleModelInfo__ms_vehicleColourTable);
         }
+
+        char *CompsToUse() {
+            return reinterpret_cast<char *>(gPatterns.CVehicleModelInfo__ms_compsToUse);
+        }
+
+        std::uint8_t CompByte(std::uint8_t variant) {
+            // 255 = script "default" → GTA's random sentinel 0xFE.
+            return variant == 255 ? 0xFE : variant;
+        }
+
+        unsigned long gHeadLightR = 255;
+        unsigned long gHeadLightG = 255;
+        unsigned long gHeadLightB = 255;
+        CVehicle     *gHeadLightBeamVehicle = nullptr;
+        CVehicle     *gLightsVehicle        = nullptr;
+
+        struct RwV3dColour {
+            float         x, y, z;
+            unsigned long color;
+            float         u, v;
+        };
+
+        void ScaleHeadLight(CVehicle *vehicle, float baseR, float baseG, float baseB) {
+            unsigned char r = 255, g = 255, b = 255;
+
+            if (vehicle) {
+                const auto found = gVehicleHeadlight.find(vehicle);
+
+                if (found != gVehicleHeadlight.end() && found->second != 0) {
+                    r = Shared::RgbR(found->second);
+                    g = Shared::RgbG(found->second);
+                    b = Shared::RgbB(found->second);
+                }
+            }
+
+            gHeadLightR = static_cast<unsigned long>((std::min)(255.0f, r * (1.0f / 255.0f) * baseR));
+            gHeadLightG = static_cast<unsigned long>((std::min)(255.0f, g * (1.0f / 255.0f) * baseG));
+            gHeadLightB = static_cast<unsigned long>((std::min)(255.0f, b * (1.0f / 255.0f) * baseB));
+        }
+
+        void PatchJump(void *site, void *detour, std::size_t bytes) {
+            if (!site || !detour || bytes < 5) {
+                return;
+            }
+
+            DWORD previous = 0;
+
+            if (VirtualProtect(site, bytes, PAGE_EXECUTE_READWRITE, &previous) == 0) {
+                return;
+            }
+
+            auto *code = static_cast<std::uint8_t *>(site);
+
+            code[0] = 0xE9;
+            *reinterpret_cast<std::int32_t *>(code + 1) =
+                static_cast<std::int32_t>(static_cast<std::uint8_t *>(detour) - (code + 5));
+
+            for (std::size_t i = 5; i < bytes; ++i) {
+                code[i] = 0x90;
+            }
+
+            DWORD ignored = 0;
+            VirtualProtect(site, bytes, previous, &ignored);
+        }
+
+        // MTA CMultiplayerSA headlight colour hooks. Continue addresses are
+        // filled when the patterns resolve at install time.
+        DWORD gRetLights    = 0;
+        DWORD gRetBeam1     = 0;
+        DWORD gRetBeam2     = 0;
+        DWORD gRetEffect1   = 0;
+        DWORD gRetEffect2   = 0;
+        DWORD gRetReflectS  = 0;
+        DWORD gRetReflectT  = 0;
+        DWORD gRegisterCorona = 0;
+        DWORD gStoreShadow    = 0;
+
+        RwV3dColour *gHeadLightVerts   = nullptr;
+        unsigned int gHeadLightNumVerts = 0;
+
+        void TintBeamVerts() {
+            ScaleHeadLight(gHeadLightBeamVehicle, 255.0f, 255.0f, 255.0f);
+
+            if (!gHeadLightVerts) {
+                return;
+            }
+
+            for (unsigned int i = 0; i < gHeadLightNumVerts; ++i) {
+                const auto alpha = (gHeadLightVerts[i].color >> 24) & 0xFFu;
+                gHeadLightVerts[i].color =
+                    (alpha << 24) | (gHeadLightR << 16) | (gHeadLightG << 8) | gHeadLightB;
+            }
+        }
+
+        void __declspec(naked) Hook_DoVehicleLights() {
+            __asm {
+                mov gLightsVehicle, ecx
+                mov al, byte ptr ds:[0xC1CC18]
+                sub esp, 3Ch
+                jmp gRetLights
+            }
+        }
+
+        void __declspec(naked) Hook_DoHeadLightBeam_1() {
+            __asm {
+                mov gHeadLightBeamVehicle, ecx
+                sub esp, 94h
+                jmp gRetBeam1
+            }
+        }
+
+        void __declspec(naked) Hook_DoHeadLightBeam_2() {
+            __asm {
+                mov eax, [esp]
+                mov gHeadLightVerts, eax
+                mov eax, [esp+4]
+                mov gHeadLightNumVerts, eax
+                pushad
+            }
+
+            TintBeamVerts();
+
+            __asm {
+                popad
+                mov dword ptr ds:[0xC4B950], 5
+                jmp gRetBeam2
+            }
+        }
+
+        void __declspec(naked) Hook_DoHeadLightEffect_1() {
+            __asm {
+                pushad
+            }
+
+            ScaleHeadLight(gLightsVehicle, 160.0f, 160.0f, 140.0f);
+
+            __asm {
+                popad
+                mov eax, gHeadLightR
+                mov [esp+8], eax
+                mov eax, gHeadLightG
+                mov [esp+12], eax
+                mov eax, gHeadLightB
+                mov [esp+16], eax
+                call gRegisterCorona
+                add esp, 54h
+                jmp gRetEffect1
+            }
+        }
+
+        void __declspec(naked) Hook_DoHeadLightEffect_2() {
+            __asm {
+                pushad
+            }
+
+            ScaleHeadLight(gLightsVehicle, 160.0f, 160.0f, 140.0f);
+
+            __asm {
+                popad
+                mov eax, gHeadLightR
+                mov [esp+8], eax
+                mov eax, gHeadLightG
+                mov [esp+12], eax
+                mov eax, gHeadLightB
+                mov [esp+16], eax
+                call gRegisterCorona
+                add esp, 54h
+                jmp gRetEffect2
+            }
+        }
+
+        void __declspec(naked) Hook_DoHeadLightReflectionTwin() {
+            __asm {
+                pushad
+            }
+
+            ScaleHeadLight(gLightsVehicle, 45.0f, 45.0f, 45.0f);
+
+            __asm {
+                popad
+                mov eax, gHeadLightR
+                mov [esp+32], eax
+                mov eax, gHeadLightG
+                mov [esp+36], eax
+                mov eax, gHeadLightB
+                mov [esp+40], eax
+                call gStoreShadow
+                add esp, 4Ch
+                jmp gRetReflectT
+            }
+        }
+
+        void __declspec(naked) Hook_DoHeadLightReflectionSingle() {
+            __asm {
+                pushad
+            }
+
+            ScaleHeadLight(gLightsVehicle, 45.0f, 45.0f, 45.0f);
+
+            __asm {
+                popad
+                mov eax, gHeadLightR
+                mov [esp+32], eax
+                mov eax, gHeadLightG
+                mov [esp+36], eax
+                mov eax, gHeadLightB
+                mov [esp+40], eax
+                call gStoreShadow
+                add esp, 30h
+                jmp gRetReflectS
+            }
+        }
+
+        bool gHeadlightHooksInstalled = false;
 
         void __fastcall SetupRender_Hook(CVehicle *vehicle) {
             auto *table = ColourTable();
@@ -458,12 +673,23 @@ namespace VantaMP::SDK {
         return modelId >= kFirstVehicleModel && modelId <= kLastVehicleModel;
     }
 
-    void *CreateScriptVehicle(int modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour) {
+    void *CreateScriptVehicle(int modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour,
+                              std::uint8_t variant, std::uint8_t variant2) {
         if (!IsVehicleModel(modelId)) {
             return nullptr;
         }
 
+        if (auto *comps = CompsToUse()) {
+            comps[0] = static_cast<char>(CompByte(variant));
+            comps[1] = static_cast<char>(CompByte(variant2));
+        }
+
         auto *vehicle = reinterpret_cast<CreateCarFn>(gPatterns.CCarCtrl__CreateCarForScript)(modelId, CVector(x, y, z), 0);
+
+        if (auto *comps = CompsToUse()) {
+            comps[0] = static_cast<char>(0xFE);
+            comps[1] = static_cast<char>(0xFE);
+        }
 
         if (!vehicle) {
             return nullptr;
@@ -496,6 +722,8 @@ namespace VantaMP::SDK {
         EvacuateVehicle(vehicle);
         ExtinguishCarFire(vehicle);
         Internal::ReleaseRealTimeShadow(vehicle);
+        ClearVehicleRgbColors(vehicle);
+        ClearVehicleHeadlightColor(vehicle);
         reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(vehicle);
         DeleteFromVehiclePool(vehicle);
     }
@@ -776,6 +1004,25 @@ namespace VantaMP::SDK {
         }
     }
 
+    void SetVehicleHeadlightColor(void *handle, std::uint32_t packedRgb) {
+        if (!handle) {
+            return;
+        }
+
+        if (packedRgb == 0) {
+            gVehicleHeadlight.erase(handle);
+            return;
+        }
+
+        gVehicleHeadlight[handle] = packedRgb;
+    }
+
+    void ClearVehicleHeadlightColor(void *handle) {
+        if (handle) {
+            gVehicleHeadlight.erase(handle);
+        }
+    }
+
     void ApplyVehicleCosmetics(void *handle, std::uint8_t paintjob, const std::uint16_t *upgrades, int upgradeSlots) {
         auto *vehicle = AsVehicle(handle);
 
@@ -826,7 +1073,7 @@ namespace VantaMP::SDK {
             return;
         }
 
-        (void)headlightColor;
+        SetVehicleHeadlightColor(handle, headlightColor);
 
         vehicle->m_fDirtLevel = static_cast<float>(dirtLevel > 15 ? 15 : dirtLevel);
 
@@ -960,6 +1207,32 @@ namespace VantaMP::SDK {
         MH_CreateHook(reinterpret_cast<void *>(gPatterns.CVehicle__SetupRender), reinterpret_cast<void *>(&SetupRender_Hook),
                       reinterpret_cast<void **>(&gOriginalSetupRender));
         MH_EnableHook(reinterpret_cast<void *>(gPatterns.CVehicle__SetupRender));
+
+        if (gHeadlightHooksInstalled || !gPatterns.CVehicle__DoHeadLightBeam) {
+            return;
+        }
+
+        gRegisterCorona = static_cast<DWORD>(gPatterns.CCoronas__RegisterCorona);
+        gStoreShadow    = static_cast<DWORD>(gPatterns.CShadows__StoreCarLightShadow);
+
+        gRetLights   = static_cast<DWORD>(gPatterns.CVehicle__DoVehicleLights + 8);
+        gRetBeam1    = static_cast<DWORD>(gPatterns.CVehicle__DoHeadLightBeam + 6);
+        gRetBeam2    = static_cast<DWORD>(gPatterns.CVehicle__DoHeadLightBeam_Verts + 10);
+        gRetEffect1  = static_cast<DWORD>(gPatterns.CVehicle__DoHeadLightEffect_Corona1 + 8);
+        gRetEffect2  = static_cast<DWORD>(gPatterns.CVehicle__DoHeadLightEffect_Corona2 + 8);
+        gRetReflectT = static_cast<DWORD>(gPatterns.CVehicle__DoHeadLightReflectionTwin_Shadow + 8);
+        gRetReflectS = static_cast<DWORD>(gPatterns.CVehicle__DoHeadLightReflectionSingle_Shadow + 8);
+
+        PatchJump(reinterpret_cast<void *>(gPatterns.CVehicle__DoVehicleLights), reinterpret_cast<void *>(&Hook_DoVehicleLights), 8);
+        PatchJump(reinterpret_cast<void *>(gPatterns.CVehicle__DoHeadLightBeam), reinterpret_cast<void *>(&Hook_DoHeadLightBeam_1), 6);
+        PatchJump(reinterpret_cast<void *>(gPatterns.CVehicle__DoHeadLightBeam_Verts), reinterpret_cast<void *>(&Hook_DoHeadLightBeam_2), 10);
+        PatchJump(reinterpret_cast<void *>(gPatterns.CVehicle__DoHeadLightEffect_Corona1), reinterpret_cast<void *>(&Hook_DoHeadLightEffect_1), 8);
+        PatchJump(reinterpret_cast<void *>(gPatterns.CVehicle__DoHeadLightEffect_Corona2), reinterpret_cast<void *>(&Hook_DoHeadLightEffect_2), 8);
+        PatchJump(reinterpret_cast<void *>(gPatterns.CVehicle__DoHeadLightReflectionTwin_Shadow), reinterpret_cast<void *>(&Hook_DoHeadLightReflectionTwin), 8);
+        PatchJump(reinterpret_cast<void *>(gPatterns.CVehicle__DoHeadLightReflectionSingle_Shadow), reinterpret_cast<void *>(&Hook_DoHeadLightReflectionSingle),
+                  8);
+
+        gHeadlightHooksInstalled = true;
     }
 
     void InstallVehicleExplosionHooks() {

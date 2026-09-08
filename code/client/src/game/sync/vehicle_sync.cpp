@@ -92,7 +92,10 @@ namespace VantaMP::Game {
             bool         lastWheelsCanBurst  = true;
             bool         lastCanBeDamaged    = true;
             std::uint8_t lastNitroCount      = 0;
+            std::uint8_t lastVariant         = 255;
+            std::uint8_t lastVariant2        = 255;
             bool         haveExtras          = false;
+            bool         haveVariants        = false;
         };
 
         std::unordered_map<std::uint64_t, RemoteVehicle> gVehicles;
@@ -694,12 +697,17 @@ namespace VantaMP::Game {
 
             const float heading = glm::roll(entity->rotation);
 
-            remote.handle = SDK::CreateScriptVehicle(model, entity->position.x, entity->position.y, entity->position.z, heading, entity->primaryColour, entity->secondaryColour);
+            remote.handle = SDK::CreateScriptVehicle(model, entity->position.x, entity->position.y, entity->position.z, heading, entity->primaryColour,
+                                                     entity->secondaryColour, entity->variant, entity->variant2);
 
             if (!remote.handle) {
                 Framework::Logging::GetLogger("Vehicle")->warn("Could not create vehicle {} (model {})", static_cast<std::uint64_t>(entity->GetNetworkID()), model);
                 return;
             }
+
+            remote.lastVariant  = entity->variant;
+            remote.lastVariant2 = entity->variant2;
+            remote.haveVariants = true;
 
             SDK::SetVehiclePose(remote.handle, entity->position.x, entity->position.y, entity->position.z, entity->rotation);
             SDK::ApplyVehicleMotion(remote.handle, SDK::ReadVehicle(remote.handle));
@@ -883,8 +891,29 @@ namespace VantaMP::Game {
 
             SDK::CancelEntriesInto(remote.handle);
             SDK::ClearVehicleRgbColors(remote.handle);
+            SDK::ClearVehicleHeadlightColor(remote.handle);
             SDK::DestroyScriptVehicle(remote.handle);
             remote.handle = nullptr;
+        }
+
+        void RecreateIfVariantChanged(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
+            if (!remote.handle || !remote.haveVariants) {
+                return;
+            }
+
+            if (remote.lastVariant == entity->variant && remote.lastVariant2 == entity->variant2) {
+                return;
+            }
+
+            // Extras are chosen at CreateCarForScript. Changing them means
+            // a new clump — same as MTA SetVariant → ReCreate.
+            DestroyHandle(remote);
+            remote.haveExtras       = false;
+            remote.haveScriptState  = false;
+            remote.haveColours      = false;
+            remote.haveVariants     = false;
+            remote.haveDamage       = false;
+            remote.wrecked          = false;
         }
     } // namespace
 
@@ -914,6 +943,7 @@ namespace VantaMP::Game {
 
             auto &remote = gVehicles[id];
 
+            RecreateIfVariantChanged(vehicle, remote);
             EnsureSpawned(vehicle, remote);
 
             if (!remote.handle) {

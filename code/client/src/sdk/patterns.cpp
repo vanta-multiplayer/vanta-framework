@@ -216,6 +216,12 @@ namespace VantaMP::SDK {
         // differs from CPed::operator new only in the pool it loads.
         gPatterns.CTask__operator_new            = Resolve("8B 0D A8 44 B7 00 E9"); // 0x0061A5A0
         gPatterns.CTaskSimpleDuck__Constructor   = Resolve("56 8B F1 E8 C8 83"); // 0x00691FC0
+        // Hoodlum stub, same shape as CTaskSimpleCarSetPedInAsPassenger.
+        // MTA: FUNC_CTaskSimpleJetPack__Constructor 0x67B4E0.
+        gPatterns.CTaskSimpleJetPack__Constructor = Resolve("6A FF E9 3D C9 D8"); // 0x0067B4E0
+        // MTA: CPedIntelligence::GetTaskJetPack 0x601110.
+        gPatterns.CPedIntelligence__GetTaskJetPack = Resolve("56 8B F1 8B 0E E8 D6"); // 0x00601110
+        gPatterns.CTaskManager__GetSimplestActiveTask = Resolve("33 C0 83 3C 81 00 75 20"); // 0x006819D0
         gPatterns.CTaskManager__SetTaskSecondary = Resolve("53 8B 5C 24 08 56 57 8B 7C 24 14 8B F1 8B"); // 0x00681B60
         gPatterns.CTaskManager__GetTaskSecondary = Resolve("8B 44 24 04 8B 44 81 14"); // 0x00681810
 
@@ -337,6 +343,21 @@ namespace VantaMP::SDK {
         // mov cl, [esi*4+table]; mov [edx], cl; mov dl, [esi*4+table+1]
         gPatterns.CVehicleModelInfo__ms_vehicleColourTable =
             OperandAt(hook::get_pattern("8A 0C B5 ? ? ? ? 88 0A 8A 14 B5"), 3); // site 0x004C838D -> 0x00B4E480
+        // MTA VAR_CVehicle_Variation1. Adjacent byte is Variation2.
+        gPatterns.CVehicleModelInfo__ms_compsToUse =
+            OperandAt(hook::get_pattern("08 A2 ? ? ? ? 88 0D 59"), 2); // site 0x004470A7 -> 0x008A6458
+
+        // Headlight tint sites. MTA CMultiplayerSA DoHeadLight* hooks.
+        gPatterns.CVehicle__DoVehicleLights           = Resolve("A0 18 CC C1 00 83"); // 0x006E1A60
+        gPatterns.CVehicle__DoHeadLightBeam           = Resolve("81 EC 94 00 00 00 57 8B F9"); // 0x006E0E20
+        gPatterns.CVehicle__DoHeadLightBeam_Verts     = Resolve("C7 05 50 B9 C4 00 05"); // 0x006E13A4
+        gPatterns.CVehicle__DoHeadLightEffect_Corona1 = Resolve("E8 ? ? ? ? 83 C4 54 D9 44 24 38"); // 0x006E0D01
+        gPatterns.CVehicle__DoHeadLightEffect_Corona2 = Resolve("E8 ? ? ? ? 83 C4 54 8A 44"); // 0x006E0DF7
+        gPatterns.CVehicle__DoHeadLightReflectionSingle_Shadow = Resolve("E8 ? ? ? ? 83 C4 30 5E 83 C4 20"); // 0x006E15E2
+        gPatterns.CVehicle__DoHeadLightReflectionTwin_Shadow = Resolve("E8 ? ? ? ? 83 C4 4C C2"); // 0x006E170F
+        gPatterns.CCoronas__RegisterCorona      = Resolve("0F B6 54 24 28 8B"); // 0x006FC580
+        gPatterns.CShadows__StoreCarLightShadow = Resolve("8B 0D 3C F0 B6 00 83 EC 0C"); // 0x0070C500
+
         gPatterns.CPools__ms_pVehiclePool        = OperandAt(hook::get_pattern("8D FA FF 83 C4 08 8B 0D"), 8); // site 0x0045FABB -> 0x00B74494
 
         gPatterns.CTaskComplexEnterCarAsDriver__Constructor    = Resolve("8B 44 24 04 56 6A 00 6A 00 6A 00"); // 0x006402F0

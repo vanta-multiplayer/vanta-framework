@@ -253,4 +253,12 @@ namespace VantaMP::SDK {
     bool LocalPedOnFire() {
         return Internal::PedOnFire(Internal::LocalPed());
     }
+
+    void SetLocalPedJetPack(bool hasJetPack) {
+        Internal::SetPedJetPack(Internal::LocalPed(), hasJetPack);
+    }
+
+    bool LocalPedHasJetPack() {
+        return Internal::PedHasJetPack(Internal::LocalPed());
+    }
 } // namespace VantaMP::SDK

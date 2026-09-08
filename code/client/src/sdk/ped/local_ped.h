@@ -92,4 +92,6 @@ namespace VantaMP::SDK {
     [[nodiscard]] std::uint16_t LocalPedWalkingStyle();
     void SetLocalPedOnFire(bool on);
     [[nodiscard]] bool LocalPedOnFire();
+    void SetLocalPedJetPack(bool hasJetPack);
+    [[nodiscard]] bool LocalPedHasJetPack();
 } // namespace VantaMP::SDK

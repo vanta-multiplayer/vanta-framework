@@ -16,7 +16,8 @@ namespace VantaMP::SDK {
     //
     // Returns nullptr when the model is not resident. Request it and try
     // again next tick - a blocking load from inside the streamer hangs.
-    [[nodiscard]] void *CreateScriptVehicle(int modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour);
+    [[nodiscard]] void *CreateScriptVehicle(int modelId, float x, float y, float z, float heading, std::uint8_t primaryColour, std::uint8_t secondaryColour,
+                                            std::uint8_t variant = 255, std::uint8_t variant2 = 255);
 
     void DestroyScriptVehicle(void *vehicle);
 
@@ -85,6 +86,11 @@ namespace VantaMP::SDK {
     // are painted by rewriting ms_vehicleColourTable around SetupRender.
     void SetVehicleRgbColors(void *vehicle, const std::uint32_t *colours, int count);
     void ClearVehicleRgbColors(void *vehicle);
+
+    // Headlight beam/corona tint. 0 = default white. Stored per handle and
+    // applied from DoHeadLight* hooks (MTA's approach).
+    void SetVehicleHeadlightColor(void *vehicle, std::uint32_t packedRgb);
+    void ClearVehicleHeadlightColor(void *vehicle);
 
     // paintjob 3 is none. upgrades is 17 slots, 0 empty, else 1000–1193.
     void ApplyVehicleCosmetics(void *vehicle, std::uint8_t paintjob, const std::uint16_t *upgrades, int upgradeSlots);
