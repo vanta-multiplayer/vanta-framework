@@ -36,6 +36,7 @@ namespace VantaMP::Game {
         void RemoveAllUpgrades(Shared::VehicleEntity &vehicle);
 
         void Fix(Shared::VehicleEntity &vehicle);
+        void Blow(Shared::VehicleEntity &vehicle);
 
         bool Destroy(std::uint64_t networkId);
 

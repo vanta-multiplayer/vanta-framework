@@ -4,6 +4,7 @@
 #include "scripting/vehicle.h"
 #include "shared/catalog/model_catalog.h"
 #include "shared/entity/player_entity.h"
+#include "shared/ped/weapon_slot.h"
 #include "shared/rpc/player_script.h"
 #include "shared/rpc/player_weapon.h"
 
@@ -17,6 +18,8 @@
 #include <scripting/resource/resource_manager.h>
 #include <scripting/scripting_catalog.h>
 #include <v8pp/convert.hpp>
+
+#include <algorithm>
 
 namespace VantaMP::Scripting {
     Player::Player(std::uint64_t networkId): Framework::Scripting::Builtins::Player(networkId) {}
@@ -115,6 +118,46 @@ namespace VantaMP::Scripting {
         }
     }
 
+    bool Player::GetCollisions() const {
+        auto *player = ResolvePlayer();
+
+        return !player || player->collisions;
+    }
+
+    void Player::SetCollisions(bool enabled) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->collisions = enabled;
+            gPlayers->SendScript(*player, 0, Shared::kPlayerScript2Collisions);
+        }
+    }
+
+    std::uint8_t Player::GetFightingStyle() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->fightingStyle : 0;
+    }
+
+    void Player::SetFightingStyle(std::uint8_t style) {
+        // GTA eFightingStyle: 4 standard through 16 elbows.
+        if (auto *player = ResolvePlayer(); player && gPlayers && style >= 4 && style <= 16) {
+            player->fightingStyle = style;
+            gPlayers->SendScript(*player, 0, Shared::kPlayerScript2FightingStyle);
+        }
+    }
+
+    float Player::GetOxygen() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->oxygen : 0.0f;
+    }
+
+    void Player::SetOxygen(float oxygen) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->oxygen = std::clamp(oxygen, 0.0f, 1000.0f);
+            gPlayers->SendScript(*player, 0, Shared::kPlayerScript2Oxygen);
+        }
+    }
+
     std::uint32_t Player::GetWeapon() const {
         auto *player = ResolvePlayer();
 
@@ -131,6 +174,18 @@ namespace VantaMP::Scripting {
         auto *player = ResolvePlayer();
 
         return player ? player->ammoClip : 0;
+    }
+
+    std::uint8_t Player::GetWeaponSlot() const {
+        auto *player = ResolvePlayer();
+
+        return player ? Shared::WeaponSlot(player->weaponType) : 0;
+    }
+
+    void Player::SetWeaponSlot(std::uint8_t slot) {
+        if (auto *player = ResolvePlayer(); player && gPlayers && slot <= 12) {
+            gPlayers->SendWeapon(*player, Shared::RPC::PlayerWeapon::kSetSlot, slot, 0);
+        }
     }
 
     bool Player::IsDead() const {
@@ -185,6 +240,16 @@ namespace VantaMP::Scripting {
         if (auto *player = ResolvePlayer(); player && gPlayers) {
             gPlayers->SendWeapon(*player, Shared::RPC::PlayerWeapon::kTakeAll, 0, 0);
         }
+    }
+
+    void Player::SetWeaponAmmo(std::uint32_t weaponType, std::uint32_t ammo) {
+        if (auto *player = ResolvePlayer(); player && gPlayers && Shared::ModelCatalog::IsWeapon(weaponType)) {
+            gPlayers->SendWeapon(*player, Shared::RPC::PlayerWeapon::kSetAmmo, weaponType, ammo);
+        }
+    }
+
+    void Player::Kill() {
+        SetHealth(0.0f);
     }
 
     std::uint8_t Player::GetInterior() const {
@@ -298,9 +363,13 @@ namespace VantaMP::Scripting {
             .property("money", &Player::GetMoney, &Player::SetMoney)
             .property("wantedLevel", &Player::GetWantedLevel, &Player::SetWantedLevel)
             .property("frozen", &Player::GetFrozen, &Player::SetFrozen)
+            .property("collisions", &Player::GetCollisions, &Player::SetCollisions)
+            .property("fightingStyle", &Player::GetFightingStyle, &Player::SetFightingStyle)
+            .property("oxygen", &Player::GetOxygen, &Player::SetOxygen)
             .property("weapon", &Player::GetWeapon)
             .property("ammo", &Player::GetAmmo)
             .property("ammoInClip", &Player::GetAmmoInClip)
+            .property("weaponSlot", &Player::GetWeaponSlot, &Player::SetWeaponSlot)
             .property("dead", &Player::IsDead)
             .property("ducked", &Player::IsDucked)
             .property("inWater", &Player::IsInWater)
@@ -311,7 +380,9 @@ namespace VantaMP::Scripting {
             .property("dimension", &Player::GetDimension, &Player::SetDimension)
             .function("giveWeapon", &Player::GiveWeapon)
             .function("takeWeapon", &Player::TakeWeapon)
-            .function("takeAllWeapons", &Player::TakeAllWeapons);
+            .function("takeAllWeapons", &Player::TakeAllWeapons)
+            .function("setWeaponAmmo", &Player::SetWeaponAmmo)
+            .function("kill", &Player::Kill);
 
         cls->prototype_function("spawn", &Player::JS_Spawn);
         cls->prototype_function("getOccupiedVehicle", &Player::JS_GetOccupiedVehicle);

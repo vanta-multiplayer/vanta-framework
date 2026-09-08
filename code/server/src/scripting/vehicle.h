@@ -84,6 +84,7 @@ namespace VantaMP::Scripting {
 
         bool GetBlown() const;
         void Fix();
+        void Blow();
 
         std::string GetPlateText() const;
         void SetPlateText(const std::string &text);
@@ -102,6 +103,12 @@ namespace VantaMP::Scripting {
 
         bool GetDamageProof() const;
         void SetDamageProof(bool proof);
+
+        bool GetCollisions() const;
+        void SetCollisions(bool enabled);
+
+        bool GetLandingGearDown() const;
+        void SetLandingGearDown(bool down);
 
         std::string GetName() const;
         std::string GetVehicleType() const;
@@ -145,6 +152,7 @@ namespace VantaMP::Scripting {
         static void JS_GetOccupants(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void JS_GetController(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void JS_GetUpgrades(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_GetCompatibleUpgrades(const v8::FunctionCallbackInfo<v8::Value> &info);
 
         inline static Game::VehicleManager *gVehicles = nullptr;
         inline static std::unordered_map<v8::Isolate *, std::unique_ptr<v8pp::class_<Vehicle>>> gClasses;

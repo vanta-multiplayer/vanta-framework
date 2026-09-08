@@ -54,7 +54,7 @@ namespace VantaMP::Game {
 
         // Writes the replica and tells the owner so the next snapshot
         // echoes the new GTA values (or the echo-only fields).
-        void SendScript(Shared::PlayerEntity &player, std::uint8_t flags);
+        void SendScript(Shared::PlayerEntity &player, std::uint8_t flags, std::uint8_t flags2 = 0);
         void SendWeapon(Shared::PlayerEntity &player, std::uint8_t action, std::uint32_t weaponType, std::uint32_t ammo);
 
         [[nodiscard]] Shared::PlayerEntity *Find(MafiaNet::PeerGuid guid) const;

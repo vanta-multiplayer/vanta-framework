@@ -432,6 +432,11 @@ namespace VantaMP::Game {
         vehicle.ForceState();
     }
 
+    void VehicleManager::Blow(Shared::VehicleEntity &vehicle) {
+        vehicle.LatchBlown();
+        vehicle.ForceState();
+    }
+
     Shared::VehicleEntity *VehicleManager::Find(std::uint64_t networkId) const {
         const auto found = _vehicles.find(networkId);
 

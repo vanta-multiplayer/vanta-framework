@@ -49,9 +49,20 @@ namespace VantaMP::Scripting {
         bool GetFrozen() const;
         void SetFrozen(bool frozen);
 
+        bool GetCollisions() const;
+        void SetCollisions(bool enabled);
+
+        std::uint8_t GetFightingStyle() const;
+        void SetFightingStyle(std::uint8_t style);
+
+        float GetOxygen() const;
+        void SetOxygen(float oxygen);
+
         std::uint32_t GetWeapon() const;
         std::uint32_t GetAmmo() const;
         std::uint32_t GetAmmoInClip() const;
+        std::uint8_t GetWeaponSlot() const;
+        void SetWeaponSlot(std::uint8_t slot);
 
         bool IsDead() const;
         bool IsDucked() const;
@@ -63,6 +74,8 @@ namespace VantaMP::Scripting {
         void GiveWeapon(std::uint32_t weaponType, std::uint32_t ammo);
         void TakeWeapon(std::uint32_t weaponType);
         void TakeAllWeapons();
+        void SetWeaponAmmo(std::uint32_t weaponType, std::uint32_t ammo);
+        void Kill();
 
         std::uint8_t GetInterior() const;
         void SetInterior(std::uint8_t interior);

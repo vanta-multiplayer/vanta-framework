@@ -315,6 +315,12 @@ namespace VantaMP::Scripting {
         }
     }
 
+    void Vehicle::Blow() {
+        if (auto *vehicle = ResolveVehicle(); vehicle && gVehicles) {
+            gVehicles->Blow(*vehicle);
+        }
+    }
+
     std::string Vehicle::GetPlateText() const {
         auto *vehicle = ResolveVehicle();
 
@@ -388,6 +394,31 @@ namespace VantaMP::Scripting {
     void Vehicle::SetDamageProof(bool proof) {
         if (auto *vehicle = ResolveVehicle()) {
             vehicle->damageProof = proof;
+        }
+    }
+
+    bool Vehicle::GetCollisions() const {
+        auto *vehicle = ResolveVehicle();
+
+        return !vehicle || vehicle->collisions;
+    }
+
+    void Vehicle::SetCollisions(bool enabled) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->collisions = enabled;
+        }
+    }
+
+    bool Vehicle::GetLandingGearDown() const {
+        auto *vehicle = ResolveVehicle();
+
+        return !vehicle || vehicle->landingGearDown;
+    }
+
+    void Vehicle::SetLandingGearDown(bool down) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->landingGearDown = down;
+            vehicle->ForceState();
         }
     }
 
@@ -747,6 +778,30 @@ namespace VantaMP::Scripting {
         info.GetReturnValue().Set(array);
     }
 
+    void Vehicle::JS_GetCompatibleUpgrades(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto ctx      = isolate->GetCurrentContext();
+        auto array    = v8::Array::New(isolate);
+        std::uint32_t n = 0;
+
+        const int slot = info.Length() >= 1 ? static_cast<int>(v8pp::from_v8<std::uint8_t>(isolate, info[0])) : -1;
+
+        if (slot >= 0) {
+            Shared::ForEachUpgradeInSlot(slot, [&](std::uint16_t id) {
+                array->Set(ctx, n++, v8pp::to_v8(isolate, id)).Check();
+            });
+        }
+        else {
+            for (int i = 0; i < Shared::kUpgradeSlots; ++i) {
+                Shared::ForEachUpgradeInSlot(i, [&](std::uint16_t id) {
+                    array->Set(ctx, n++, v8pp::to_v8(isolate, id)).Check();
+                });
+            }
+        }
+
+        info.GetReturnValue().Set(array);
+    }
+
     v8pp::class_<Vehicle> &Vehicle::GetClass(v8::Isolate *isolate) {
         auto found = gClasses.find(isolate);
 
@@ -771,6 +826,7 @@ namespace VantaMP::Scripting {
             .function("removeAllUpgrades", &Vehicle::RemoveAllUpgrades)
             .function("getRotation", &Vehicle::GetRotationDegrees)
             .function("fix", &Vehicle::Fix)
+            .function("blow", &Vehicle::Blow)
             .function("getUpgradeOnSlot", &Vehicle::GetUpgradeOnSlot)
             .function("getDoorState", &Vehicle::GetDoorState)
             .function("setDoorState", &Vehicle::SetDoorState)
@@ -793,6 +849,8 @@ namespace VantaMP::Scripting {
             .property("headlightColor", &Vehicle::GetHeadlightColor, &Vehicle::SetHeadlightColor)
             .property("frozen", &Vehicle::GetFrozen, &Vehicle::SetFrozen)
             .property("damageProof", &Vehicle::GetDamageProof, &Vehicle::SetDamageProof)
+            .property("collisions", &Vehicle::GetCollisions, &Vehicle::SetCollisions)
+            .property("landingGearDown", &Vehicle::GetLandingGearDown, &Vehicle::SetLandingGearDown)
             .property("color", &Vehicle::GetColor1, &Vehicle::SetColor1)
             .property("color2", &Vehicle::GetColor2, &Vehicle::SetColor2)
             .property("color3", &Vehicle::GetColor3, &Vehicle::SetColor3)
@@ -814,6 +872,7 @@ namespace VantaMP::Scripting {
         cls->prototype_function("getOccupants", &Vehicle::JS_GetOccupants);
         cls->prototype_function("getController", &Vehicle::JS_GetController);
         cls->prototype_function("getUpgrades", &Vehicle::JS_GetUpgrades);
+        cls->prototype_function("getCompatibleUpgrades", &Vehicle::JS_GetCompatibleUpgrades);
         cls->prototype_function("getOccupant", [](const v8::FunctionCallbackInfo<v8::Value> &info) {
             auto *isolate = info.GetIsolate();
             auto *self    = v8pp::class_<Vehicle>::unwrap_object(isolate, info.This());

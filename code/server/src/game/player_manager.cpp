@@ -133,21 +133,25 @@ namespace VantaMP::Game {
         SendWorldSpace(player.ownerGUID, static_cast<std::uint64_t>(player.GetNetworkID()), player.interior, dimension, Shared::kWorldSpaceDimension);
     }
 
-    void PlayerManager::SendScript(Shared::PlayerEntity &player, std::uint8_t flags) {
+    void PlayerManager::SendScript(Shared::PlayerEntity &player, std::uint8_t flags, std::uint8_t flags2) {
         auto *net = Framework::CoreModules::GetNetworkPeer();
 
-        if (!net || static_cast<std::uint64_t>(player.ownerGUID) == 0 || flags == 0) {
+        if (!net || static_cast<std::uint64_t>(player.ownerGUID) == 0 || (flags == 0 && flags2 == 0)) {
             return;
         }
 
         Shared::RPC::PlayerScript message;
-        message.flags       = flags;
-        message.health      = player.health;
-        message.armour      = player.armour;
-        message.modelId     = player.modelId;
-        message.money       = player.money;
-        message.wantedLevel = player.wantedLevel;
-        message.frozen      = player.frozen;
+        message.flags         = flags;
+        message.health        = player.health;
+        message.armour        = player.armour;
+        message.modelId       = player.modelId;
+        message.money         = player.money;
+        message.wantedLevel   = player.wantedLevel;
+        message.frozen        = player.frozen;
+        message.flags2        = flags2;
+        message.collisions    = player.collisions;
+        message.fightingStyle = player.fightingStyle;
+        message.oxygen        = player.oxygen;
         net->SendRPC(message, MafiaNet::ToGuid(player.ownerGUID));
     }
 
