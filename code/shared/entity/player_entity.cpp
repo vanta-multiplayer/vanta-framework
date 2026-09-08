@@ -53,6 +53,10 @@ namespace VantaMP::Shared {
 
         fields.Field(interior);
         fields.Field(dimension);
+
+        fields.Field(money);
+        fields.Field(wantedLevel);
+        fields.Field(frozen);
     }
 
     Framework::Networking::Replication::NetworkEntity *PlayerEntity::GetInterestDependency() {

@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 
 namespace VantaMP::Shared {
     // A vehicle, as everyone else sees it.
@@ -123,6 +124,41 @@ namespace VantaMP::Shared {
         // overrideLights: 0 none, 1 force off, 2 force on — GTA's own field.
         std::uint8_t overrideLights = 0;
         bool         locked         = false;
+
+        // More script cosmetics / switches. Owner echoes, never reads GTA.
+        std::string   plateText;
+        std::uint8_t  dirtLevel      = 0;
+        bool          taxiLight      = false;
+        std::uint32_t headlightColor = 0;
+        bool          frozen         = false;
+        bool          damageProof    = false;
+
+        static std::uint8_t PackedByte(std::uint64_t packed, int index) {
+            return static_cast<std::uint8_t>((packed >> (index * 8)) & 0xFFu);
+        }
+
+        static std::uint64_t SetPackedByte(std::uint64_t packed, int index, std::uint8_t value) {
+            const auto shift = index * 8;
+
+            packed &= ~(0xFFull << shift);
+            packed |= static_cast<std::uint64_t>(value) << shift;
+            return packed;
+        }
+
+        static std::uint32_t PackedBits(std::uint32_t packed, int index, int bits) {
+            const auto mask = (1u << bits) - 1u;
+
+            return (packed >> (index * bits)) & mask;
+        }
+
+        static std::uint32_t SetPackedBits(std::uint32_t packed, int index, int bits, std::uint32_t value) {
+            const auto mask  = (1u << bits) - 1u;
+            const auto shift = index * bits;
+
+            packed &= ~(mask << shift);
+            packed |= (value & mask) << shift;
+            return packed;
+        }
 
         void SetColours(std::uint32_t c1, std::uint32_t c2, std::uint32_t c3, std::uint32_t c4) {
             colours[0] = TweakVehicleRgb(c1);

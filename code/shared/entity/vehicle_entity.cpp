@@ -46,6 +46,13 @@ namespace VantaMP::Shared {
 
         fields.Field(overrideLights);
         fields.Field(locked);
+
+        fields.Field(plateText);
+        fields.Field(dirtLevel);
+        fields.Field(taxiLight);
+        fields.Field(headlightColor);
+        fields.Field(frozen);
+        fields.Field(damageProof);
     }
 
     void VehicleEntity::OnStateForced() {

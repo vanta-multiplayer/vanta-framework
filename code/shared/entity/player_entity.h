@@ -150,6 +150,18 @@ namespace VantaMP::Shared {
         // new number, not 0.
         std::uint16_t dimension = 0;
 
+        // Script money. The owner echoes and never reads GTA — a cheat
+        // menu that writes CPlayerInfo does not put cash on the wire.
+        std::int32_t money = 0;
+
+        // Stars, 0–6. The owner reports what GTA has (cops can add
+        // them). Script set goes out as PlayerScript so the owner
+        // writes CWanted first.
+        std::uint8_t wantedLevel = 0;
+
+        // Script freeze. Owner echoes, never reads GTA.
+        bool frozen = false;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnStateForced() override;
