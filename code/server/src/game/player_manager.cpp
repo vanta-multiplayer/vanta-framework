@@ -152,6 +152,9 @@ namespace VantaMP::Game {
         message.collisions    = player.collisions;
         message.fightingStyle = player.fightingStyle;
         message.oxygen        = player.oxygen;
+        message.walkingStyle  = player.walkingStyle;
+        message.alpha         = player.alpha;
+        message.onFire        = player.onFire;
         net->SendRPC(message, MafiaNet::ToGuid(player.ownerGUID));
     }
 

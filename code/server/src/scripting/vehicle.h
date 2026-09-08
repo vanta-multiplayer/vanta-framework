@@ -110,6 +110,14 @@ namespace VantaMP::Scripting {
         bool GetLandingGearDown() const;
         void SetLandingGearDown(bool down);
 
+        bool GetLights() const;
+        void SetLights(bool on);
+
+        std::uint8_t GetAlpha() const;
+        void SetAlpha(std::uint8_t alpha);
+
+        bool IsOnGround() const;
+
         std::string GetName() const;
         std::string GetVehicleType() const;
         std::uint8_t GetMaxPassengers() const;

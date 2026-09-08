@@ -158,6 +158,51 @@ namespace VantaMP::Scripting {
         }
     }
 
+    std::uint16_t Player::GetWalkingStyle() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->walkingStyle : 0;
+    }
+
+    void Player::SetWalkingStyle(std::uint16_t style) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->walkingStyle = style;
+            gPlayers->SendScript(*player, 0, Shared::kPlayerScript2WalkingStyle);
+        }
+    }
+
+    std::uint8_t Player::GetAlpha() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->alpha : 255;
+    }
+
+    void Player::SetAlpha(std::uint8_t alpha) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->alpha = alpha;
+            gPlayers->SendScript(*player, 0, Shared::kPlayerScript2Alpha);
+        }
+    }
+
+    bool Player::GetOnFire() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->onFire;
+    }
+
+    void Player::SetOnFire(bool on) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->onFire = on;
+            gPlayers->SendScript(*player, 0, Shared::kPlayerScript2OnFire);
+        }
+    }
+
+    bool Player::IsOnGround() const {
+        auto *player = ResolvePlayer();
+
+        return player && !player->isInAir && !player->isInWater;
+    }
+
     std::uint32_t Player::GetWeapon() const {
         auto *player = ResolvePlayer();
 
@@ -366,6 +411,10 @@ namespace VantaMP::Scripting {
             .property("collisions", &Player::GetCollisions, &Player::SetCollisions)
             .property("fightingStyle", &Player::GetFightingStyle, &Player::SetFightingStyle)
             .property("oxygen", &Player::GetOxygen, &Player::SetOxygen)
+            .property("walkingStyle", &Player::GetWalkingStyle, &Player::SetWalkingStyle)
+            .property("alpha", &Player::GetAlpha, &Player::SetAlpha)
+            .property("onFire", &Player::GetOnFire, &Player::SetOnFire)
+            .property("onGround", &Player::IsOnGround)
             .property("weapon", &Player::GetWeapon)
             .property("ammo", &Player::GetAmmo)
             .property("ammoInClip", &Player::GetAmmoInClip)

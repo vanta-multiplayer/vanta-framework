@@ -58,6 +58,17 @@ namespace VantaMP::Scripting {
         float GetOxygen() const;
         void SetOxygen(float oxygen);
 
+        std::uint16_t GetWalkingStyle() const;
+        void SetWalkingStyle(std::uint16_t style);
+
+        std::uint8_t GetAlpha() const;
+        void SetAlpha(std::uint8_t alpha);
+
+        bool GetOnFire() const;
+        void SetOnFire(bool on);
+
+        bool IsOnGround() const;
+
         std::uint32_t GetWeapon() const;
         std::uint32_t GetAmmo() const;
         std::uint32_t GetAmmoInClip() const;

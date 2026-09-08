@@ -422,6 +422,36 @@ namespace VantaMP::Scripting {
         }
     }
 
+    bool Vehicle::GetLights() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->lightsOn;
+    }
+
+    void Vehicle::SetLights(bool on) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->lightsOn = on;
+        }
+    }
+
+    std::uint8_t Vehicle::GetAlpha() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? vehicle->alpha : 255;
+    }
+
+    void Vehicle::SetAlpha(std::uint8_t alpha) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->alpha = alpha;
+        }
+    }
+
+    bool Vehicle::IsOnGround() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->onGround;
+    }
+
     std::string Vehicle::GetName() const {
         auto *vehicle = ResolveVehicle();
 
@@ -851,6 +881,9 @@ namespace VantaMP::Scripting {
             .property("damageProof", &Vehicle::GetDamageProof, &Vehicle::SetDamageProof)
             .property("collisions", &Vehicle::GetCollisions, &Vehicle::SetCollisions)
             .property("landingGearDown", &Vehicle::GetLandingGearDown, &Vehicle::SetLandingGearDown)
+            .property("lights", &Vehicle::GetLights, &Vehicle::SetLights)
+            .property("alpha", &Vehicle::GetAlpha, &Vehicle::SetAlpha)
+            .property("onGround", &Vehicle::IsOnGround)
             .property("color", &Vehicle::GetColor1, &Vehicle::SetColor1)
             .property("color2", &Vehicle::GetColor2, &Vehicle::SetColor2)
             .property("color3", &Vehicle::GetColor3, &Vehicle::SetColor3)
@@ -978,8 +1011,7 @@ namespace VantaMP::Scripting {
             Framework::Scripting::Engine          *engine    = nullptr;
             Framework::Scripting::ResourceManager *resources = nullptr;
             v8::Isolate                           *isolate   = nullptr;
-            v8::Local<v8::Context>                 context;
-            bool                                   ok = false;
+            bool                                   ok        = false;
         };
 
         OccupancyEmit OpenOccupancyEmit() {
@@ -999,8 +1031,7 @@ namespace VantaMP::Scripting {
             }
 
             scope.isolate = scope.engine->GetIsolate();
-            scope.context = scope.engine->GetContext();
-            scope.ok      = true;
+            scope.ok      = scope.isolate != nullptr;
             return scope;
         }
     } // namespace
@@ -1015,7 +1046,8 @@ namespace VantaMP::Scripting {
         v8::Locker locker(scope.isolate);
         v8::Isolate::Scope isolateScope(scope.isolate);
         v8::HandleScope handleScope(scope.isolate);
-        v8::Context::Scope contextScope(scope.context);
+        v8::Local<v8::Context> context = scope.engine->GetContext();
+        v8::Context::Scope contextScope(context);
 
         std::vector<v8::Local<v8::Value>> args;
         args.push_back(Player::Wrap(scope.isolate, playerId));
@@ -1024,7 +1056,7 @@ namespace VantaMP::Scripting {
         args.push_back(v8pp::to_v8(scope.isolate, jacked));
         args.push_back(v8pp::to_v8(scope.isolate, door));
 
-        return scope.resources->GetEvents().EmitReservedSync(scope.isolate, scope.context, "vehicleStartEnter", args);
+        return scope.resources->GetEvents().EmitReservedSync(scope.isolate, context, "vehicleStartEnter", args);
     }
 
     void Vehicle::EmitEnter(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat) {
@@ -1037,14 +1069,15 @@ namespace VantaMP::Scripting {
         v8::Locker locker(scope.isolate);
         v8::Isolate::Scope isolateScope(scope.isolate);
         v8::HandleScope handleScope(scope.isolate);
-        v8::Context::Scope contextScope(scope.context);
+        v8::Local<v8::Context> context = scope.engine->GetContext();
+        v8::Context::Scope contextScope(context);
 
         std::vector<v8::Local<v8::Value>> args;
         args.push_back(Player::Wrap(scope.isolate, playerId));
         args.push_back(Wrap(scope.isolate, vehicleId));
         args.push_back(v8pp::to_v8(scope.isolate, seat));
 
-        scope.resources->GetEvents().EmitReserved(scope.isolate, scope.context, "vehicleEnter", args);
+        scope.resources->GetEvents().EmitReserved(scope.isolate, context, "vehicleEnter", args);
     }
 
     bool Vehicle::EmitStartExit(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat, std::uint8_t door) {
@@ -1057,7 +1090,8 @@ namespace VantaMP::Scripting {
         v8::Locker locker(scope.isolate);
         v8::Isolate::Scope isolateScope(scope.isolate);
         v8::HandleScope handleScope(scope.isolate);
-        v8::Context::Scope contextScope(scope.context);
+        v8::Local<v8::Context> context = scope.engine->GetContext();
+        v8::Context::Scope contextScope(context);
 
         std::vector<v8::Local<v8::Value>> args;
         args.push_back(Player::Wrap(scope.isolate, playerId));
@@ -1065,7 +1099,7 @@ namespace VantaMP::Scripting {
         args.push_back(v8pp::to_v8(scope.isolate, seat));
         args.push_back(v8pp::to_v8(scope.isolate, door));
 
-        return scope.resources->GetEvents().EmitReservedSync(scope.isolate, scope.context, "vehicleStartExit", args);
+        return scope.resources->GetEvents().EmitReservedSync(scope.isolate, context, "vehicleStartExit", args);
     }
 
     void Vehicle::EmitExit(std::uint64_t playerId, std::uint64_t vehicleId, std::uint8_t seat) {
@@ -1078,13 +1112,14 @@ namespace VantaMP::Scripting {
         v8::Locker locker(scope.isolate);
         v8::Isolate::Scope isolateScope(scope.isolate);
         v8::HandleScope handleScope(scope.isolate);
-        v8::Context::Scope contextScope(scope.context);
+        v8::Local<v8::Context> context = scope.engine->GetContext();
+        v8::Context::Scope contextScope(context);
 
         std::vector<v8::Local<v8::Value>> args;
         args.push_back(Player::Wrap(scope.isolate, playerId));
         args.push_back(Wrap(scope.isolate, vehicleId));
         args.push_back(v8pp::to_v8(scope.isolate, seat));
 
-        scope.resources->GetEvents().EmitReserved(scope.isolate, scope.context, "vehicleExit", args);
+        scope.resources->GetEvents().EmitReserved(scope.isolate, context, "vehicleExit", args);
     }
 } // namespace VantaMP::Scripting
