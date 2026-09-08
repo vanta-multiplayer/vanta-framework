@@ -51,8 +51,8 @@ Kill these before a client rebuild, or the link fails with LNK1168:
 - `cef_subprocess`
 
 Restart the **server** as well whenever a `PlayerEntity` or `VehicleEntity`
-field changed. The wire is positional. A mismatched pair deserializes
-garbage and does not tell you.
+field changed, or whenever `WorldEnv` gained fields. The wire is positional.
+A mismatched pair deserializes garbage and does not tell you.
 
 ## Finding the game
 

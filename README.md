@@ -38,7 +38,7 @@ server. Full notes: [`docs/setup.md`](docs/setup.md).
 | `code/server` | `VantaMPServer` | 64-bit | Replicas, reliable RPCs, scripting |
 | `code/shared` | — | — | Entities, RPCs and rates compiled into both sides |
 | `code/client/src/sdk` | — | — | The only place game types exist. Signatures, not addresses |
-| `docs/` | — | — | Architecture, player sync, vehicles, voice, SDK, building, interface |
+| `docs/` | — | — | Architecture, player sync, vehicles, voice, world space/env, SDK, building, interface |
 | `ui/` | — | — | Solid menu. Built into one HTML file and compiled into the client |
 | `data/resources/freeroam` | — | — | Waterfront spawn and the dock Sultan |
 | `vendors/plugin-sdk` | — | — | DK22Pac's plugin-sdk, for San Andreas **structure layouts** |
@@ -92,6 +92,9 @@ The launcher maps the game, the client attaches inside it, and two players can s
 - **Freeroam.** Waterfront spawn at `2899.41, -1672.64, 12.89` and a Sultan on the dock at
   `2865.93, -1665.88, 10.88`. Grove Street is commented beside the numbers for when the
   waterfront has been watched long enough.
+- **World.** Script `World.*` owns the shared clock, game speed, weather, gravity, and
+  optional visuals (clip, fog, rain, sky, water colour, heat haze, clouds, wind, …).
+  See [`docs/world-env.md`](docs/world-env.md).
 
 A D3D9 device hook still drives `Core::Application` — renderer, ImGui and the client tick hang
 off the game's own `EndScene`. The ped debug panel is still there.

@@ -15,6 +15,9 @@ garbage, silently.
   re-declare them.
 - Transitions that play once (enter, exit, shot, reload, death, bystander
   damage) are reliable RPCs in `code/shared/rpc/`.
+- Server-authoritative world switches ride `WorldEnv` (same folder) —
+  clock, speed, weather, gravity, visuals. Append fields; restart both
+  sides after a serialize change. See `docs/world-env.md`.
 - `applyRatios` on `VehicleDamageReport` must stay false for status-only
   reports or every door slams shut.
 - After any serialize change, restart the server **and** both clients.

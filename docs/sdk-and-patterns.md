@@ -22,6 +22,7 @@ sdk/vehicle/occupancy.*    enter / exit / jack tasks              [plugin-sdk]
 sdk/world/streaming.*      model request / residency / interiors  [plugin-sdk]
 sdk/world/camera.*         camera rotation, per slot
 sdk/world/draw.*           nametag font
+sdk/world/environment.*    WorldEnv apply (clock, speed, visuals) — no plugin-sdk
 
 sdk/input/input.*          pad, local read, remote write          [plugin-sdk]
 ```
@@ -29,8 +30,10 @@ sdk/input/input.*          pad, local read, remote write          [plugin-sdk]
 `sdk/ped/` rather than `sdk/entities/`: `game/entities/` already exists
 above the boundary and already has a `local_player.cpp`. The names would
 collide for a reader and for object files. Vehicles sit next to peds
-under `sdk/vehicle/`. World helpers (stream, camera, draw) are
-`sdk/world/`.
+under `sdk/vehicle/`. World helpers (stream, camera, draw, environment)
+are `sdk/world/`. `environment.cpp` is **not** on
+`VANTAMP_CLIENT_SDK_FILES` — it only pokes pattern addresses, no game
+types.
 
 Vanta pool-deletes peds and vehicles without running `~CPhysical`. That
 destructor is what returns a realtime shadow to the manager. Call

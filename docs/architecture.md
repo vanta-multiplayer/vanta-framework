@@ -23,7 +23,7 @@ core/nui         CEF view. Page lives in the DLL at http://vanta/ui.html
 core/voice_io    WASAPI devices, mic test, PTT latch
 sdk/ped          peds, weapons, shots
 sdk/vehicle      cars, occupancy
-sdk/world        streaming, camera, draw, environment (clock / speed)
+sdk/world        streaming, camera, draw, environment (WorldEnv apply)
 sdk/input        pad
 shared/entity    PlayerEntity / VehicleEntity
 shared/vehicle   colours, upgrades
@@ -71,18 +71,20 @@ Not everything is a replica field.
    health, colours, packed damage. Append-only. A late joiner must see a wreck
    and a nickname without waiting for a change that already happened.
 2. **Reliable RPC**. Enter, exit, shot, reload, death, bystander damage,
-   world-space, world-env (clock / speed / weather). These are transitions
-   that play once (or authority that must not be missed). As a flag they
-   restart; as an unreliable packet they can be missed. Dimension is
-   server-authored and would be stomped by the next owner snapshot without
-   `WorldSpace`. Game speed is reasserted every client frame so a local
-   poke cannot stick — see [world env](world-env.md).
+   world-space, world-env. These are transitions that play once (or
+   authority that must not be missed). As a flag they restart; as an
+   unreliable packet they can be missed. Dimension is server-authored and
+   would be stomped by the next owner snapshot without `WorldSpace`.
+   Game speed, gravity, and other `WorldEnv` overrides are reasserted
+   every client frame so a local poke cannot stick — see
+   [world env](world-env.md).
 3. **Nothing.** Some GTA flags are outputs (`bIsDucking`, `bIsStanding`,
    `m_fSteerAngle`). Writing them does nothing, or fights the task that owns
    them. Run the task or swap the pad instead.
 
-Restart the server whenever a shared entity field is added. The serializer is
-positional. A mismatched pair deserializes garbage silently.
+Restart the server whenever a shared entity field **or** `WorldEnv` field
+is added. The serializer is positional. A mismatched pair deserializes
+garbage silently.
 
 ## Scripting
 
@@ -92,8 +94,9 @@ only enters the isolate and calls `Player::Register` / `Vehicle::Register` /
 `Player` **is** the Framework Player (`kick`, `emit`, `ping`, nametag,
 Entity `position` / `rotation`) with spawn and world-space hung on it.
 `Vehicle` is a Framework Entity. `Vehicles.create` returns a handle.
-`World` is the server clock and env switches (time, minute duration, game
-speed, weather) — see [world env](world-env.md).
+`World` is the server clock and env switches — time, speed, weather,
+gravity, clip/fog/rain/waves, sky/moon/sun, water colour, heat haze,
+clouds, jetpack height, wind — see [world env](world-env.md).
 Vehicle `rotation` is MTA degrees X, Y, Z; a numeric heading on create
 is still radians. Players expose health, armour, model, money, wanted,
 weapons, freeze, collision, fighting style, oxygen, walking style,
@@ -105,8 +108,9 @@ upgrades. Script writes the owner reports
 (health, wanted, weapons, fighting, oxygen) go out as `PlayerScript` /
 `PlayerWeapon` so the next snapshot does not stomp them. RPC
 registration lives in `core/net.cpp` on both sides.
-See [world space](world-space.md). If a resource listens for `playerReady`
-or `playerDeath`, C++ does not also spawn — that is the resource's job.
+See [world space](world-space.md) and [world env](world-env.md). If a
+resource listens for `playerReady` or `playerDeath`, C++ does not also
+spawn — that is the resource's job.
 
 The current freeroam spawn is the Los Santos waterfront so two clients start
 near water and a test Sultan. Grove Street is commented next to the numbers

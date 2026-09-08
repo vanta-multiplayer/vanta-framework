@@ -11,6 +11,8 @@ signature or a vtable slot. A 1.0 US address in a comment is provenance.
 
 - Prefer extending an existing SDK function over adding a `.cpp` to
   `VANTAMP_CLIENT_SDK_FILES`.
+- `sdk/world/environment.*` stays **off** that list (pattern addresses only),
+  same as camera/draw. WorldEnv surface: `docs/world-env.md`.
 - `sdk/ped/access.h` is internal. Above the wall, peds are slots.
 - `CancelEntriesInto` before deleting a car. `UnlinkFromVehicle` before
   freeing a ped.

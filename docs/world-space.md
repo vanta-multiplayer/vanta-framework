@@ -16,6 +16,8 @@ same interior.
 
 Restart the server after this field append. The serializer is positional.
 
+Not the same as [world env](world-env.md) (clock / weather / gravity / visuals).
+
 ## Wire
 
 Both `PlayerEntity` and `VehicleEntity` append `interior` (u8) and

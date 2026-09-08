@@ -30,9 +30,9 @@ cmd /c "builds\build.bat VantaMPServer 64"    # server
 - Client: `new/builds/build/bin/VantaMPLauncher.exe` (run it twice for two players)
 - Logs: `new/builds/build/bin/logs/VantaMP-<pid>.log`, one per client instance.
 - The DLL is locked while a client runs — kill `VantaMPLauncher`/`gta_sa` before rebuilding.
-- **Restart the server whenever `PlayerEntity` fields change.** The wire format is
-  positional with no field names, so a mismatched pair deserializes garbage
-  silently rather than failing.
+- **Restart the server whenever `PlayerEntity` / `VehicleEntity` / `WorldEnv`
+  fields change.** The wire format is positional with no field names, so a
+  mismatched pair deserializes garbage silently rather than failing.
 
 ## Architecture that matters
 
@@ -63,6 +63,7 @@ corrects where that walk has drifted.
   sdk/world/camera.*    camera rotation, per slot                 no plugin-sdk
   sdk/world/streaming.*                                           [plugin-sdk]
   sdk/world/draw.*
+  sdk/world/environment.* WorldEnv apply (clock/speed/visuals)    no plugin-sdk
   sdk/ped/              local / remote / weapon / shot / aim
   sdk/vehicle/          create, RGB paint, occupancy              [plugin-sdk]
   ```
@@ -70,6 +71,9 @@ corrects where that walk has drifted.
   Note `sdk/ped/` rather than `sdk/entities/`: `game/entities/` already exists
   above the boundary and had a `local_player.cpp` of its own, so the names would
   have collided both for a reader and for object-file naming.
+- **World env** — server `WorldManager` + script `World.*` + client
+  `PulseWorldEnv` every frame (speed/gravity/visuals). Docs:
+  `docs/world-env.md`. Not the same as world-space (interior/dimension).
 - plugin-sdk is used **header-only**. Its `.cpp` bodies are 1.0 US addresses that
   are not linked, so any game function must be resolved as a pattern and called
   through a function pointer. Virtuals are reached through the vtable.

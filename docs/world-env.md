@@ -1,14 +1,31 @@
 # World environment
 
-Server clock, minute length, game speed, weather, gravity, and optional
-visual overrides (far clip, fog, rain, waves, sky, moon, sun, water colour,
-heat haze, clouds, jetpack height, wind). One authority for everyone — not a
-per-player replica field.
+Server-authoritative clock and world switches. One authority for everyone —
+not a per-player replica field. Distinct from [world space](world-space.md)
+(interiors / dimensions on entities).
+
+## Files
+
+| Side | Path |
+|------|------|
+| Wire | `code/shared/rpc/world_env.h` |
+| Server state | `code/server/src/game/world_manager.*` |
+| Script | `code/server/src/scripting/world.*` (`World` global) |
+| Client apply | `code/client/src/game/sync/world_sync.*` |
+| Client GTA | `code/client/src/sdk/world/environment.*` (not on the plugin-sdk wall) |
+| Patterns | `code/client/src/sdk/patterns.*` |
+
+Join snapshot: `Server::OnPlayerReady` → `WorldManager::SendTo`. Script
+sets broadcast only the flags that moved. Client registers
+`WorldEnv` in `core/net.cpp` and pulses authority from `UpdatePlayerSync`.
+
+**Restart the server (and clients) after any `WorldEnv` serialize change.**
+The RPC is positional like the entity serializers.
 
 ## Wire
 
-`WorldEnv` (`shared/rpc/world_env.h`) is a reliable RPC. Flags are `uint32`
-and say which fields are live in this packet:
+`WorldEnv` is a reliable RPC. Flags are `uint32` and say which fields are
+live in this packet:
 
 | Flag | Field | Meaning |
 |------|-------|---------|
@@ -17,7 +34,7 @@ and say which fields are live in this packet:
 | gameSpeed | `0..10` | `CTimer::ms_fTimeScale` |
 | weather | weather id | `CWeather::ForceWeatherNow` |
 | gravity | `0..1` (default `0.008`) | global gravity float |
-| farClip | distance | `CRenderer` far clip plane |
+| farClip | distance | far clip plane |
 | fog | distance | fog start |
 | rain | `0..1` | `CWeather::Rain` |
 | wave | height ≥ 0 | water wave height |
@@ -31,9 +48,11 @@ and say which fields are live in this packet:
 | jetpackHeight | float (default `100`) | jetpack ceiling |
 | wind | xyz floats | weather wind velocity |
 
-Join gets core flags (time / duration / speed / weather / gravity) plus any
-visual overrides script has already set. Script changes broadcast only the
-flags that moved.
+**Core on join** (always): time, minuteDuration, gameSpeed, weather, gravity.
+
+**Optional** (OR'd into the join snapshot only after script has set them):
+farClip, fog, rain, wave, sky, moon, sunColor, sunSize, waterColor,
+heatHaze, clouds, jetpackHeight, wind.
 
 ## Server clock
 
@@ -41,10 +60,10 @@ flags that moved.
 the sim up does not make the server day race ahead of what scripts read —
 same idea as MTA's `CClock`.
 
-Default: noon, 1000 ms per game minute, speed `1`, weather `0`, gravity
-`0.008`, clouds on. Visual overrides stay off until script sets them.
+Defaults: noon, 1000 ms per game minute, speed `1`, weather `0`, gravity
+`0.008`, clouds on. Other visuals stay off until script sets them.
 
-## Anti-cheat (speed and gravity)
+## Anti-cheat (speed, gravity, visuals)
 
 A one-shot write of `ms_fTimeScale` or gravity is not enough — a trainer can
 poke it again next frame. The client stores the last server values and
@@ -52,23 +71,66 @@ poke it again next frame. The client stores the last server values and
 Authoritative visuals are pulsed the same way so weather / timecycle code
 cannot stomp them without MTA-style Update nops.
 
-## Script
+## Script API
 
 ```js
+// Clock
+World.setTime(18, 30)
+World.setHour(12)
+World.setMinute(0)
+World.setMinuteDuration(1000)   // real ms per in-game minute
+World.getHour()
+World.getMinute()
+World.getMinuteDuration()
+
+// Speed / weather / gravity
+World.setGameSpeed(1.0)         // clamp 0..10
+World.setWeather(8)             // ForceWeatherNow id
+World.setGravity(0.008)
+World.getGameSpeed()
+World.getWeather()
+World.getGravity()
+
+// Clip / weather FX
+World.setFarClip(800)
+World.setFogDistance(200)
+World.setRainLevel(0.5)
+World.setWaveHeight(0.6)
+World.getFarClip()
+World.getFogDistance()
+World.getRainLevel()
+World.getWaveHeight()
+
+// Sky / celestial
+World.setSkyGradient(30, 60, 120, 10, 20, 40)
+World.setMoonSize(3)
+World.setSunColor(255, 200, 100, 255, 255, 200)
+World.setSunSize(1.0)
+World.getSkyGradient()          // [topR, topG, topB, botR, botG, botB]
+World.getMoonSize()
+World.getSunColor()             // [coreR, coreG, coreB, coronaR, coronaG, coronaB]
+World.getSunSize()
+
+// Water / post FX
+World.setWaterColor(64, 128, 200, 200)   // RGB[A], 0..255
+World.setHeatHaze(80)                   // intensity; rest optional
+World.setHeatHaze(80, 0, 12, 18, 75, 80, 80, 85, false)
+World.getWaterColor()                   // [r, g, b, a]
+World.getHeatHaze()                     // [intensity, randomShift, …, inside]
+
+// Clouds / jetpack / wind
 World.setCloudsEnabled(false)
 World.setJetpackMaxHeight(100)
 World.setWindVelocity(0.2, 0.1, 0.0)
-
 World.getCloudsEnabled()
 World.getJetpackMaxHeight()
-World.getWindVelocity()   // [x, y, z]
-// …plus earlier World.* getters/setters
+World.getWindVelocity()                 // [x, y, z]
 ```
 
-## Backlog (MTA world features not here yet)
+## Backlog
 
 - **Water levels / `createWater` triangles** — needs a client water vertex
-  manager (MTA's `CWaterManagerSA`), not a single float.
+  manager (MTA's `CWaterManagerSA`), not another `WorldEnv` float.
 - Aircraft max height / velocity (multiplayer pointer redirects).
 - Blur level — Vanta already NOPs speed blur in `gameplay.cpp`.
 - Traffic density — not a first-class MTA world sync.
