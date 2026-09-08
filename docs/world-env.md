@@ -1,8 +1,8 @@
 # World environment
 
 Server clock, minute length, game speed, weather, gravity, and optional
-visual overrides (far clip, fog, rain, waves, sky, moon, sun). One authority
-for everyone — not a per-player replica field.
+visual overrides (far clip, fog, rain, waves, sky, moon, sun, water colour,
+heat haze). One authority for everyone — not a per-player replica field.
 
 ## Wire
 
@@ -24,6 +24,8 @@ fields are live in this packet:
 | moon | size (default `3`) | moon sprite size |
 | sunColor | 6 RGB bytes | sun core + corona |
 | sunSize | unscaled float | stored as `value * 10` in GTA |
+| waterColor | RGBA floats `0..255` | surface + underwater tint |
+| heatHaze | intensity + FX params | `CPostEffects` heat haze |
 
 Join gets core flags (time / duration / speed / weather / gravity) plus any
 visual overrides script has already set. Script changes broadcast only the
@@ -50,11 +52,8 @@ cannot stomp them without MTA-style Update nops.
 
 ```js
 World.setTime(18, 30)
-World.setHour(12)
-World.setMinute(0)
-World.setMinuteDuration(1000)   // real ms per in-game minute
-World.setGameSpeed(1.0)         // clamp 0..10
-World.setWeather(8)             // ForceWeatherNow id
+World.setGameSpeed(1.0)
+World.setWeather(8)
 World.setGravity(0.008)
 World.setFarClip(800)
 World.setFogDistance(200)
@@ -64,25 +63,19 @@ World.setSkyGradient(30, 60, 120, 10, 20, 40)
 World.setMoonSize(3)
 World.setSunColor(255, 200, 100, 255, 255, 200)
 World.setSunSize(1.0)
+World.setWaterColor(64, 128, 200, 200)          // RGB[A], 0..255
+World.setHeatHaze(80)                           // intensity; rest optional
+World.setHeatHaze(80, 0, 12, 18, 75, 80, 80, 85, false)
 
-World.getHour()
-World.getMinute()
-World.getMinuteDuration()
-World.getGameSpeed()
-World.getWeather()
-World.getGravity()
-World.getFarClip()
-World.getFogDistance()
-World.getRainLevel()
-World.getWaveHeight()
-World.getSkyGradient()   // [topR, topG, topB, botR, botG, botB]
-World.getMoonSize()
-World.getSunColor()      // [coreR, coreG, coreB, coronaR, coronaG, coronaB]
-World.getSunSize()
+World.getWaterColor()   // [r, g, b, a]
+World.getHeatHaze()     // [intensity, randomShift, speedMin, speedMax, scanX, scanY, renderX, renderY, inside]
+World.getSkyGradient()
+World.getSunColor()
+// …plus the scalar getters from earlier waves
 ```
 
 ## Backlog (MTA world features not here yet)
 
-Water level vertex rewrites / `createWater` triangles, heat haze, blur
-(often per-player in MTA), traffic density, water colour.
-Those land as more `WorldEnv` flags or sibling RPCs when needed.
+Water level vertex rewrites / `createWater` triangles, blur (often
+per-player in MTA), traffic density. Those land as more `WorldEnv` flags or
+sibling RPCs when needed.
