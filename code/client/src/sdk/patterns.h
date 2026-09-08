@@ -556,6 +556,13 @@ namespace VantaMP::SDK {
         // MTA: VAR_CVehicle_Variation1/2.
         uintptr_t CVehicleModelInfo__ms_compsToUse = 0;
 
+        // CModelInfo::ms_modelInfoPtrs — indexed by CEntity::m_nModelIndex.
+        uintptr_t CModelInfo__ms_modelInfoPtrs = 0;
+
+        // Per-instance custom plate texture. Create reads model->m_szPlateText.
+        uintptr_t CVehicle__CustomCarPlate_TextureCreate  = 0;
+        uintptr_t CVehicle__CustomCarPlate_TextureDestroy = 0;
+
         // Headlight beam / corona / reflection. Mid-function sites tint
         // the colours MTA patches; DoVehicleLights captures `this`.
         uintptr_t CVehicle__DoVehicleLights              = 0;

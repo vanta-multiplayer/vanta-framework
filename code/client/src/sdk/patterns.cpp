@@ -374,6 +374,10 @@ namespace VantaMP::SDK {
         // MTA VAR_CVehicle_Variation1. Adjacent byte is Variation2.
         gPatterns.CVehicleModelInfo__ms_compsToUse =
             OperandAt(hook::get_pattern("08 A2 ? ? ? ? 88 0D 59"), 2); // site 0x004470A7 -> 0x008A6458
+        gPatterns.CModelInfo__ms_modelInfoPtrs =
+            OperandAt(hook::get_pattern("FF FF 0F BF 4E 22 8B 14 8D ? ? ? ? 8B 42 14 5E"), 9); // site 0x005344D2 -> 0x00A9B0C8
+        gPatterns.CVehicle__CustomCarPlate_TextureCreate  = Resolve("56 8B 74 24 08 57 8B F9 C7"); // 0x006D10E0
+        gPatterns.CVehicle__CustomCarPlate_TextureDestroy = Resolve("56 8B F1 8B 86 88 05"); // 0x006D1150
 
         // Headlight tint sites. MTA CMultiplayerSA DoHeadLight* hooks.
         gPatterns.CVehicle__DoVehicleLights           = Resolve("A0 18 CC C1 00 83"); // 0x006E1A60

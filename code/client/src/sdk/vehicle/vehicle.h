@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -100,11 +101,14 @@ namespace VantaMP::SDK {
     void ApplyVehicleScriptState(void *vehicle, bool engineOn, bool sirenOn, std::uint8_t overrideLights, bool locked);
 
     // Dirt 0–15, taxi lamp, freeze, proof bits, collision, and plane
-    // landing gear. plate is stored on the replica; GTA has no
-    // per-instance plate string we can write without a texture.
+    // landing gear.
     void ApplyVehicleExtras(void *vehicle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof,
                             bool collisions, bool landingGearDown, bool lightsOn, bool engineBroken, bool wheelsCanBurst, bool canBeDamaged,
                             std::uint8_t nitroCount);
+
+    // Rebuilds the per-instance custom plate texture (max 8 chars). Empty
+    // clears the custom plate so GTA's stock one shows.
+    void SetVehiclePlateText(void *vehicle, const std::string &text);
 
     // GTA rewrites clump alpha from UpdateClumpAlpha. Call every frame.
     void SetVehicleAlpha(void *vehicle, std::uint8_t alpha);

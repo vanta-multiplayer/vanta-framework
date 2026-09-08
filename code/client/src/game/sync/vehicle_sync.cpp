@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -92,6 +93,7 @@ namespace VantaMP::Game {
             bool         lastWheelsCanBurst  = true;
             bool         lastCanBeDamaged    = true;
             std::uint8_t lastNitroCount      = 0;
+            std::string  lastPlateText;
             std::uint8_t lastVariant         = 255;
             std::uint8_t lastVariant2        = 255;
             bool         haveExtras          = false;
@@ -416,13 +418,14 @@ namespace VantaMP::Game {
                 remote.lastHeadlight == entity->headlightColor && remote.lastFrozen == entity->frozen && remote.lastDamageProof == entity->damageProof &&
                 remote.lastCollisions == entity->collisions && remote.lastLandingGear == entity->landingGearDown && remote.lastLightsOn == entity->lightsOn &&
                 remote.lastEngineBroken == entity->engineBroken && remote.lastWheelsCanBurst == entity->wheelsCanBurst &&
-                remote.lastCanBeDamaged == entity->canBeDamaged && remote.lastNitroCount == entity->nitroCount) {
+                remote.lastCanBeDamaged == entity->canBeDamaged && remote.lastNitroCount == entity->nitroCount && remote.lastPlateText == entity->plateText) {
                 return;
             }
 
             SDK::ApplyVehicleExtras(remote.handle, entity->dirtLevel, entity->taxiLight, entity->headlightColor, entity->frozen, entity->damageProof,
                                     entity->collisions, entity->landingGearDown, entity->lightsOn, entity->engineBroken, entity->wheelsCanBurst,
                                     entity->canBeDamaged, entity->nitroCount);
+            SDK::SetVehiclePlateText(remote.handle, entity->plateText);
             remote.lastDirt           = entity->dirtLevel;
             remote.lastTaxiLight      = entity->taxiLight;
             remote.lastHeadlight      = entity->headlightColor;
@@ -435,6 +438,7 @@ namespace VantaMP::Game {
             remote.lastWheelsCanBurst = entity->wheelsCanBurst;
             remote.lastCanBeDamaged   = entity->canBeDamaged;
             remote.lastNitroCount     = entity->nitroCount;
+            remote.lastPlateText      = entity->plateText;
             remote.haveExtras         = true;
         }
 

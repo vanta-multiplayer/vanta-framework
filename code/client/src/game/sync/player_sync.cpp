@@ -925,6 +925,7 @@ namespace VantaMP::Game {
                 SDK::ApplyVehicleExtras(handle, vehicle->dirtLevel, vehicle->taxiLight, vehicle->headlightColor, vehicle->frozen, vehicle->damageProof,
                                         vehicle->collisions, vehicle->landingGearDown, vehicle->lightsOn, vehicle->engineBroken, vehicle->wheelsCanBurst,
                                         vehicle->canBeDamaged, vehicle->nitroCount);
+                SDK::SetVehiclePlateText(handle, vehicle->plateText);
                 SDK::SetVehicleAlpha(handle, vehicle->alpha);
 
                 if (vehicle->IsBlown()) {
