@@ -34,6 +34,10 @@ $ClientFiles = @(
     "VantaMPLauncher.exe",
     "VantaMPClient.dll",
     "FrameworkLoaderData.dll",
+    "eax.dll",
+    "ogg.dll",
+    "vorbis.dll",
+    "vorbisFile.dll",
     "cef_subprocess.exe",
     "libcef.dll",
     "chrome_elf.dll",
@@ -65,6 +69,74 @@ foreach ($name in $ClientFiles) {
 }
 
 Copy-Item (Join-Path $ClientBin "locales") (Join-Path $ClientOut "locales") -Recurse
+
+# EOS / Easy Anti-Cheat runtime (client = Win32)
+$EosRoot = Join-Path $VantaRoot "vendors\eos"
+$EosClientDll = Join-Path $EosRoot "Bin\Win32\EOSSDK-Win32-Shipping.dll"
+if (Test-Path $EosClientDll) {
+    Copy-Item $EosClientDll $ClientOut
+} elseif (Test-Path (Join-Path $ClientBin "EOSSDK-Win32-Shipping.dll")) {
+    Copy-Item (Join-Path $ClientBin "EOSSDK-Win32-Shipping.dll") $ClientOut
+}
+
+# Anti-Cheat bootstrapper layout (start_protected_game.exe + EasyAntiCheat\).
+# EOSBootstrapper.exe is NOT the Anti-Cheat launcher — do not use it for EAC.
+$EosTools = Join-Path $EosRoot "Tools"
+$AcZip = Get-ChildItem -Path $EosTools -Filter "EOS_AntiCheatTools-win32-x64-*.zip" -ErrorAction SilentlyContinue |
+    Sort-Object Name -Descending |
+    Select-Object -First 1
+
+if ($AcZip) {
+    $AcExtract = Join-Path $env:TEMP ("vanta-eac-tools-" + [guid]::NewGuid().ToString("N"))
+    try {
+        Expand-Archive -LiteralPath $AcZip.FullName -DestinationPath $AcExtract -Force
+        $Dist = Join-Path $AcExtract "dist"
+        if (-not (Test-Path $Dist)) {
+            throw "Anti-Cheat tools zip missing dist\: $($AcZip.FullName)"
+        }
+
+        Copy-Item (Join-Path $Dist "start_protected_game.exe") $ClientOut -Force
+        Copy-Item (Join-Path $Dist "EasyAntiCheat") (Join-Path $ClientOut "EasyAntiCheat") -Recurse -Force
+
+        function Get-EosCredentialConst([string]$Name) {
+            $Creds = Join-Path $VantaRoot "code\shared\eos\credentials.h"
+            $pattern = "k$Name\s*=\s*`"([^`"]+)`""
+            $m = Select-String -Path $Creds -Pattern $pattern | Select-Object -First 1
+            if (-not $m) { throw "Could not parse k$Name from credentials.h" }
+            return $m.Matches.Groups[1].Value
+        }
+
+        $productId    = Get-EosCredentialConst "ProductId"
+        $sandboxId    = Get-EosCredentialConst "SandboxId"
+        $deploymentId = Get-EosCredentialConst "DeploymentId"
+
+        # Match dist\EasyAntiCheat\Settings.json field names/types from AntiCheatTools 2.2.x.
+        $settingsJson = @"
+{
+	"title"											: "VantaMP",
+	"executable"									: "VantaMPLauncher.exe",
+	"productid"										: "$productId",
+	"sandboxid"										: "$sandboxId",
+	"deploymentid"									: "$deploymentId",
+	"requested_splash"								: "EasyAntiCheat/SplashScreen.png",
+	"wait_for_game_process_exit"					: "true",
+	"hide_bootstrapper"								: "false",
+	"hide_gui"										: "false"
+}
+"@
+        Set-Content -Path (Join-Path $ClientOut "EasyAntiCheat\Settings.json") -Value $settingsJson -Encoding utf8
+        Write-Host "EAC: packed start_protected_game + Settings.json from $($AcZip.Name)"
+        Write-Host "EAC: after pack, run scripts\protect_client.ps1 for base.bin."
+    }
+    finally {
+        if (Test-Path $AcExtract) {
+            Remove-Item $AcExtract -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+else {
+    Write-Warning "No EOS_AntiCheatTools-win32-x64-*.zip under vendors\eos\Tools - Anti-Cheat bootstrapper not packed."
+}
 
 @'
 {
@@ -115,6 +187,13 @@ foreach ($name in $ServerFiles) {
     Copy-Item $src $ServerOut
 }
 
+$EosServerDll = Join-Path $EosRoot "Bin\Win64\EOSSDK-Win64-Shipping.dll"
+if (Test-Path $EosServerDll) {
+    Copy-Item $EosServerDll $ServerOut
+} elseif (Test-Path (Join-Path $ServerBin "EOSSDK-Win64-Shipping.dll")) {
+    Copy-Item (Join-Path $ServerBin "EOSSDK-Win64-Shipping.dll") $ServerOut
+}
+
 Copy-Item (Join-Path $ServerBin "resources") (Join-Path $ServerOut "resources") -Recurse
 
 $catalogSrc = Join-Path $ServerBin "catalog"
@@ -148,6 +227,7 @@ You need
 Start
 1. On the host, run server\VantaMPServer.exe
 2. On each client, run client\VantaMPLauncher.exe
+   (it restarts through start_protected_game.exe for Anti-Cheat when present)
 3. If the launcher cannot find the game, set game_path and game_path_manual
    in client\VantaMP_launcher.json, then start it again
 
