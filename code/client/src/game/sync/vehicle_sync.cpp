@@ -80,6 +80,12 @@ namespace VantaMP::Game {
             bool         lastSirenOn         = false;
             std::uint8_t lastOverrideLights  = 0;
             bool         lastLocked          = false;
+            std::uint8_t lastDirt            = 255;
+            bool         lastTaxiLight       = false;
+            std::uint32_t lastHeadlight      = 0;
+            bool         lastFrozen          = false;
+            bool         lastDamageProof     = false;
+            bool         haveExtras          = false;
         };
 
         std::unordered_map<std::uint64_t, RemoteVehicle> gVehicles;
@@ -385,6 +391,25 @@ namespace VantaMP::Game {
             remote.haveScriptState    = true;
         }
 
+        void ApplyExtras(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
+            if (!remote.handle) {
+                return;
+            }
+
+            if (remote.haveExtras && remote.lastDirt == entity->dirtLevel && remote.lastTaxiLight == entity->taxiLight &&
+                remote.lastHeadlight == entity->headlightColor && remote.lastFrozen == entity->frozen && remote.lastDamageProof == entity->damageProof) {
+                return;
+            }
+
+            SDK::ApplyVehicleExtras(remote.handle, entity->dirtLevel, entity->taxiLight, entity->headlightColor, entity->frozen, entity->damageProof);
+            remote.lastDirt        = entity->dirtLevel;
+            remote.lastTaxiLight   = entity->taxiLight;
+            remote.lastHeadlight   = entity->headlightColor;
+            remote.lastFrozen      = entity->frozen;
+            remote.lastDamageProof = entity->damageProof;
+            remote.haveExtras      = true;
+        }
+
         bool DamageWorseThan(const SDK::VehicleState &local, const Shared::VehicleEntity &entity) {
             if (local.health + 0.5f < entity.health) {
                 return true;
@@ -682,6 +707,7 @@ namespace VantaMP::Game {
             SDK::SetVehicleInterior(remote.handle, entity->interior);
             ApplyCosmetics(entity, remote);
             ApplyScriptState(entity, remote);
+            ApplyExtras(entity, remote);
 
             remote.velocity = entity->velocity;
             remote.angular  = entity->angularVelocity;
@@ -724,6 +750,7 @@ namespace VantaMP::Game {
             SDK::SetVehicleInterior(remote.handle, entity->interior);
             ApplyCosmetics(entity, remote);
             ApplyScriptState(entity, remote);
+            ApplyExtras(entity, remote);
 
             const std::uint32_t now     = GetTickCount();
             const bool          changed = !remote.aimed || remote.aimedPosition != entity->position || remote.aimedRotation != entity->rotation;
@@ -871,6 +898,7 @@ namespace VantaMP::Game {
             if (vehicle->IsOwner()) {
                 ApplyCosmetics(vehicle, remote);
                 ApplyScriptState(vehicle, remote);
+                ApplyExtras(vehicle, remote);
                 MergeOwnerDamage(vehicle, remote);
                 PushOwnedVehicle(vehicle, remote);
                 return;

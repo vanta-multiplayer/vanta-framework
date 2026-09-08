@@ -139,6 +139,33 @@ namespace VantaMP::SDK {
         }
     }
 
+    void TakeLocalPedWeapon(unsigned int weaponType) {
+        auto *ped = LocalPed();
+
+        if (!ped || weaponType == 0) {
+            return;
+        }
+
+        reinterpret_cast<ClearWeaponFn>(gPatterns.CPed__ClearWeapon)(ped, weaponType);
+        reinterpret_cast<SetCurrentWeaponFn>(gPatterns.CPed__SetCurrentWeapon)(ped, kSlotUnarmed);
+    }
+
+    void TakeAllLocalPedWeapons() {
+        auto *ped = LocalPed();
+
+        if (!ped) {
+            return;
+        }
+
+        for (auto &slot : ped->m_aWeapons) {
+            if (slot.m_eWeaponType != WEAPONTYPE_UNARMED) {
+                reinterpret_cast<ClearWeaponFn>(gPatterns.CPed__ClearWeapon)(ped, slot.m_eWeaponType);
+            }
+        }
+
+        reinterpret_cast<SetCurrentWeaponFn>(gPatterns.CPed__SetCurrentWeapon)(ped, kSlotUnarmed);
+    }
+
     bool ReloadLocalPedWeapon() {
         auto *ped = LocalPed();
 

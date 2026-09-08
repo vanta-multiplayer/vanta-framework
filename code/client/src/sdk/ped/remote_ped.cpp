@@ -3,6 +3,7 @@
 #include "access.h"
 #include "game/entities/remote_players.h"
 #include "sdk/vehicle/occupancy.h"
+#include "sdk/world/streaming.h"
 
 #include <cstddef>
 #include <iterator>
@@ -413,6 +414,34 @@ namespace VantaMP::SDK {
     void SetRemotePedInterior(int slot, std::uint8_t interior) {
         if (auto *ped = PedAt(slot)) {
             ped->m_nAreaCode = interior;
+        }
+    }
+
+    void SetRemotePedModel(int slot, int modelIndex) {
+        auto *ped = PedAt(slot);
+
+        if (!ped || modelIndex <= 0 || ped->m_nModelIndex == modelIndex) {
+            return;
+        }
+
+        LoadModelNow(modelIndex);
+        reinterpret_cast<void(__thiscall *)(void *, unsigned int)>(gPatterns.CPed__SetModelIndex)(ped, static_cast<unsigned int>(modelIndex));
+    }
+
+    void SetRemotePedFrozen(int slot, bool frozen) {
+        auto *ped = PedAt(slot);
+
+        if (!ped) {
+            return;
+        }
+
+        ped->bDontApplySpeed   = frozen;
+        ped->bDisableMoveForce = frozen;
+        ped->bDisableTurnForce = frozen;
+
+        if (frozen) {
+            ped->m_vecMoveSpeed = CVector();
+            ped->m_vecTurnSpeed = CVector();
         }
     }
 } // namespace VantaMP::SDK

@@ -10,6 +10,8 @@
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/player_occupancy_abort.h"
+#include "shared/rpc/player_script.h"
+#include "shared/rpc/player_weapon.h"
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
 #include "shared/rpc/vehicle_damage_report.h"
@@ -42,6 +44,14 @@ namespace VantaMP::Core::Net {
 
         net->RegisterRPC<Shared::RPC::WorldSpace>([](const Shared::RPC::WorldSpace &space, MafiaNet::Packet *) {
             Game::ApplyWorldSpace(space);
+        });
+
+        net->RegisterRPC<Shared::RPC::PlayerScript>([](const Shared::RPC::PlayerScript &script, MafiaNet::Packet *) {
+            Game::ApplyPlayerScript(script.flags, script.health, script.armour, script.modelId, script.money, script.wantedLevel, script.frozen);
+        });
+
+        net->RegisterRPC<Shared::RPC::PlayerWeapon>([](const Shared::RPC::PlayerWeapon &weapon, MafiaNet::Packet *) {
+            Game::ApplyPlayerWeapon(weapon.action, weapon.weaponType, weapon.ammo);
         });
 
         // Combat events, not snapshot fields. The server stamps the shooter

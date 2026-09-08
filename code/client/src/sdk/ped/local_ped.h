@@ -68,4 +68,14 @@ namespace VantaMP::SDK {
 
     // Script wrote player.position / rotation. Move the ped; do not revive.
     void SetLocalPedTransform(float x, float y, float z, float heading);
+
+    void SetLocalPedVitals(float health, float armour);
+    void SetLocalPedModel(int modelIndex);
+    void SetLocalPedFrozen(bool frozen);
+
+    void SetLocalPlayerMoney(std::int32_t money);
+    [[nodiscard]] std::int32_t LocalPlayerMoney();
+
+    void SetLocalPlayerWanted(std::uint8_t stars);
+    [[nodiscard]] std::uint8_t LocalPlayerWanted();
 } // namespace VantaMP::SDK

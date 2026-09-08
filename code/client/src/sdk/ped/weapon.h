@@ -18,6 +18,8 @@ namespace VantaMP::SDK {
 
     // Puts a weapon in the local player's hands and draws it.
     void GiveLocalPedWeapon(unsigned int weaponType, unsigned int ammo);
+    void TakeLocalPedWeapon(unsigned int weaponType);
+    void TakeAllLocalPedWeapons();
 
     // Starts a reload: CTaskSimpleUseGun command 1 (plugin-sdk: 0x1
     // reloading) plus WEAPONSTATE_RELOADING. Writing the state alone is

@@ -112,5 +112,8 @@ namespace VantaMP::SDK {
     // which is how a remote player in a shop disappears from the street.
     void SetRemotePedInterior(int slot, std::uint8_t interior);
 
+    void SetRemotePedModel(int slot, int modelIndex);
+    void SetRemotePedFrozen(int slot, bool frozen);
+
     // What a remote player HOLDS is in sdk/ped/weapon.h, not here.
 } // namespace VantaMP::SDK

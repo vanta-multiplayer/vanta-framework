@@ -1,6 +1,7 @@
 #include "local_ped.h"
 
 #include "access.h"
+#include "sdk/world/streaming.h"
 
 namespace VantaMP::SDK {
     LocalPedState QueryLocalPed() {
@@ -113,5 +114,82 @@ namespace VantaMP::SDK {
 
         Internal::SetPedPosition(ped, x, y, z);
         Internal::SetPedRotation(ped, heading);
+    }
+
+    void SetLocalPedVitals(float health, float armour) {
+        auto *ped = Internal::LocalPed();
+
+        if (!ped) {
+            return;
+        }
+
+        ped->m_fHealth    = health;
+        ped->m_fMaxHealth = health > ped->m_fMaxHealth ? health : ped->m_fMaxHealth;
+        ped->m_fArmour    = armour;
+    }
+
+    void SetLocalPedModel(int modelIndex) {
+        auto *ped = Internal::LocalPed();
+
+        if (!ped || modelIndex <= 0 || ped->m_nModelIndex == modelIndex) {
+            return;
+        }
+
+        LoadModelNow(modelIndex);
+        reinterpret_cast<void(__thiscall *)(void *, unsigned int)>(gPatterns.CPed__SetModelIndex)(ped, static_cast<unsigned int>(modelIndex));
+    }
+
+    void SetLocalPedFrozen(bool frozen) {
+        auto *ped = Internal::LocalPed();
+
+        if (!ped) {
+            return;
+        }
+
+        ped->bDontApplySpeed    = frozen;
+        ped->bDisableMoveForce  = frozen;
+        ped->bDisableTurnForce  = frozen;
+
+        if (frozen) {
+            ped->m_vecMoveSpeed = CVector();
+            ped->m_vecTurnSpeed = CVector();
+        }
+    }
+
+    void SetLocalPlayerMoney(std::int32_t money) {
+        if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(0))) {
+            info->m_nMoney        = money;
+            info->m_nDisplayMoney = money;
+        }
+    }
+
+    std::int32_t LocalPlayerMoney() {
+        if (const auto *info = reinterpret_cast<const CPlayerInfo *>(Game::PlayerInfoAt(0))) {
+            return info->m_nMoney;
+        }
+
+        return 0;
+    }
+
+    void SetLocalPlayerWanted(std::uint8_t stars) {
+        const auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(0));
+
+        if (!info || !info->m_PlayerData.m_pWanted) {
+            return;
+        }
+
+        info->m_PlayerData.m_pWanted->m_nWantedLevel = stars > 6 ? 6 : stars;
+    }
+
+    std::uint8_t LocalPlayerWanted() {
+        const auto *info = reinterpret_cast<const CPlayerInfo *>(Game::PlayerInfoAt(0));
+
+        if (!info || !info->m_PlayerData.m_pWanted) {
+            return 0;
+        }
+
+        const auto level = info->m_PlayerData.m_pWanted->m_nWantedLevel;
+
+        return level > 6 ? 6 : static_cast<std::uint8_t>(level);
     }
 } // namespace VantaMP::SDK

@@ -93,6 +93,11 @@ namespace VantaMP::SDK {
     // writing engine here is what makes car.engine = false stick.
     void ApplyVehicleScriptState(void *vehicle, bool engineOn, bool sirenOn, std::uint8_t overrideLights, bool locked);
 
+    // Dirt 0–15, taxi lamp, freeze, and the four proof bits. plate is
+    // stored on the replica; GTA has no per-instance plate string we
+    // can write without a texture.
+    void ApplyVehicleExtras(void *vehicle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof);
+
     [[nodiscard]] bool IsLocalPlayerDriving(const void *vehicle);
     [[nodiscard]] bool VehicleHasDriver(const void *vehicle);
 

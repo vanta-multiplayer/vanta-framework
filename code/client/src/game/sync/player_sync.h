@@ -63,4 +63,7 @@ namespace VantaMP::Game {
     void ApplyOwnedWorldSpace(std::uint8_t interior, std::uint16_t dimension, std::uint8_t flags);
 
     void ApplyWorldSpace(const Shared::RPC::WorldSpace &space);
+
+    void ApplyPlayerScript(std::uint8_t flags, float health, float armour, std::uint32_t modelId, std::int32_t money, std::uint8_t wantedLevel, bool frozen);
+    void ApplyPlayerWeapon(std::uint8_t action, std::uint32_t weaponType, std::uint32_t ammo);
 } // namespace VantaMP::Game

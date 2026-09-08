@@ -8,6 +8,8 @@
 #include "sdk/game.h"
 #include "shared/entity/player_entity.h"
 #include "shared/entity/state_forced.h"
+#include "shared/rpc/player_script.h"
+#include "shared/rpc/player_weapon.h"
 #include "shared/rpc/world_space.h"
 #include "shared/sync_rates.h"
 #include "shared/entity/vehicle_entity.h"
@@ -414,6 +416,10 @@ namespace VantaMP::Game {
             gLocalWorld.interior  = local.interior;
             gLocalWorld.dimension = entity->dimension;
 
+            // Money and freeze are script-owned. Wanted is a GTA fact —
+            // cops can add stars, so the owner reports them.
+            entity->wantedLevel = SDK::LocalPlayerWanted();
+
             // TEMPORARY TELEMETRY - remove once the desync is closed.
             static std::uint32_t lastSendReportMs = 0;
 
@@ -463,6 +469,8 @@ namespace VantaMP::Game {
                 // walk to the door freezes the enter task in place.
                 SDK::SetRemotePedCollision(slot, !occupancy.seated);
                 SDK::SetRemotePedHealth(slot, entity->health, entity->armour);
+                SDK::SetRemotePedModel(slot, entity->modelId != 0 ? static_cast<int>(entity->modelId) : 0);
+                SDK::SetRemotePedFrozen(slot, entity->frozen);
                 SDK::SetRemotePedWeapon(slot, entity->weaponType, entity->ammoClip, entity->ammoTotal);
 
                 if (entity->vehicleNetworkId != 0) {
@@ -584,6 +592,8 @@ namespace VantaMP::Game {
 
                 // 2. Health, armour, and what is in their hands.
                 SDK::SetRemotePedHealth(slot, entity->health, entity->armour);
+                SDK::SetRemotePedModel(slot, entity->modelId != 0 ? static_cast<int>(entity->modelId) : 0);
+                SDK::SetRemotePedFrozen(slot, entity->frozen);
 
                 // On the update path rather than per-frame. It costs nothing
                 // when the weapon has not changed, but the frame path runs six
@@ -876,6 +886,15 @@ namespace VantaMP::Game {
 
             if (auto *handle = VehicleHandleOf(static_cast<std::uint64_t>(vehicle->GetNetworkID()))) {
                 SDK::SetVehiclePose(handle, vehicle->position.x, vehicle->position.y, vehicle->position.z, vehicle->rotation);
+                SDK::ApplyVehicleDamage(handle, vehicle->damageEngine, vehicle->doorsPacked, vehicle->wheelsPacked, vehicle->panels, vehicle->lights);
+                SDK::ApplyVehicleDoorRatios(handle, vehicle->doorRatiosPacked);
+                SDK::ApplyVehicleScriptState(handle, vehicle->engineOn, vehicle->sirenOn, vehicle->overrideLights, vehicle->locked);
+                SDK::ApplyVehicleExtras(handle, vehicle->dirtLevel, vehicle->taxiLight, vehicle->headlightColor, vehicle->frozen, vehicle->damageProof);
+
+                auto motion = SDK::ReadVehicle(handle);
+
+                motion.health = vehicle->health;
+                SDK::ApplyVehicleMotion(handle, motion);
             }
         };
     }
@@ -952,5 +971,70 @@ namespace VantaMP::Game {
         }
 
         ApplyOwnedWorldSpace(space.interior, space.dimension, space.flags);
+    }
+
+    void ApplyPlayerScript(std::uint8_t flags, float health, float armour, std::uint32_t modelId, std::int32_t money, std::uint8_t wantedLevel, bool frozen) {
+        if ((flags & Shared::kPlayerScriptHealth) != 0 || (flags & Shared::kPlayerScriptArmour) != 0) {
+            const auto local = SDK::QueryLocalPed();
+
+            SDK::SetLocalPedVitals((flags & Shared::kPlayerScriptHealth) != 0 ? health : local.health,
+                                   (flags & Shared::kPlayerScriptArmour) != 0 ? armour : local.armour);
+        }
+
+        if ((flags & Shared::kPlayerScriptModel) != 0 && modelId != 0) {
+            SDK::SetLocalPedModel(static_cast<int>(modelId));
+        }
+
+        if ((flags & Shared::kPlayerScriptMoney) != 0) {
+            SDK::SetLocalPlayerMoney(money);
+        }
+
+        if ((flags & Shared::kPlayerScriptWanted) != 0) {
+            SDK::SetLocalPlayerWanted(wantedLevel);
+        }
+
+        if ((flags & Shared::kPlayerScriptFrozen) != 0) {
+            SDK::SetLocalPedFrozen(frozen);
+        }
+
+        if (auto *player = OwnedPlayer(Framework::CoreModules::GetReplication())) {
+            if ((flags & Shared::kPlayerScriptHealth) != 0) {
+                player->health = health;
+            }
+
+            if ((flags & Shared::kPlayerScriptArmour) != 0) {
+                player->armour = armour;
+            }
+
+            if ((flags & Shared::kPlayerScriptModel) != 0) {
+                player->modelId = modelId;
+            }
+
+            if ((flags & Shared::kPlayerScriptMoney) != 0) {
+                player->money = money;
+            }
+
+            if ((flags & Shared::kPlayerScriptWanted) != 0) {
+                player->wantedLevel = wantedLevel;
+            }
+
+            if ((flags & Shared::kPlayerScriptFrozen) != 0) {
+                player->frozen = frozen;
+            }
+        }
+    }
+
+    void ApplyPlayerWeapon(std::uint8_t action, std::uint32_t weaponType, std::uint32_t ammo) {
+        if (action == Shared::RPC::PlayerWeapon::kTakeAll) {
+            SDK::TakeAllLocalPedWeapons();
+            return;
+        }
+
+        if (action == Shared::RPC::PlayerWeapon::kTake) {
+            SDK::TakeLocalPedWeapon(weaponType);
+            return;
+        }
+
+        SDK::GiveLocalPedWeapon(weaponType, ammo);
     }
 } // namespace VantaMP::Game

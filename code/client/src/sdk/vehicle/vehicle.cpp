@@ -816,6 +816,37 @@ namespace VantaMP::SDK {
         vehicle->m_eDoorLock    = locked ? DOORLOCK_LOCKED : DOORLOCK_UNLOCKED;
     }
 
+    void ApplyVehicleExtras(void *handle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle) {
+            return;
+        }
+
+        (void)headlightColor;
+
+        vehicle->m_fDirtLevel = static_cast<float>(dirtLevel > 15 ? 15 : dirtLevel);
+
+        vehicle->bDontApplySpeed   = frozen;
+        vehicle->bDisableMoveForce = frozen;
+        vehicle->bDisableTurnForce = frozen;
+
+        if (frozen) {
+            vehicle->m_vecMoveSpeed = CVector();
+            vehicle->m_vecTurnSpeed = CVector();
+        }
+
+        vehicle->bBulletProof    = damageProof;
+        vehicle->bFireProof      = damageProof;
+        vehicle->bCollisionProof = damageProof;
+        vehicle->bMeleeProof     = damageProof;
+        vehicle->bExplosionProof = damageProof;
+
+        if (auto *car = AsAutomobile(vehicle)) {
+            car->m_nAutomobileFlags.bTaxiLight = taxiLight;
+        }
+    }
+
     bool IsLocalPlayerDriving(const void *handle) {
         const auto *vehicle = AsVehicle(handle);
 
