@@ -90,11 +90,13 @@ Entity `position` / `rotation`) with spawn and world-space hung on it.
 `Vehicle` is a Framework Entity. `Vehicles.create` returns a handle.
 Vehicle `rotation` is MTA degrees X, Y, Z; a numeric heading on create
 is still radians. Players expose health, armour, model, money, wanted,
-weapons, freeze and occupancy. Vehicles expose dirt, taxi light, plate,
-freeze, damage-proof, door/wheel/light/panel state, `fix()`, occupants
-and upgrades. Script writes the owner reports (health, wanted, weapons)
-go out as `PlayerScript` / `PlayerWeapon` so the next snapshot does not
-stomp them. RPC registration lives in `core/net.cpp` on both sides.
+weapons, freeze, collision, fighting style, oxygen and occupancy.
+Vehicles expose dirt, taxi light, plate, freeze, damage-proof,
+collision, landing gear, door/wheel/light/panel state, `fix()`,
+`blow()`, occupants and upgrades. Script writes the owner reports
+(health, wanted, weapons, fighting, oxygen) go out as `PlayerScript` /
+`PlayerWeapon` so the next snapshot does not stomp them. RPC
+registration lives in `core/net.cpp` on both sides.
 See [world space](world-space.md). If a resource listens for `playerReady`
 or `playerDeath`, C++ does not also spawn — that is the resource's job.
 

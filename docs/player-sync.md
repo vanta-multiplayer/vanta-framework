@@ -37,8 +37,10 @@ by the on-foot interpolator.
 | `vehicleNetworkId` / `vehicleSeat` | Late joiners warp into the seat. Live enter/exit is an RPC |
 | `interior` | GTA area code. The owner reads it off the ped. Script sets send `WorldSpace` so `currArea` changes too |
 | `dimension` | Virtual world. Server-authoritative; the owner echoes, it does not invent |
-| `money` / `frozen` | Script-owned. The owner echoes and never reads GTA |
+| `money` / `frozen` / `collisions` | Script-owned. The owner echoes and never reads GTA |
 | `wantedLevel` | Stars. The owner reports what GTA has; script set sends `PlayerScript` first |
+| `fightingStyle` | Fists. The owner reports GTA's style (4 is standard); 0 means remotes leave it |
+| `oxygen` | Breath. The owner reports `CPlayerData::m_fBreath`; script set sends `PlayerScript` first |
 
 Position, velocity and rotation live on `NetworkEntity`, not on `PlayerEntity`.
 Re-declaring them would put the same numbers on the wire twice.

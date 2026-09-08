@@ -173,7 +173,11 @@ car.taxiLight = true;
 car.plateText = 'VANTA';
 car.frozen = false;
 car.damageProof = false;
+car.collisions = true;
+car.landingGearDown = true; // planes; cars stay true
 car.fix();
+car.blow();
+car.getCompatibleUpgrades(12); // wheel ids, not filtered by model
 car.setDoorOpenRatio(0, 1);
 const driver = car.getController();
 ```
