@@ -39,6 +39,22 @@ namespace VantaMP::Game {
         if ((env.flags & Shared::kWorldEnvWave) != 0) {
             SDK::SetWaveHeight(env.waveHeight);
         }
+
+        if ((env.flags & Shared::kWorldEnvSky) != 0) {
+            SDK::SetSkyGradient(env.skyTopR, env.skyTopG, env.skyTopB, env.skyBotR, env.skyBotG, env.skyBotB);
+        }
+
+        if ((env.flags & Shared::kWorldEnvMoon) != 0) {
+            SDK::SetMoonSize(env.moonSize);
+        }
+
+        if ((env.flags & Shared::kWorldEnvSunColor) != 0) {
+            SDK::SetSunColor(env.sunCoreR, env.sunCoreG, env.sunCoreB, env.sunCoronaR, env.sunCoronaG, env.sunCoronaB);
+        }
+
+        if ((env.flags & Shared::kWorldEnvSunSize) != 0) {
+            SDK::SetSunSize(env.sunSize);
+        }
     }
 
     void PulseWorldEnv() {

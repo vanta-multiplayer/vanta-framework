@@ -54,6 +54,10 @@ namespace VantaMP::SDK {
         gPatterns.CRenderer__ms_fFogStart               = OperandAt(hook::get_pattern("06 2B 00 D9 05"), 5); // site 0x0053DC88 -> 0x00B7C4F4
         gPatterns.CWeather__Rain                        = OperandAt(hook::get_pattern("E8 13 C8 00 D8 0D F0 12 C8 00 D8 0D"), 12); // site 0x0072B345 -> 0x00C81324
         gPatterns.CWater__ms_fWaveHeight                = OperandAt(hook::get_pattern("C7 05 ? ? ? ? 00 00 80 3F EB 06 D9 1D E8"), 2); // site 0x0072C659 -> 0x00C812E8
+        gPatterns.CTimeCycle__m_nSkyTopRed              = OperandAt(hook::get_pattern("00 90 90 90 90 90 66 A1"), 8); // site 0x0053D49A -> 0x00B7C4C4
+        gPatterns.CTimeCycle__m_nSunCoreRed             = OperandAt(hook::get_pattern("D2 C4 B7 00 D9 1C 24 51 33 C9 8A 0D"), 12); // site 0x006FC695 -> 0x00B7C4D0
+        gPatterns.CTimeCycle__m_fSunSize                = OperandAt(hook::get_pattern("C3 90 90 90 90 90 90 90 90 90 D9 05 ? ? ? ? D8 0D 1C"), 12); // site 0x006FA9E6 -> 0x00B7C4DC
+        gPatterns.CCoronas__MoonSize                    = OperandAt(hook::get_pattern("8B 0D ? ? ? ? 83 C4 18 85"), 2); // site 0x00713B10 -> 0x008D4B60
 
         // --- Boot: loading screens and the frontend ---------------------------
 

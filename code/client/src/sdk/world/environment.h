@@ -25,5 +25,9 @@ namespace VantaMP::SDK {
     void SetFogDistance(float distance);
     void SetRainLevel(float level);
     void SetWaveHeight(float height);
+    void SetSkyGradient(std::uint8_t topR, std::uint8_t topG, std::uint8_t topB, std::uint8_t botR, std::uint8_t botG, std::uint8_t botB);
+    void SetMoonSize(std::uint8_t size);
+    void SetSunColor(std::uint8_t coreR, std::uint8_t coreG, std::uint8_t coreB, std::uint8_t coronaR, std::uint8_t coronaG, std::uint8_t coronaB);
+    void SetSunSize(float size);
     void EnforceWorldVisuals();
 } // namespace VantaMP::SDK

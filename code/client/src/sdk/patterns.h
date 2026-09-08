@@ -54,6 +54,10 @@ namespace VantaMP::SDK {
         uintptr_t CRenderer__ms_fFogStart                  = 0;
         uintptr_t CWeather__Rain                           = 0;
         uintptr_t CWater__ms_fWaveHeight                   = 0;
+        uintptr_t CTimeCycle__m_nSkyTopRed                 = 0;
+        uintptr_t CTimeCycle__m_nSunCoreRed                = 0;
+        uintptr_t CTimeCycle__m_fSunSize                   = 0;
+        uintptr_t CCoronas__MoonSize                       = 0;
 
         // --- Boot: loading screens and the frontend ---------------------------
         //
