@@ -1,6 +1,7 @@
 set(VANTAMP_LAUNCHER_FILES
     src/main.cpp
     src/game_image.cpp
+    src/eac_launch.cpp
     ${CMAKE_BINARY_DIR}/vantamp_version.cpp
 )
 

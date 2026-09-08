@@ -2,10 +2,16 @@
 
 #include <launcher/project.h>
 
+#include "eac_launch.h"
 #include "game_image.h"
 #include "shared/constants.h"
 
 int main(void) {
+    // Before Framework::Project captures cwd as the client runtime path, pin to
+    // the launcher exe directory. EOSBootstrapper often starts us with cwd under
+    // EasyAntiCheat\, which would otherwise break DLL/config/crashpad paths.
+    (void)VantaMP::Launcher::PinWorkingDirectoryToLauncher();
+
     Framework::Launcher::ProjectConfiguration config;
     config.destinationDllName = L"VantaMPClient.dll";
     config.executableName     = VantaMP::Shared::kGameExecutable;
@@ -34,6 +40,14 @@ int main(void) {
 #endif
 
     Framework::Launcher::Project project(config);
+
+    // Re-enter through start_protected_game.exe when needed. That Anti-Cheat
+    // bootstrapper starts this launcher again; PE-mapping GTA then happens in
+    // the protected process (same process as VantaMPClient + EOS).
+    if (!VantaMP::Launcher::EnsureEacProtectedProcess()) {
+        return 0;
+    }
+
     if (!project.Launch()) {
         return 1;
     }
