@@ -14,6 +14,9 @@ namespace VantaMP::Shared::RPC {
         static constexpr std::uint8_t kGive    = 0;
         static constexpr std::uint8_t kTake    = 1;
         static constexpr std::uint8_t kTakeAll = 2;
+        static constexpr std::uint8_t kSetAmmo = 3;
+        // weaponType is the slot index (0–12), ammo unused.
+        static constexpr std::uint8_t kSetSlot = 4;
 
         std::uint8_t  action     = kGive;
         std::uint32_t weaponType = 0;

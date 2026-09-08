@@ -162,6 +162,18 @@ namespace VantaMP::Shared {
         // Script freeze. Owner echoes, never reads GTA.
         bool frozen = false;
 
+        // Script collision. Owner echoes. Seated remotes still drop
+        // collision so they do not shove the car.
+        bool collisions = true;
+
+        // GTA eFightingStyle. 0 means unset — remotes leave the ped
+        // alone. The owner reports what GTA has (4 is standard).
+        std::uint8_t fightingStyle = 0;
+
+        // CPlayerData::m_fBreath. The owner reports it (swimming spends
+        // it). Script set sends PlayerScript first.
+        float oxygen = 1000.0f;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnStateForced() override;

@@ -21,4 +21,15 @@ namespace VantaMP::Shared {
     [[nodiscard]] inline bool IsPaintjob(std::uint8_t paintjob) {
         return paintjob <= kPaintjobMax;
     }
+
+    // Every TransFender id that occupies that slot. Not filtered by
+    // vehicle model — GTA's own shop list is in the exe.
+    template <typename Fn>
+    void ForEachUpgradeInSlot(int slot, Fn &&fn) {
+        for (std::uint16_t id = kFirstUpgrade; id <= kLastUpgrade; ++id) {
+            if (UpgradeSlot(id) == slot) {
+                fn(id);
+            }
+        }
+    }
 } // namespace VantaMP::Shared

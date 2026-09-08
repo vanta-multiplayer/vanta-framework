@@ -11,6 +11,11 @@ namespace VantaMP::Shared {
     inline constexpr std::uint8_t kPlayerScriptMoney   = 8;
     inline constexpr std::uint8_t kPlayerScriptWanted  = 16;
     inline constexpr std::uint8_t kPlayerScriptFrozen  = 32;
+
+    // Second flag byte. The first is full. These bits go in flags2.
+    inline constexpr std::uint8_t kPlayerScript2Collisions    = 1;
+    inline constexpr std::uint8_t kPlayerScript2FightingStyle = 2;
+    inline constexpr std::uint8_t kPlayerScript2Oxygen        = 4;
 } // namespace VantaMP::Shared
 
 namespace VantaMP::Shared::RPC {
@@ -28,6 +33,12 @@ namespace VantaMP::Shared::RPC {
         std::uint8_t  wantedLevel = 0;
         bool          frozen      = false;
 
+        // Appended. flags2 uses kPlayerScript2Collisions and friends.
+        std::uint8_t flags2         = 0;
+        bool         collisions     = true;
+        std::uint8_t fightingStyle  = 0;
+        float        oxygen         = 1000.0f;
+
         void Serialize(MafiaNet::BitStream *bs, bool write) {
             bs->Serialize(write, flags);
             bs->Serialize(write, health);
@@ -36,6 +47,10 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, money);
             bs->Serialize(write, wantedLevel);
             bs->Serialize(write, frozen);
+            bs->Serialize(write, flags2);
+            bs->Serialize(write, collisions);
+            bs->Serialize(write, fightingStyle);
+            bs->Serialize(write, oxygen);
         }
     };
 } // namespace VantaMP::Shared::RPC

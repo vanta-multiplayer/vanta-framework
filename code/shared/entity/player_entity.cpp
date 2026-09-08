@@ -57,6 +57,10 @@ namespace VantaMP::Shared {
         fields.Field(money);
         fields.Field(wantedLevel);
         fields.Field(frozen);
+
+        fields.Field(collisions);
+        fields.Field(fightingStyle);
+        fields.Field(oxygen);
     }
 
     Framework::Networking::Replication::NetworkEntity *PlayerEntity::GetInterestDependency() {

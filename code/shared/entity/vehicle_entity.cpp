@@ -53,6 +53,9 @@ namespace VantaMP::Shared {
         fields.Field(headlightColor);
         fields.Field(frozen);
         fields.Field(damageProof);
+
+        fields.Field(collisions);
+        fields.Field(landingGearDown);
     }
 
     void VehicleEntity::OnStateForced() {

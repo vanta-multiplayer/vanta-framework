@@ -133,6 +133,13 @@ namespace VantaMP::Shared {
         bool          frozen         = false;
         bool          damageProof    = false;
 
+        // Script collision. Owner echoes.
+        bool collisions = true;
+
+        // Planes only. The owner reports what GTA has; cars stay true.
+        // 0 on CPlane::m_fLandingGearStatus is down.
+        bool landingGearDown = true;
+
         static std::uint8_t PackedByte(std::uint64_t packed, int index) {
             return static_cast<std::uint8_t>((packed >> (index * 8)) & 0xFFu);
         }
