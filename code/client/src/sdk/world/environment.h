@@ -29,5 +29,8 @@ namespace VantaMP::SDK {
     void SetMoonSize(std::uint8_t size);
     void SetSunColor(std::uint8_t coreR, std::uint8_t coreG, std::uint8_t coreB, std::uint8_t coronaR, std::uint8_t coronaG, std::uint8_t coronaB);
     void SetSunSize(float size);
+    void SetWaterColor(float r, float g, float b, float a);
+    void SetHeatHaze(std::uint8_t intensity, std::uint8_t randomShift, std::uint16_t speedMin, std::uint16_t speedMax, std::int16_t scanX,
+                     std::int16_t scanY, std::uint16_t renderX, std::uint16_t renderY, bool insideBuilding);
     void EnforceWorldVisuals();
 } // namespace VantaMP::SDK

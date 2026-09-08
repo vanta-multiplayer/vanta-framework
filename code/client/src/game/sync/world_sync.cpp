@@ -55,6 +55,15 @@ namespace VantaMP::Game {
         if ((env.flags & Shared::kWorldEnvSunSize) != 0) {
             SDK::SetSunSize(env.sunSize);
         }
+
+        if ((env.flags & Shared::kWorldEnvWaterColor) != 0) {
+            SDK::SetWaterColor(env.waterR, env.waterG, env.waterB, env.waterA);
+        }
+
+        if ((env.flags & Shared::kWorldEnvHeatHaze) != 0) {
+            SDK::SetHeatHaze(env.hazeIntensity, env.hazeRandomShift, env.hazeSpeedMin, env.hazeSpeedMax, env.hazeScanX, env.hazeScanY, env.hazeRenderX,
+                             env.hazeRenderY, env.hazeInsideBuilding);
+        }
     }
 
     void PulseWorldEnv() {

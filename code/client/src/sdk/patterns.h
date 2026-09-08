@@ -58,6 +58,13 @@ namespace VantaMP::SDK {
         uintptr_t CTimeCycle__m_nSunCoreRed                = 0;
         uintptr_t CTimeCycle__m_fSunSize                   = 0;
         uintptr_t CCoronas__MoonSize                       = 0;
+        uintptr_t CTimeCycle__m_fWaterRed                  = 0;
+        uintptr_t CWater__UnderwaterRGBA                   = 0;
+        uintptr_t CPostEffects__HeatHazeHourStart          = 0;
+        uintptr_t CPostEffects__HeatHazeRandomShift        = 0;
+        uintptr_t CPostEffects__HeatHazeScanSizeX          = 0;
+        uintptr_t CPostEffects__bHeatHazeFX                = 0;
+        uintptr_t CPostEffects__HeatHazeAutoType           = 0;
 
         // --- Boot: loading screens and the frontend ---------------------------
         //

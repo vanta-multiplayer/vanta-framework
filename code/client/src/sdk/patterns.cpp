@@ -58,6 +58,13 @@ namespace VantaMP::SDK {
         gPatterns.CTimeCycle__m_nSunCoreRed             = OperandAt(hook::get_pattern("D2 C4 B7 00 D9 1C 24 51 33 C9 8A 0D"), 12); // site 0x006FC695 -> 0x00B7C4D0
         gPatterns.CTimeCycle__m_fSunSize                = OperandAt(hook::get_pattern("C3 90 90 90 90 90 90 90 90 90 D9 05 ? ? ? ? D8 0D 1C"), 12); // site 0x006FA9E6 -> 0x00B7C4DC
         gPatterns.CCoronas__MoonSize                    = OperandAt(hook::get_pattern("8B 0D ? ? ? ? 83 C4 18 85"), 2); // site 0x00713B10 -> 0x008D4B60
+        gPatterns.CTimeCycle__m_fWaterRed               = OperandAt(hook::get_pattern("D9 05 ? ? ? ? D8 C9 E8 D4"), 2); // site 0x0051295F -> 0x00B7C508
+        gPatterns.CWater__UnderwaterRGBA                = OperandAt(hook::get_pattern("8B 1D ? ? ? ? D8 05"), 2); // site 0x00705187 -> 0x008D5140
+        gPatterns.CPostEffects__HeatHazeHourStart       = OperandAt(hook::get_pattern("8B 3D ? ? ? ? 0F B6 F3"), 2); // site 0x0072C176 -> 0x008D50D4
+        gPatterns.CPostEffects__HeatHazeRandomShift     = OperandAt(hook::get_pattern("89 35 ? ? ? ? C7 05 EC 50 8D 00 0C"), 2); // site 0x0070148B -> 0x00C402C0
+        gPatterns.CPostEffects__HeatHazeScanSizeX       = OperandAt(hook::get_pattern("89 3D ? ? ? ? D8 0D 24"), 2); // site 0x00701549 -> 0x00C40304
+        gPatterns.CPostEffects__bHeatHazeFX             = OperandAt(hook::get_pattern("C3 90 90 90 8A 44 24 04 A2 ? ? ? ? C3 90 90 90 90 90 90 8A"), 9); // site 0x0070115C -> 0x00C402BA
+        gPatterns.CPostEffects__HeatHazeAutoType        = Resolve("83 EC 08 53 8B 1D"); // 0x00701455
 
         // --- Boot: loading screens and the frontend ---------------------------
 
