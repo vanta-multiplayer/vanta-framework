@@ -1,9 +1,11 @@
 #include "net.h"
 
 #include "core/server.h"
+#include "eac/eac.h"
 #include "scripting/bindings.h"
 #include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
+#include "shared/rpc/eac_messages.h"
 #include "shared/rpc/player_death.h"
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
@@ -111,6 +113,14 @@ namespace VantaMP::Net {
 
             server.Vehicles().HandleDamage(incoming.vehicleId, incoming.damageEngine, incoming.doorsPacked, incoming.wheelsPacked, incoming.panels,
                                            incoming.lights, incoming.doorRatiosPacked, incoming.applyRatios, incoming.health);
+        });
+
+        net->RegisterRPC<Shared::RPC::EacRegister>([&server](const Shared::RPC::EacRegister &incoming, MafiaNet::Packet *packet) {
+            Eac::HandleRegister(server, MafiaNet::ToPeerGuid(packet->guid), incoming);
+        });
+
+        net->RegisterRPC<Shared::RPC::EacOpaque>([](const Shared::RPC::EacOpaque &incoming, MafiaNet::Packet *packet) {
+            Eac::HandleOpaqueFromClient(MafiaNet::ToPeerGuid(packet->guid), incoming);
         });
     }
 } // namespace VantaMP::Net

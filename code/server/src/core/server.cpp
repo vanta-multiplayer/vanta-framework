@@ -1,5 +1,6 @@
 #include "server.h"
 
+#include "eac/eac.h"
 #include "net.h"
 #include "scripting/bindings.h"
 #include "shared/catalog/model_catalog.h"
@@ -29,6 +30,8 @@ namespace VantaMP {
 
         Net::Register(*this);
 
+        Eac::Init();
+
         // Start the wall clock at noon so GetTime advances before any script
         // call. Broadcast is a no-op with zero peers.
         _world.SetTime(12, 0);
@@ -36,9 +39,12 @@ namespace VantaMP {
         Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("VantaMP server ready");
     }
 
-    void Server::PostUpdate() {}
+    void Server::PostUpdate() {
+        Eac::Tick();
+    }
 
     void Server::PreShutdown() {
+        Eac::Shutdown();
         Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("VantaMP server shutting down");
     }
 
@@ -48,6 +54,7 @@ namespace VantaMP {
 
     void Server::OnPlayerConnect(const Framework::Integrations::Server::PlayerConnectionData &data) {
         _players.Add(data.guid, data.nickname);
+        Eac::OnPlayerConnected(data.guid);
     }
 
     void Server::OnPlayerReady(MafiaNet::PeerGuid guid) {
@@ -67,6 +74,7 @@ namespace VantaMP {
     }
 
     void Server::OnPlayerDisconnect(MafiaNet::PeerGuid guid) {
+        Eac::OnPlayerDisconnect(guid);
         _vehicles.HandleDisconnect(guid);
         _players.Remove(guid);
     }
