@@ -23,6 +23,8 @@ set(VANTAMP_CLIENT_FILES
 
     # The client itself: framework integration, config, hooks and the interface.
     src/core/application.cpp
+    src/core/connection.cpp
+    src/core/net.cpp
     src/core/client_config.cpp
     src/core/diagnostics/breadcrumbs.cpp
     src/core/diagnostics/crash_report.cpp

@@ -1,20 +1,9 @@
 #include "application.h"
 
-#include <logging/logger.h>
-#include <core_modules.h>
-#include <networking/network_peer.h>
-#include <networking/replication/entity_registry.h>
+#include "connection.h"
+#include "net.h"
 
-#include "shared/entity/player_entity.h"
-#include "shared/entity/vehicle_entity.h"
-#include "shared/rpc/local_player_spawn.h"
-#include "shared/rpc/world_space.h"
-#include "shared/rpc/player_enter_vehicle.h"
-#include "shared/rpc/player_exit_vehicle.h"
-#include "shared/rpc/player_occupancy_abort.h"
-#include "shared/rpc/vehicle_damage_report.h"
-#include "shared/rpc/player_reload.h"
-#include "shared/rpc/player_shot.h"
+#include <logging/logger.h>
 
 #include "core/client_config.h"
 #include "core/diagnostics/breadcrumbs.h"
@@ -27,17 +16,10 @@
 #include "sdk/world/draw.h"
 
 #include <graphics/backend/d3d9.h>
-#include "game/sync/player_sync.h"
-#include "game/sync/shots.h"
-#include "game/sync/vehicle_sync.h"
-#include "game/camera.h"
-#include "game/entities/local_player.h"
-#include "game/entities/remote_players.h"
 #include "game/patches/display.h"
 #include "game/patches/script.h"
 #include "sdk/world/camera.h"
 #include "sdk/ped/local_ped.h"
-#include "sdk/vehicle/vehicle.h"
 #include "sdk/vehicle/occupancy.h"
 #include "shared/constants.h"
 #include "shared/version.h"
@@ -48,51 +30,7 @@ namespace VantaMP::Core {
     std::unique_ptr<Application> gApplication = nullptr;
 
     void Application::PostInit() {
-        // The same name the server registers, so the CRC32 that identifies this
-        // type on the wire matches without either side shipping a number. A
-        // mismatch here does not fail loudly - the entity simply never
-        // constructs, and remote players are invisible for no stated reason.
-        Framework::Networking::Replication::EntityRegistry::Get().Register<Shared::PlayerEntity>(Shared::PlayerEntity::kTypeName);
-        Framework::Networking::Replication::EntityRegistry::Get().Register<Shared::VehicleEntity>(Shared::VehicleEntity::kTypeName);
-
-        // The server placing this player in the world. The GTA ped already
-        // exists behind the fade; this is what belongs them and lifts it.
-        if (auto *net = Framework::CoreModules::GetNetworkPeer()) {
-            net->RegisterRPC<Shared::RPC::LocalPlayerSpawn>([](const Shared::RPC::LocalPlayerSpawn &spawn, MafiaNet::Packet *) {
-                Game::ApplyLocalSpawn(spawn.x, spawn.y, spawn.z, spawn.heading, spawn.health, spawn.armour, spawn.interior, spawn.dimension);
-            });
-
-            net->RegisterRPC<Shared::RPC::WorldSpace>([](const Shared::RPC::WorldSpace &space, MafiaNet::Packet *) {
-                Game::ApplyWorldSpace(space);
-            });
-
-            // Combat events, not snapshot fields. The server stamps the shooter
-            // and fans the packet out; we only apply what arrives.
-            net->RegisterRPC<Shared::RPC::PlayerShot>([](const Shared::RPC::PlayerShot &shot, MafiaNet::Packet *) {
-                Game::ApplyRemoteShot(shot.networkId, shot.weaponType, shot.originX, shot.originY, shot.originZ, shot.targetX, shot.targetY, shot.targetZ, shot.order, shot.damagedNetworkId, shot.damage);
-            });
-
-            net->RegisterRPC<Shared::RPC::PlayerReload>([](const Shared::RPC::PlayerReload &reload, MafiaNet::Packet *) {
-                Game::ApplyRemoteReload(reload.networkId);
-            });
-
-            net->RegisterRPC<Shared::RPC::PlayerEnterVehicle>([](const Shared::RPC::PlayerEnterVehicle &enter, MafiaNet::Packet *) {
-                Game::ApplyRemoteEnterVehicle(enter.networkId, enter.vehicleId, enter.seat, enter.warp, enter.door);
-            });
-
-            net->RegisterRPC<Shared::RPC::PlayerExitVehicle>([](const Shared::RPC::PlayerExitVehicle &exit, MafiaNet::Packet *) {
-                Game::ApplyRemoteExitVehicle(exit.networkId, exit.warp, exit.door);
-            });
-
-            net->RegisterRPC<Shared::RPC::PlayerOccupancyAbort>([](const Shared::RPC::PlayerOccupancyAbort &abort, MafiaNet::Packet *) {
-                Game::ApplyOccupancyAbort(abort.networkId, abort.vehicleId, abort.kind, abort.seat, abort.door);
-            });
-
-            net->RegisterRPC<Shared::RPC::VehicleDamageReport>([](const Shared::RPC::VehicleDamageReport &report, MafiaNet::Packet *) {
-                Game::ApplyRemoteVehicleDamage(report.vehicleId, report.damageEngine, report.doorsPacked, report.wheelsPacked, report.panels, report.lights,
-                                               report.doorRatiosPacked, report.applyRatios, report.health);
-            });
-        }
+        Net::Register();
 
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client initialized");
         ApplyVoiceSettings();
@@ -102,144 +40,23 @@ namespace VantaMP::Core {
         // AN INTERVAL IN SECONDS, NOT A FREQUENCY. Printing it as Hz read "0 Hz"
         // for a perfectly good 0.1s tick, which looked exactly like a server
         // that had never configured one.
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Connected; the server ticks every {:.0f}ms", serverTickRate * 1000.0f);
-
-        // THE PAGE CLOSES ITS OWN MENU, and keeps its console and netgraph.
-        // Hiding the view would take all three, which is not what a player who
-        // just joined a server wants.
-        Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::InGame);
-
-        StopMicTest();
-        Nui::ReportMicTest(false);
-        ApplyVoiceSettings();
-
-        Nui::ReportConnected(GetClientConfig().serverHost);
-        Nui::ReportConnectionState("connected", "");
-
+        //
         // The screen is NOT revealed here. Being accepted is not being placed:
         // the server decides where this player belongs, and says so with a
         // spawn - which is what lifts the fade.
+        Core::OnConnectionFinalized(*this, serverTickRate);
     }
 
     void Application::OnConnectionClosed() {
-        StopMicTest();
-        Nui::ReportMicTest(false);
-        SetTalkLatched(false);
-
-        const auto reason      = GetLastDisconnectionReason();
-        const bool reachedWorld = Nui::IsInWorld();
-
-        if (reason.empty()) {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Disconnected from the server");
-        }
-        else {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Disconnected from the server: {}", reason);
-        }
-
-        // MTA ~CClientGame: explosions and projectiles first, then every
-        // script entity, then the local session. Dead or seated does not
-        // change the order - Unlink is pointer-only, Evacuate empties
-        // wrecks, ExtinguishCarFire is the vehicle destructor. The GTA
-        // ped stays allocated or the next frame's RegisterReference is
-        // a null-pointer crash.
-        Game::SuspendRemotePlayers();
-        SDK::ClearTransientWorldEffects();
-        Game::ClearRemotePlayers();
-        Game::ClearRemoteVehicles();
-        Game::DestroyLocalPlayer();
-        Game::ResumeRemotePlayers();
-
-        // A join that never landed used to report "disconnected" with no
-        // detail, so the connect screen vanished and the reason with it.
-        if (!reachedWorld && !reason.empty()) {
-            Nui::ReportConnectionState("failed", reason);
-            return;
-        }
-
-        if (reason.empty()) {
-            Nui::ReportConnectionState("disconnected", reachedWorld ? "Disconnected" : "Cancelled");
-            return;
-        }
-
-        Nui::ReportConnectionState("disconnected", reason);
+        Core::OnConnectionClosed(*this);
     }
 
-    namespace {
-        const char *PhaseKey(Framework::Integrations::Client::ConnectionPhase phase) {
-            using Phase = Framework::Integrations::Client::ConnectionPhase;
-
-            switch (phase) {
-            case Phase::Disconnected: return "disconnected";
-            case Phase::Connecting: return "connecting";
-            case Phase::Authenticating: return "authenticating";
-            case Phase::Downloading: return "downloading";
-            case Phase::Starting: return "starting";
-            case Phase::InGame: return "inGame";
-            }
-
-            return "unknown";
-        }
-
-        void EmitConnectionProgress(Framework::Integrations::Client::ConnectionPhase phase, const Framework::Integrations::Client::AssetDownloadStatus &status) {
-            if (phase == Framework::Integrations::Client::ConnectionPhase::Disconnected ||
-                phase == Framework::Integrations::Client::ConnectionPhase::InGame) {
-                return;
-            }
-
-            Nui::ConnectionProgress progress;
-            progress.phase           = PhaseKey(phase);
-            progress.downloading     = status.downloading;
-            progress.progress        = status.progress;
-            progress.filesDownloaded = status.filesDownloaded;
-            progress.filesTotal      = status.filesTotal;
-            progress.bytesDownloaded = status.bytesDownloaded;
-            progress.bytesTotal      = status.bytesTotal;
-            progress.currentFile     = status.currentFile;
-            Nui::ReportConnectionProgress(progress);
-        }
-    } // namespace
-
     void Application::OnAssetsDownloadProgress(const Framework::Integrations::Client::AssetDownloadStatus &status) {
-        EmitConnectionProgress(GetConnectionPhase(), status);
+        Core::OnAssetsDownloadProgress(*this, status);
     }
 
     void Application::OnConnectionPhaseChanged(Framework::Integrations::Client::ConnectionPhase phase) {
-        EmitConnectionProgress(phase, GetAssetDownloadStatus());
-    }
-
-    void RequestDisconnect() {
-        if (!gApplication) {
-            return;
-        }
-
-        gApplication->RequestDisconnect();
-    }
-
-    void RequestConnect(const std::string &address, const std::string &nickname) {
-        if (!gApplication) {
-            return;
-        }
-
-        // "host:port", with the port optional - a player typing an address into
-        // a box should not have to remember the default.
-        auto host = address;
-        std::uint32_t port = 27015;
-
-        if (const auto colon = address.rfind(':'); colon != std::string::npos) {
-            host = address.substr(0, colon);
-
-            try {
-                port = static_cast<std::uint32_t>(std::stoul(address.substr(colon + 1)));
-            }
-            catch (const std::exception &) {
-                // Left at the default rather than refused: the host half is
-                // still usable, and a typo in the port is not worth a dead end.
-            }
-        }
-
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("{} asked to join {}:{}", nickname, host, port);
-
-        gApplication->RequestConnectTo(host, port, nickname);
+        Core::OnConnectionPhaseChanged(*this, phase);
     }
 
     void Application::PublishVoice() {
