@@ -86,6 +86,56 @@ namespace VantaMP::Scripting {
         }
     }
 
+    float World::GetGravity() {
+        return gWorld ? gWorld->GetGravity() : Shared::kDefaultGravity;
+    }
+
+    void World::SetGravity(float gravity) {
+        if (gWorld) {
+            gWorld->SetGravity(gravity);
+        }
+    }
+
+    float World::GetFarClip() {
+        return gWorld ? gWorld->GetFarClip() : 0.0f;
+    }
+
+    void World::SetFarClip(float distance) {
+        if (gWorld) {
+            gWorld->SetFarClip(distance);
+        }
+    }
+
+    float World::GetFogDistance() {
+        return gWorld ? gWorld->GetFogDistance() : 0.0f;
+    }
+
+    void World::SetFogDistance(float distance) {
+        if (gWorld) {
+            gWorld->SetFogDistance(distance);
+        }
+    }
+
+    float World::GetRainLevel() {
+        return gWorld ? gWorld->GetRainLevel() : 0.0f;
+    }
+
+    void World::SetRainLevel(float level) {
+        if (gWorld) {
+            gWorld->SetRainLevel(level);
+        }
+    }
+
+    float World::GetWaveHeight() {
+        return gWorld ? gWorld->GetWaveHeight() : 0.0f;
+    }
+
+    void World::SetWaveHeight(float height) {
+        if (gWorld) {
+            gWorld->SetWaveHeight(height);
+        }
+    }
+
     void World::JS_SetTime(const v8::FunctionCallbackInfo<v8::Value> &info) {
         if (info.Length() < 2) {
             return;
@@ -130,6 +180,16 @@ namespace VantaMP::Scripting {
         put("setGameSpeed", &JS_Set<&World::SetGameSpeed, float>);
         put("getWeather", &JS_Get<&World::GetWeather>);
         put("setWeather", &JS_Set<&World::SetWeather, std::uint8_t>);
+        put("getGravity", &JS_Get<&World::GetGravity>);
+        put("setGravity", &JS_Set<&World::SetGravity, float>);
+        put("getFarClip", &JS_Get<&World::GetFarClip>);
+        put("setFarClip", &JS_Set<&World::SetFarClip, float>);
+        put("getFogDistance", &JS_Get<&World::GetFogDistance>);
+        put("setFogDistance", &JS_Set<&World::SetFogDistance, float>);
+        put("getRainLevel", &JS_Get<&World::GetRainLevel>);
+        put("setRainLevel", &JS_Set<&World::SetRainLevel, float>);
+        put("getWaveHeight", &JS_Get<&World::GetWaveHeight>);
+        put("setWaveHeight", &JS_Set<&World::SetWaveHeight, float>);
 
         global->Set(ctx, v8pp::to_v8(isolate, "World"), world).Check();
     }

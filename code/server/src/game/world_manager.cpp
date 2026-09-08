@@ -21,10 +21,10 @@ namespace VantaMP::Game {
             return;
         }
 
-        const auto elapsed       = NowMs() - _midnightMs;
-        const auto totalMinutes  = elapsed / _minuteDuration;
-        hour                     = static_cast<std::uint8_t>((totalMinutes / 60) % 24);
-        minute                   = static_cast<std::uint8_t>(totalMinutes % 60);
+        const auto elapsed      = NowMs() - _midnightMs;
+        const auto totalMinutes = elapsed / _minuteDuration;
+        hour                    = static_cast<std::uint8_t>((totalMinutes / 60) % 24);
+        minute                  = static_cast<std::uint8_t>(totalMinutes % 60);
     }
 
     void WorldManager::SetTime(std::uint8_t hour, std::uint8_t minute) {
@@ -46,7 +46,7 @@ namespace VantaMP::Game {
         std::uint8_t hour = 12, minute = 0;
         GetTime(hour, minute);
 
-        _minuteDuration = ms;
+        _minuteDuration             = ms;
         const auto minsFromMidnight = static_cast<std::uint64_t>(hour) * 60u + minute;
         _midnightMs                 = NowMs() - minsFromMidnight * _minuteDuration;
         _haveMidnight               = true;
@@ -64,13 +64,69 @@ namespace VantaMP::Game {
         Broadcast(Shared::kWorldEnvWeather);
     }
 
-    Shared::RPC::WorldEnv WorldManager::MakePacket(std::uint8_t flags) const {
+    void WorldManager::SetGravity(float gravity) {
+        _gravity = std::clamp(gravity, 0.0f, 1.0f);
+        Broadcast(Shared::kWorldEnvGravity);
+    }
+
+    void WorldManager::SetFarClip(float distance) {
+        _farClip    = distance;
+        _farClipSet = true;
+        Broadcast(Shared::kWorldEnvFarClip);
+    }
+
+    void WorldManager::SetFogDistance(float distance) {
+        _fogDistance = distance;
+        _fogSet      = true;
+        Broadcast(Shared::kWorldEnvFog);
+    }
+
+    void WorldManager::SetRainLevel(float level) {
+        _rainLevel = std::clamp(level, 0.0f, 1.0f);
+        _rainSet   = true;
+        Broadcast(Shared::kWorldEnvRain);
+    }
+
+    void WorldManager::SetWaveHeight(float height) {
+        _waveHeight = std::max(0.0f, height);
+        _waveSet    = true;
+        Broadcast(Shared::kWorldEnvWave);
+    }
+
+    std::uint16_t WorldManager::JoinFlags() const {
+        auto flags = Shared::kWorldEnvCoreFlags;
+
+        if (_farClipSet) {
+            flags |= Shared::kWorldEnvFarClip;
+        }
+
+        if (_fogSet) {
+            flags |= Shared::kWorldEnvFog;
+        }
+
+        if (_rainSet) {
+            flags |= Shared::kWorldEnvRain;
+        }
+
+        if (_waveSet) {
+            flags |= Shared::kWorldEnvWave;
+        }
+
+        return flags;
+    }
+
+    Shared::RPC::WorldEnv WorldManager::MakePacket(std::uint16_t flags) const {
         Shared::RPC::WorldEnv packet;
         packet.flags = flags;
         GetTime(packet.hour, packet.minute);
         packet.minuteDuration = _minuteDuration;
         packet.gameSpeed      = _gameSpeed;
         packet.weather        = _weather;
+        packet.gravity        = _gravity;
+        packet.farClip        = _farClip;
+        packet.fogDistance    = _fogDistance;
+        packet.rainLevel      = _rainLevel;
+        packet.waveHeight     = _waveHeight;
         return packet;
     }
 
@@ -81,11 +137,11 @@ namespace VantaMP::Game {
             return;
         }
 
-        auto packet = MakePacket(Shared::kWorldEnvAllFlags);
+        auto packet = MakePacket(JoinFlags());
         net->SendRPC(packet, MafiaNet::ToGuid(guid));
     }
 
-    void WorldManager::Broadcast(std::uint8_t flags) const {
+    void WorldManager::Broadcast(std::uint16_t flags) const {
         auto *net = Framework::CoreModules::GetNetworkPeer();
 
         if (!net || flags == 0) {

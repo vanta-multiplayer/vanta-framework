@@ -8,8 +8,8 @@ namespace VantaMP::Game {
 }
 
 namespace VantaMP::Scripting {
-    // Global World helpers — time, minute duration, game speed, weather.
-    // Not an Entity; the server owns one clock for everyone.
+    // Global World helpers — clock, speed, weather, gravity, clip/fog/rain/waves.
+    // Not an Entity; the server owns one environment for everyone.
     class World final {
       public:
         static void Bind(Game::WorldManager &world);
@@ -31,6 +31,21 @@ namespace VantaMP::Scripting {
 
         static std::uint8_t GetWeather();
         static void SetWeather(std::uint8_t weather);
+
+        static float GetGravity();
+        static void SetGravity(float gravity);
+
+        static float GetFarClip();
+        static void SetFarClip(float distance);
+
+        static float GetFogDistance();
+        static void SetFogDistance(float distance);
+
+        static float GetRainLevel();
+        static void SetRainLevel(float level);
+
+        static float GetWaveHeight();
+        static void SetWaveHeight(float height);
 
       private:
         static void JS_SetTime(const v8::FunctionCallbackInfo<v8::Value> &info);
