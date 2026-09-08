@@ -89,7 +89,8 @@ namespace VantaMP::Game {
     // is still the game's borderless popup. Re-asserting from the frame loop is
     // what makes the setting stick; it is a no-op once the style already
     // matches, so the cost is a comparison per frame.
-    void ApplyWindowStyle(HWND window);
+    // Returns true when chrome + client size already match (settled).
+    bool ApplyWindowStyle(HWND window);
 
     // After the copyright screen. Until this runs the HWND stays a
     // normal windowed frame, even if the player asked for borderless.

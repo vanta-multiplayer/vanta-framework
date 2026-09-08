@@ -375,9 +375,9 @@ namespace VantaMP::Game {
         }
     }
 
-    void ApplyWindowStyle(HWND window) {
-        if (!window || gSettings.exclusive) {
-            return;
+    bool ApplyWindowStyle(HWND window) {
+        if (!window || !IsWindow(window) || gSettings.exclusive) {
+            return true;
         }
 
         const auto monitor = MonitorRectFor(window);
@@ -416,7 +416,7 @@ namespace VantaMP::Game {
         // AdjustWindowRect, so comparing those never settles and SetWindowPos
         // runs every pulse — WM_SIZE, a device Reset, the window gone.
         if (styleOk && sizeOk) {
-            return;
+            return true;
         }
 
         if (!styleOk) {
@@ -441,6 +441,7 @@ namespace VantaMP::Game {
         SetWindowPos(window, nullptr, x, y, outerWidth, outerHeight, flags);
 
         Framework::Logging::GetLogger("Display")->info("Window {} at {}x{}, origin {},{}", borderless ? "borderless" : "windowed", size.cx, size.cy, x, y);
+        return false;
     }
 
     void HoldWindowStyle(int frames) {
@@ -449,7 +450,11 @@ namespace VantaMP::Game {
 
     void ApplySavedWindowStyle() {
         gCopyrightWindowed = false;
-        HoldWindowStyle(180);
+        // One assert after leaving the copyright notice. Re-holding for
+        // hundreds of frames kept SetWindowPos / WM_SIZE / CEF resize in
+        // the same pump as CreateLocalPlayer and showed up in Sentry as
+        // SetWindowTextA + WRITE @ 0x863984 (ms_fGravity) noise.
+        HoldWindowStyle(30);
     }
 
     void PulseWindowStyle(HWND window) {
@@ -461,7 +466,11 @@ namespace VantaMP::Game {
             --gStyleHold;
         }
 
-        ApplyWindowStyle(window);
+        // Once chrome and client size match, stop the hold — further pulses
+        // only risk another SetWindowPos on a flapping DWM measurement.
+        if (ApplyWindowStyle(window)) {
+            gStyleHold = 0;
+        }
     }
 
     void RebuildCameraAndPostFx() {
