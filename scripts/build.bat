@@ -31,6 +31,11 @@ if /i "%~1"=="ui" (
     exit /b !errorlevel!
 )
 
+if /i "%~1"=="types" (
+    python "%VANTA%\scripts\generate_scripting_types.py"
+    exit /b !errorlevel!
+)
+
 if /i "%~1"=="pack" (
     powershell -NoProfile -File "%VANTA%\scripts\package_build.ps1"
     exit /b !errorlevel!
@@ -73,6 +78,7 @@ echo   client             VantaMPClient, 32-bit
 echo   launcher           VantaMPLauncher, 32-bit
 echo   server             VantaMPServer, 64-bit
 echo   ui                 rebuild and embed the Solid page
+echo   types              regenerate @vantamp/types from catalog dumps
 echo   pack               copy runtime files into a tester tree
 echo   ^<CMake target^> ^<32^|64^>
 echo                      forwarded to the framework build, e.g.

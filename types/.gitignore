@@ -1,0 +1,37 @@
+# Dependencies / install
+node_modules/
+
+# TypeScript incremental build info (from tsc -b / composite projects)
+*.tsbuildinfo
+
+# npm pack / publish artefacts
+*.tgz
+.npmrc
+.yarn/
+.pnpm-store/
+
+# Logs & debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Env / secrets (never publish)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Optional local scratch
+tmp/
+temp/
+.cache/

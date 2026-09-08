@@ -1,0 +1,4009 @@
+{
+  "schemaVersion": 2,
+  "symbols": [
+    {
+      "name": "Vector2",
+      "description": "Mutable two-dimensional vector exposed as Core.Vector2.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "Creates a vector from two numeric components.",
+        "static": false,
+        "parameters": [
+          {
+            "name": "x",
+            "description": "Initial X component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "y",
+            "description": "Initial Y component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "add",
+          "description": "Adds another vector to this vector in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to add component-wise.",
+              "type": {
+                "name": "Vector2",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "sub",
+          "description": "Subtracts another vector from this vector in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to subtract component-wise.",
+              "type": {
+                "name": "Vector2",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "mul",
+          "description": "Multiplies this vector by a scalar in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "scalar",
+              "description": "Multiplier applied to both components.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "div",
+          "description": "Divides this vector by a scalar in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "scalar",
+              "description": "Divisor applied to both components; must be non-zero.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "dot",
+          "description": "Computes the dot product without changing either vector.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector used for the dot product.",
+              "type": {
+                "name": "Vector2",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Scalar dot product.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "normalize",
+          "description": "Normalizes this vector in place; a zero vector remains unchanged.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "lerp",
+          "description": "Linearly interpolates this vector toward a target in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "target",
+              "description": "Destination vector.",
+              "type": {
+                "name": "Vector2",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "t",
+              "description": "Interpolation factor; 0 keeps the current value and 1 reaches target.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "set",
+          "description": "Replaces both components in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "x",
+              "description": "Replacement X component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "y",
+              "description": "Replacement Y component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "distance",
+          "description": "Computes Euclidean distance to another vector.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to measure from this vector.",
+              "type": {
+                "name": "Vector2",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Distance between the two vectors.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "clone",
+          "description": "Creates an independent copy of this vector.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "New vector with the same components.",
+            "type": {
+              "name": "Vector2",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toString",
+          "description": "Formats this vector for logging and debugging.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Text in Vector2(x, y) form.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toJSON",
+          "description": "Converts this vector to a plain object for JSON.stringify.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Object containing the current components.",
+            "type": {
+              "name": "{ x: number; y: number }",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "zero",
+          "description": "Creates a vector whose components are zero.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector2(0, 0).",
+            "type": {
+              "name": "Vector2",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "one",
+          "description": "Creates a vector whose components are one.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector2(1, 1).",
+            "type": {
+              "name": "Vector2",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [
+        {
+          "name": "x",
+          "description": "Mutable X component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "y",
+          "description": "Mutable Y component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "length",
+          "description": "Read-only Euclidean magnitude of this vector.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        },
+        {
+          "name": "lengthSquared",
+          "description": "Read-only squared magnitude, avoiding a square-root calculation.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        }
+      ],
+      "bases": []
+    },
+    {
+      "name": "Vector3",
+      "description": "Mutable three-dimensional vector exposed as Core.Vector3 for positions, directions, and Euler angles.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "Creates a vector from three numeric components.",
+        "static": false,
+        "parameters": [
+          {
+            "name": "x",
+            "description": "Initial X component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "y",
+            "description": "Initial Y component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "z",
+            "description": "Initial Z component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "add",
+          "description": "Adds another vector to this vector in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to add component-wise.",
+              "type": {
+                "name": "Vector3",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "sub",
+          "description": "Subtracts another vector from this vector in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to subtract component-wise.",
+              "type": {
+                "name": "Vector3",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "mul",
+          "description": "Multiplies this vector by a scalar in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "scalar",
+              "description": "Multiplier applied to every component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "div",
+          "description": "Divides this vector by a scalar in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "scalar",
+              "description": "Divisor applied to every component; must be non-zero.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "dot",
+          "description": "Computes the dot product without changing either vector.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector used for the dot product.",
+              "type": {
+                "name": "Vector3",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Scalar dot product.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "cross",
+          "description": "Replaces this vector with its cross product against another vector.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Second vector in the cross product.",
+              "type": {
+                "name": "Vector3",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated perpendicular vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "normalize",
+          "description": "Normalizes this vector in place; a zero vector remains unchanged.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "lerp",
+          "description": "Linearly interpolates this vector toward a target in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "target",
+              "description": "Destination vector.",
+              "type": {
+                "name": "Vector3",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "t",
+              "description": "Interpolation factor; 0 keeps the current value and 1 reaches target.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "set",
+          "description": "Replaces all components in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "x",
+              "description": "Replacement X component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "y",
+              "description": "Replacement Y component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "z",
+              "description": "Replacement Z component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "distance",
+          "description": "Computes Euclidean distance to another vector.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to measure from this vector.",
+              "type": {
+                "name": "Vector3",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Distance between the two vectors.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "clone",
+          "description": "Creates an independent copy of this vector.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "New vector with the same components.",
+            "type": {
+              "name": "Vector3",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toString",
+          "description": "Formats this vector for logging and debugging.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Text in Vector3(x, y, z) form.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toJSON",
+          "description": "Converts this vector to a plain object for JSON.stringify.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Object containing the current components.",
+            "type": {
+              "name": "{ x: number; y: number; z: number }",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "zero",
+          "description": "Creates a zero vector.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector3(0, 0, 0).",
+            "type": {
+              "name": "Vector3",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "one",
+          "description": "Creates a vector whose components are one.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector3(1, 1, 1).",
+            "type": {
+              "name": "Vector3",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "up",
+          "description": "Creates the framework's positive-Y unit direction.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector3(0, 1, 0).",
+            "type": {
+              "name": "Vector3",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "forward",
+          "description": "Creates the framework's positive-Z unit direction.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector3(0, 0, 1).",
+            "type": {
+              "name": "Vector3",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "right",
+          "description": "Creates the framework's positive-X unit direction.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector3(1, 0, 0).",
+            "type": {
+              "name": "Vector3",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [
+        {
+          "name": "x",
+          "description": "Mutable X component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "y",
+          "description": "Mutable Y component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "z",
+          "description": "Mutable Z component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "length",
+          "description": "Read-only Euclidean magnitude of this vector.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        },
+        {
+          "name": "lengthSquared",
+          "description": "Read-only squared magnitude, avoiding a square-root calculation.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        }
+      ],
+      "bases": []
+    },
+    {
+      "name": "Vector4",
+      "description": "Mutable four-dimensional vector exposed as Core.Vector4.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "Creates a vector from four numeric components.",
+        "static": false,
+        "parameters": [
+          {
+            "name": "x",
+            "description": "Initial X component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "y",
+            "description": "Initial Y component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "z",
+            "description": "Initial Z component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "w",
+            "description": "Initial W component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "add",
+          "description": "Adds another vector to this vector in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to add component-wise.",
+              "type": {
+                "name": "Vector4",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "sub",
+          "description": "Subtracts another vector from this vector in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to subtract component-wise.",
+              "type": {
+                "name": "Vector4",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "mul",
+          "description": "Multiplies this vector by a scalar in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "scalar",
+              "description": "Multiplier applied to every component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "div",
+          "description": "Divides this vector by a scalar in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "scalar",
+              "description": "Divisor applied to every component; must be non-zero.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "dot",
+          "description": "Computes the dot product without changing either vector.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector used for the dot product.",
+              "type": {
+                "name": "Vector4",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Scalar dot product.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "distance",
+          "description": "Computes Euclidean distance to another vector.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Vector to measure from this vector.",
+              "type": {
+                "name": "Vector4",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Distance between the two vectors.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "normalize",
+          "description": "Normalizes this vector in place; a zero vector remains unchanged.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "lerp",
+          "description": "Linearly interpolates this vector toward a target in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "target",
+              "description": "Destination vector.",
+              "type": {
+                "name": "Vector4",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "t",
+              "description": "Interpolation factor; 0 keeps the current value and 1 reaches target.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "set",
+          "description": "Replaces all components in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "x",
+              "description": "Replacement X component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "y",
+              "description": "Replacement Y component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "z",
+              "description": "Replacement Z component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "w",
+              "description": "Replacement W component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated vector for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "clone",
+          "description": "Creates an independent copy of this vector.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "New vector with the same components.",
+            "type": {
+              "name": "Vector4",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toString",
+          "description": "Formats this vector for logging and debugging.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Text in Vector4(x, y, z, w) form.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toJSON",
+          "description": "Converts this vector to a plain object for JSON.stringify.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Object containing the current components.",
+            "type": {
+              "name": "{ x: number; y: number; z: number; w: number }",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "zero",
+          "description": "Creates a zero vector.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector4(0, 0, 0, 0).",
+            "type": {
+              "name": "Vector4",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "one",
+          "description": "Creates a vector whose components are one.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Vector4(1, 1, 1, 1).",
+            "type": {
+              "name": "Vector4",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [
+        {
+          "name": "x",
+          "description": "Mutable X component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "y",
+          "description": "Mutable Y component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "z",
+          "description": "Mutable Z component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "w",
+          "description": "Mutable W component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "length",
+          "description": "Read-only Euclidean magnitude of this vector.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        },
+        {
+          "name": "lengthSquared",
+          "description": "Read-only squared magnitude, avoiding a square-root calculation.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        }
+      ],
+      "bases": []
+    },
+    {
+      "name": "Quaternion",
+      "description": "Mutable quaternion exposed as Core.Quaternion for three-dimensional rotations. Components are scalar-first (w, x, y, z), matching GLM \u2014 not the x, y, z, w order some libraries use.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "Creates a quaternion in scalar-first w, x, y, z component order. Watch the trap: the scalar w is the first argument, unlike the x, y, z, w order used by some other libraries.",
+        "static": false,
+        "parameters": [
+          {
+            "name": "w",
+            "description": "Initial scalar component (comes first \u2014 this is not x, y, z, w order).",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "x",
+            "description": "Initial X imaginary component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "y",
+            "description": "Initial Y imaginary component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "z",
+            "description": "Initial Z imaginary component.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "mul",
+          "description": "Composes this rotation with another quaternion in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Rotation composed after this quaternion.",
+              "type": {
+                "name": "Quaternion",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated quaternion for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "normalize",
+          "description": "Normalizes this quaternion in place; a zero quaternion becomes the identity rotation instead of NaN.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "This unit quaternion for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "conjugate",
+          "description": "Computes the conjugate without changing this quaternion.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "New conjugated quaternion.",
+            "type": {
+              "name": "Quaternion",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "inverse",
+          "description": "Computes the inverse rotation without changing this quaternion.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "New inverse quaternion.",
+            "type": {
+              "name": "Quaternion",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "slerp",
+          "description": "Spherically interpolates this quaternion toward a target in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "target",
+              "description": "Destination rotation.",
+              "type": {
+                "name": "Quaternion",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "t",
+              "description": "Interpolation factor; 0 keeps the current rotation and 1 reaches target.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated quaternion for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "dot",
+          "description": "Computes the quaternion dot product.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "other",
+              "description": "Quaternion used for the dot product.",
+              "type": {
+                "name": "Quaternion",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Scalar dot product.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "rotateVector",
+          "description": "Applies this rotation to a vector without mutating either value.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "vector",
+              "description": "Vector to rotate.",
+              "type": {
+                "name": "Vector3",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "New rotated vector.",
+            "type": {
+              "name": "Vector3",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toEuler",
+          "description": "Converts this rotation to Euler angles in radians.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Pitch, yaw, and roll as a Vector3.",
+            "type": {
+              "name": "Vector3",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "set",
+          "description": "Replaces all quaternion components in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "w",
+              "description": "Replacement scalar component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "x",
+              "description": "Replacement X imaginary component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "y",
+              "description": "Replacement Y imaginary component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "z",
+              "description": "Replacement Z imaginary component.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated quaternion for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "clone",
+          "description": "Creates an independent copy of this quaternion.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "New quaternion with the same components.",
+            "type": {
+              "name": "Quaternion",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toString",
+          "description": "Formats this quaternion for logging and debugging.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Text in Quaternion(w, x, y, z) form.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toJSON",
+          "description": "Converts this quaternion to a plain object for JSON.stringify.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Object containing the current components.",
+            "type": {
+              "name": "{ w: number; x: number; y: number; z: number }",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "identity",
+          "description": "Creates the identity rotation.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Quaternion(1, 0, 0, 0).",
+            "type": {
+              "name": "Quaternion",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "fromEuler",
+          "description": "Creates a rotation from Euler angles.",
+          "static": true,
+          "parameters": [
+            {
+              "name": "pitch",
+              "description": "Pitch angle in radians.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "yaw",
+              "description": "Yaw angle in radians.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "roll",
+              "description": "Roll angle in radians.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "New rotation quaternion.",
+            "type": {
+              "name": "Quaternion",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "fromAxisAngle",
+          "description": "Creates a rotation around an axis.",
+          "static": true,
+          "parameters": [
+            {
+              "name": "axis",
+              "description": "Rotation axis; it is normalized internally.",
+              "type": {
+                "name": "Vector3",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "angle",
+              "description": "Rotation angle in radians.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "New axis-angle rotation quaternion.",
+            "type": {
+              "name": "Quaternion",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [
+        {
+          "name": "w",
+          "description": "Mutable scalar component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "x",
+          "description": "Mutable X imaginary component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "y",
+          "description": "Mutable Y imaginary component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "z",
+          "description": "Mutable Z imaginary component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "length",
+          "description": "Read-only magnitude (norm) of this quaternion; 1 for a unit rotation.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        },
+        {
+          "name": "lengthSquared",
+          "description": "Read-only squared magnitude, avoiding a square-root calculation.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        }
+      ],
+      "bases": []
+    },
+    {
+      "name": "Color",
+      "description": "Mutable RGBA color exposed as Core.Color, with components stored from 0 to 1.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "Creates a color from normalized RGBA components.",
+        "static": false,
+        "parameters": [
+          {
+            "name": "r",
+            "description": "Initial red component from 0 to 1.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "g",
+            "description": "Initial green component from 0 to 1.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "b",
+            "description": "Initial blue component from 0 to 1.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          {
+            "name": "a",
+            "description": "Optional alpha component from 0 to 1; defaults to 1.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": true
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "lerp",
+          "description": "Linearly interpolates every component toward a target in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "target",
+              "description": "Destination color.",
+              "type": {
+                "name": "Color",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "t",
+              "description": "Interpolation factor; 0 keeps this color and 1 reaches target.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated color for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "set",
+          "description": "Replaces this color's normalized components in place.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "r",
+              "description": "Replacement red component from 0 to 1.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "g",
+              "description": "Replacement green component from 0 to 1.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "b",
+              "description": "Replacement blue component from 0 to 1.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "a",
+              "description": "Optional replacement alpha; defaults to 1 when omitted.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "This mutated color for chaining.",
+            "type": {
+              "name": "this",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "clone",
+          "description": "Creates an independent copy of this color.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "New color with the same components.",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toHex",
+          "description": "Converts normalized components to a hexadecimal CSS-style string.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "includeAlpha",
+              "description": "Whether to append the alpha byte; defaults to false.",
+              "type": {
+                "name": "boolean",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "Lowercase #rrggbb or #rrggbbaa string.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toString",
+          "description": "Formats this color for logging and debugging.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Text in Color(r, g, b, a) form.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "toJSON",
+          "description": "Converts this color to a plain object for JSON.stringify.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Object containing the current normalized components.",
+            "type": {
+              "name": "{ r: number; g: number; b: number; a: number }",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "fromHex",
+          "description": "Parses a hexadecimal color string.",
+          "static": true,
+          "parameters": [
+            {
+              "name": "hex",
+              "description": "Hexadecimal color in #RRGGBB or #RRGGBBAA form; the leading # is optional. Three- and four-digit shorthands are not supported.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Parsed color, or opaque white when the input is invalid.",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "fromRGB",
+          "description": "Creates a normalized color from byte components.",
+          "static": true,
+          "parameters": [
+            {
+              "name": "r",
+              "description": "Red byte from 0 to 255.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "g",
+              "description": "Green byte from 0 to 255.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "b",
+              "description": "Blue byte from 0 to 255.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "a",
+              "description": "Optional alpha byte from 0 to 255; defaults to 255.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "New normalized color.",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "white",
+          "description": "Creates opaque white.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(1, 1, 1, 1).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "black",
+          "description": "Creates opaque black.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(0, 0, 0, 1).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "red",
+          "description": "Creates opaque red.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(1, 0, 0, 1).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "green",
+          "description": "Creates opaque green.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(0, 1, 0, 1).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "blue",
+          "description": "Creates opaque blue.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(0, 0, 1, 1).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "yellow",
+          "description": "Creates opaque yellow.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(1, 1, 0, 1).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "cyan",
+          "description": "Creates opaque cyan.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(0, 1, 1, 1).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "magenta",
+          "description": "Creates opaque magenta.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(1, 0, 1, 1).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "transparent",
+          "description": "Creates fully transparent black.",
+          "static": true,
+          "parameters": [],
+          "returns": {
+            "description": "New Color(0, 0, 0, 0).",
+            "type": {
+              "name": "Color",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [
+        {
+          "name": "r",
+          "description": "Mutable normalized red component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "g",
+          "description": "Mutable normalized green component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "b",
+          "description": "Mutable normalized blue component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "a",
+          "description": "Mutable normalized alpha component.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        }
+      ],
+      "bases": []
+    },
+    {
+      "name": "Events",
+      "description": "Asynchronous resource event bus (client).",
+      "kind": "globalObject",
+      "functions": [
+        {
+          "name": "on",
+          "description": "Registers a persistent handler in the shared event namespace.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "eventName",
+              "description": "Case-sensitive event name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "handler",
+              "description": "Resource-owned callback invoked with the emitted arguments.",
+              "type": {
+                "name": "EventHandler",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Function that removes this exact subscription.",
+            "type": {
+              "name": "Unsubscribe",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "once",
+          "description": "Registers a handler that is removed before its first invocation.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "eventName",
+              "description": "Case-sensitive event name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "handler",
+              "description": "Resource-owned callback invoked with the emitted arguments.",
+              "type": {
+                "name": "EventHandler",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "off",
+          "description": "Removes a matching handler owned by the calling resource.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "eventName",
+              "description": "Case-sensitive event name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "handler",
+              "description": "Resource-owned callback invoked with the emitted arguments.",
+              "type": {
+                "name": "EventHandler",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "emit",
+          "description": "Invokes every shared handler and waits for all synchronous and asynchronous results.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "eventName",
+              "description": "Shared event name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "args",
+              "description": "Arguments delivered to every matching handler.",
+              "type": {
+                "name": "unknown[]",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "Promise rejected with an AggregateError when one or more handlers fail.",
+            "type": {
+              "name": "Promise<void>",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "emitTo",
+          "description": "Invokes matching handlers belonging only to one resource.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "resourceName",
+              "description": "Destination running resource.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "eventName",
+              "description": "Shared event name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "args",
+              "description": "Arguments delivered to matching handlers owned by the destination.",
+              "type": {
+                "name": "unknown[]",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "Promise rejected when one or more destination handlers fail.",
+            "type": {
+              "name": "Promise<void>",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "onLocal",
+          "description": "Registers a handler in the calling resource's private local-event namespace.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "eventName",
+              "description": "Case-sensitive event name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "handler",
+              "description": "Resource-owned callback invoked with the emitted arguments.",
+              "type": {
+                "name": "EventHandler",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "emitLocal",
+          "description": "Emits an event only within the calling resource.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "eventName",
+              "description": "Private local event name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "args",
+              "description": "Arguments delivered only to handlers owned by the calling resource.",
+              "type": {
+                "name": "unknown[]",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "Promise rejected when one or more local handlers fail.",
+            "type": {
+              "name": "Promise<void>",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "listenerCount",
+          "description": "Counts persistent and one-shot shared handlers across resources.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "eventName",
+              "description": "Shared event name to inspect.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Number of matching handlers.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "emitServer",
+          "description": "Sends a named event from this client to the server's isolated onClient handlers.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "eventName",
+              "description": "Server-side client-event name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "payload",
+              "description": "Optional string payload sent verbatim; other values are JSON-serialized.",
+              "type": {
+                "name": "any",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": []
+    },
+    {
+      "name": "Messages",
+      "description": "Typed request and notification channel between local resources through the global Messages object.",
+      "kind": "globalObject",
+      "functions": [
+        {
+          "name": "handle",
+          "description": "Registers or replaces a message handler owned by the calling resource.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "messageType",
+              "description": "Message type unique within the receiving resource.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "handler",
+              "description": "Handler invoked with the payload and a reply callback; the reply is ignored for notifications.",
+              "type": {
+                "name": "MessageHandler",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "request",
+          "description": "Sends a request to another local resource and waits for its handler to call reply.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "resourceName",
+              "description": "Destination running resource.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "messageType",
+              "description": "Handler type registered by the destination.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "payload",
+              "description": "Optional payload delivered to the handler.",
+              "type": {
+                "name": "unknown",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "Promise resolved with the reply value or rejected when delivery or handling fails.",
+            "type": {
+              "name": "Promise<unknown>",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "send",
+          "description": "Sends a fire-and-forget notification to another local resource.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "resourceName",
+              "description": "Destination running resource.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "messageType",
+              "description": "Handler type registered by the destination.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "payload",
+              "description": "Optional payload delivered to the handler.",
+              "type": {
+                "name": "unknown",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": []
+    },
+    {
+      "name": "Imports",
+      "description": "Bulk access to values exported by another running resource through the global Imports object.",
+      "kind": "globalObject",
+      "functions": [
+        {
+          "name": "get",
+          "description": "Builds an object containing every currently registered export from another resource; undeclared dependencies produce a warning.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "resourceName",
+              "description": "Name of the running resource whose exports should be read.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Object keyed by export name, or an empty object when the resource has no exports.",
+            "type": {
+              "name": "Record<string, unknown>",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": []
+    },
+    {
+      "name": "Exports",
+      "description": "Registration and lookup of cross-resource values through the global Exports object.",
+      "kind": "globalObject",
+      "functions": [
+        {
+          "name": "register",
+          "description": "Registers a value from the calling resource for use by dependent resources.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "name",
+              "description": "Export name, preferably declared in the current resource manifest.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "value",
+              "description": "JavaScript value or function retained by the current resource.",
+              "type": {
+                "name": "unknown",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "True when the value was registered.",
+            "type": {
+              "name": "boolean",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "get",
+          "description": "Reads one registered export from another running resource; undeclared dependencies produce a warning.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "resourceName",
+              "description": "Name of the running resource that owns the export.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "exportName",
+              "description": "Registered export name.",
+              "type": {
+                "name": "string",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "The exported value.",
+            "type": {
+              "name": "unknown",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": []
+    },
+    {
+      "name": "console",
+      "description": "Resource-aware console that routes output through the Framework logger.",
+      "kind": "globalObject",
+      "functions": [
+        {
+          "name": "log",
+          "description": "Writes an informational log entry prefixed with the current resource name.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "values",
+              "description": "Values formatted and joined with spaces.",
+              "type": {
+                "name": "unknown[]",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "info",
+          "description": "Alias of console.log for informational output.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "values",
+              "description": "Values formatted and joined with spaces.",
+              "type": {
+                "name": "unknown[]",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "warn",
+          "description": "Writes a warning log entry prefixed with the current resource name.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "values",
+              "description": "Values formatted and joined with spaces.",
+              "type": {
+                "name": "unknown[]",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "error",
+          "description": "Writes an error log entry prefixed with the current resource name.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "values",
+              "description": "Values formatted and joined with spaces.",
+              "type": {
+                "name": "unknown[]",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "debug",
+          "description": "Writes a debug log entry prefixed with the current resource name.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "values",
+              "description": "Values formatted and joined with spaces.",
+              "type": {
+                "name": "unknown[]",
+                "cppName": "",
+                "optional": true
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": []
+    },
+    {
+      "name": "ExecutionEnvironment",
+      "description": "Runtime-side flags exposed as the global ExecutionEnvironment.",
+      "kind": "globalObject",
+      "functions": [],
+      "properties": [
+        {
+          "name": "isClient",
+          "description": "True in the sandboxed client scripting runtime.",
+          "type": {
+            "name": "boolean",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        },
+        {
+          "name": "isServer",
+          "description": "True in the authoritative server scripting runtime.",
+          "type": {
+            "name": "boolean",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        }
+      ],
+      "bases": []
+    },
+    {
+      "name": "Voice",
+      "description": "Server-side proximity voice rules: how far voice carries, and who may talk to or hear whom.",
+      "kind": "globalObject",
+      "functions": [
+        {
+          "name": "setRange",
+          "description": "Sets how far voice carries for talkers with no override of their own. Connected clients are told, so their playback fades out at the same distance.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "range",
+              "description": "Audibility radius in world units; values <= 0 restore the default of 25.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getRange",
+          "description": "Reads the server-wide proximity range.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Radius in world units.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setPlayerRange",
+          "description": "Overrides how far one player's voice carries, for whisper and shout modes.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "player",
+              "description": "Player whose voice carries the given distance.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "range",
+              "description": "Audibility radius in world units; values <= 0 return them to the server-wide range.",
+              "type": {
+                "name": "number",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getPlayerRange",
+          "description": "Reads how far a player's voice carries, with the server-wide default already resolved.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "player",
+              "description": "Player to query.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "Radius in world units.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setPlayerMuted",
+          "description": "Server-wide mute: a muted player's voice reaches nobody.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "player",
+              "description": "Player to mute or unmute.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "muted",
+              "description": "True to stop their voice reaching anyone.",
+              "type": {
+                "name": "boolean",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isPlayerMuted",
+          "description": "Checks the server-wide mute flag.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "player",
+              "description": "Player to query.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "True when the player's voice reaches nobody.",
+            "type": {
+              "name": "boolean",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setPlayerDeaf",
+          "description": "Server-wide deafen: a deaf player receives nobody.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "player",
+              "description": "Player to deafen or undeafen.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "deaf",
+              "description": "True to stop them receiving anyone's voice.",
+              "type": {
+                "name": "boolean",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isPlayerDeaf",
+          "description": "Checks the server-wide deafen flag.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "player",
+              "description": "Player to query.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "True when the player receives nobody's voice.",
+            "type": {
+              "name": "boolean",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setLocalMute",
+          "description": "One-way mute between two players, enforced by the server rather than the client.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "listener",
+              "description": "Player who stops hearing the target.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "target",
+              "description": "Player the listener stops hearing.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "muted",
+              "description": "True to mute, false to restore.",
+              "type": {
+                "name": "boolean",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isLocallyMuted",
+          "description": "Checks a one-way mute.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "listener",
+              "description": "Player doing the muting.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            },
+            {
+              "name": "target",
+              "description": "Player being muted.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "True when the listener does not receive the target.",
+            "type": {
+              "name": "boolean",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isPlayerVoiceEnabled",
+          "description": "Checks whether a player left voice chat enabled in their own client settings. A preference, not a permission: use setPlayerMuted or setPlayerDeaf to enforce anything.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "player",
+              "description": "Player to query.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "True unless the player turned voice chat off.",
+            "type": {
+              "name": "boolean",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isPlayerTalking",
+          "description": "Checks whether a player is speaking right now. Tracks speech rather than the push-to-talk key: silence is dropped before it reaches the server, and the state clears shortly after the last frame. The same signal raises the playerVoiceStart and playerVoiceStop events.",
+          "static": false,
+          "parameters": [
+            {
+              "name": "player",
+              "description": "Player to query.",
+              "type": {
+                "name": "Entity",
+                "cppName": "",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "True while the player's voice is reaching the server.",
+            "type": {
+              "name": "boolean",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": []
+    },
+    {
+      "name": "Entity",
+      "description": "Base handle for a live replicated network entity.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "Creates a script wrapper for an existing entity with this ID; it does not spawn an entity.",
+        "static": false,
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Network entity identifier.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "toString",
+          "description": "Formats this entity handle for logging and debugging.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Text containing the network entity ID.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [
+        {
+          "name": "id",
+          "description": "Immutable network entity identifier.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        },
+        {
+          "name": "virtualWorld",
+          "description": "Current virtual-world identifier.",
+          "type": {
+            "name": "number",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": true,
+          "static": false
+        },
+        {
+          "name": "position",
+          "description": "Authoritative world-space position; assignment forces replicated state.",
+          "type": {
+            "name": "Vector3",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        },
+        {
+          "name": "rotation",
+          "description": "Authoritative rotation; reads return a quaternion and assignments accept a quaternion or Euler angles in degrees.",
+          "type": {
+            "name": "Quaternion | Vector3",
+            "cppName": "",
+            "optional": false
+          },
+          "readonly": false,
+          "static": false
+        }
+      ],
+      "bases": []
+    },
+    {
+      "name": "Player",
+      "description": "Framework-owned base handle for a connected player, extended by each game or mod.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "Creates a wrapper for an existing connected player with this ID; it does not connect or spawn a player.",
+        "static": false,
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Network entity identifier.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "toString",
+          "description": "Formats this player handle for logging and debugging.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Text containing the player's network entity ID.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isNametagVisible",
+          "description": "Checks whether this player's nametag is shown to other players.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "True unless the nametag was hidden; false also when this game has no nametags.",
+            "type": {
+              "name": "boolean",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isNametagHealthVisible",
+          "description": "Checks whether the health bar under this player's nametag is shown.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "True unless the health bar was hidden; false also when this game has no nametags.",
+            "type": {
+              "name": "boolean",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getNametagText",
+          "description": "Reads this player's nametag text override.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "The override, or an empty string when the player's own name is drawn.",
+            "type": {
+              "name": "string",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getNametagColor",
+          "description": "Reads this player's nametag color.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Packed 0xAARRGGBB color; opaque white when untinted.",
+            "type": {
+              "name": "number",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": [
+        "Entity"
+      ]
+    },
+    {
+      "name": "VantaPlayer",
+      "description": "A connected player. Framework Player (kick, emit, ping, nametag) plus spawn, vitals, money, wanted, weapons and occupancy.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "",
+        "static": false,
+        "parameters": [
+          {
+            "name": "arg0",
+            "description": "",
+            "type": {
+              "name": "number",
+              "cppName": "unsigned __int64",
+              "optional": false
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "void",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "getOccupiedVehicle",
+          "description": "Returns the vehicle this player occupies, if any.",
+          "static": false,
+          "parameters": [],
+          "returns": {
+            "description": "Vehicle handle or null.",
+            "type": {
+              "name": "Vehicle | null",
+              "cppName": "",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": [
+        "Player"
+      ]
+    },
+    {
+      "name": "Vehicle",
+      "description": "A GTA vehicle. Rotation is MTA degrees X, Y, Z, not a heading. Colour is any RGB, not a palette index.",
+      "kind": "constructor",
+      "constructor": {
+        "name": "constructor",
+        "description": "",
+        "static": false,
+        "parameters": [
+          {
+            "name": "arg0",
+            "description": "",
+            "type": {
+              "name": "number",
+              "cppName": "unsigned __int64",
+              "optional": false
+            }
+          }
+        ],
+        "returns": {
+          "description": "",
+          "type": {
+            "name": "void",
+            "cppName": "void",
+            "optional": false
+          }
+        },
+        "since": "",
+        "deprecated": "",
+        "examples": []
+      },
+      "functions": [
+        {
+          "name": "getOccupants",
+          "description": "",
+          "static": false,
+          "parameters": [
+            {
+              "name": "arg0",
+              "description": "",
+              "type": {
+                "name": "v8::FunctionCallbackInfo<class v8::Value>",
+                "cppName": "v8::FunctionCallbackInfo<class v8::Value>&",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "void",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getController",
+          "description": "",
+          "static": false,
+          "parameters": [
+            {
+              "name": "arg0",
+              "description": "",
+              "type": {
+                "name": "v8::FunctionCallbackInfo<class v8::Value>",
+                "cppName": "v8::FunctionCallbackInfo<class v8::Value>&",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "void",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getOccupant",
+          "description": "",
+          "static": false,
+          "parameters": [
+            {
+              "name": "arg0",
+              "description": "",
+              "type": {
+                "name": "v8::FunctionCallbackInfo<class v8::Value>",
+                "cppName": "v8::FunctionCallbackInfo<class v8::Value>&",
+                "optional": false
+              }
+            }
+          ],
+          "returns": {
+            "description": "",
+            "type": {
+              "name": "void",
+              "cppName": "void",
+              "optional": false
+            }
+          },
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ],
+      "properties": [],
+      "bases": [
+        "Entity"
+      ]
+    }
+  ],
+  "variables": []
+}

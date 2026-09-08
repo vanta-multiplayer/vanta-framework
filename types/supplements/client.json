@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 2,
+  "symbols": [
+    {
+      "name": "VantaPlayer",
+      "bases": ["Entity"],
+      "description": "A streamed player on this client. Readonly replica fields plus Framework nametag getters.",
+      "functions": [
+        {
+          "name": "getLocal",
+          "description": "Returns the local player's handle once streamed.",
+          "static": true,
+          "parameters": [],
+          "returns": {"description": "Local Player, or null before spawn.", "type": {"name": "Player | null", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getOccupiedVehicle",
+          "description": "Returns the vehicle this player occupies, if any.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "Vehicle handle or null.", "type": {"name": "Vehicle | null", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ]
+    },
+    {
+      "name": "Vehicle",
+      "bases": ["Entity"],
+      "description": "A streamed GTA vehicle on this client. Readonly replica fields.",
+      "functions": [
+        {
+          "name": "getController",
+          "description": "Returns the driver, if any.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "", "type": {"name": "Player | null", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getOccupants",
+          "description": "Returns a sparse map of seat -> Player.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "", "type": {"name": "Record<number, Player>", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getOccupant",
+          "description": "Returns the player in a seat, if any.",
+          "static": false,
+          "parameters": [
+            {"name": "seat", "description": "Seat index (0 = driver).", "type": {"name": "number", "cppName": "", "optional": true}}
+          ],
+          "returns": {"description": "", "type": {"name": "Player | null", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ]
+    },
+    {
+      "name": "Voice",
+      "kind": "globalObject",
+      "description": "Local player's proximity voice chat settings: on/off, playback volume, hearing range and the push-to-talk binding.",
+      "replaceFunctions": true,
+      "functions": [
+        {
+          "name": "setEnabled",
+          "description": "Turns voice chat on or off. Off closes the microphone and playback devices and tells the server to stop relaying voice to this client.",
+          "static": false,
+          "parameters": [
+            {"name": "enabled", "description": "Whether voice chat runs at all for this player.", "type": {"name": "boolean", "cppName": "", "optional": false}}
+          ],
+          "returns": {"description": "", "type": {"name": "void", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isEnabled",
+          "description": "Checks whether voice chat is enabled for this player.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "True unless the player turned voice chat off.", "type": {"name": "boolean", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setVolume",
+          "description": "Sets the playback volume of incoming voice. Applies to the built-in mixer only.",
+          "static": false,
+          "parameters": [
+            {"name": "volume", "description": "Playback gain, where 1 is unattenuated. Clamped to 0..4.", "type": {"name": "number", "cppName": "", "optional": false}}
+          ],
+          "returns": {"description": "", "type": {"name": "void", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getVolume",
+          "description": "Reads the voice playback volume.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "Current gain, where 1 is unattenuated.", "type": {"name": "number", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setHearingRange",
+          "description": "Narrows how far this player hears others. Can only reduce the server's range, since a talker beyond it is never relayed.",
+          "static": false,
+          "parameters": [
+            {"name": "range", "description": "Audibility radius in world units; 0 removes the local limit.", "type": {"name": "number", "cppName": "", "optional": false}}
+          ],
+          "returns": {"description": "", "type": {"name": "void", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getHearingRange",
+          "description": "Reads the local hearing-range limit.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "Radius in world units, or 0 when the server's range applies unreduced.", "type": {"name": "number", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getRange",
+          "description": "Reads the server's proximity range for talkers with no override of their own.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "Radius in world units.", "type": {"name": "number", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setPushToTalkKey",
+          "description": "Rebinds push-to-talk. Unknown key names throw.",
+          "static": false,
+          "parameters": [
+            {"name": "key", "description": "Case-insensitive key name, using the same names as Key.bind.", "type": {"name": "string", "cppName": "", "optional": false}}
+          ],
+          "returns": {"description": "", "type": {"name": "void", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getPushToTalkKey",
+          "description": "Reads the push-to-talk binding.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "Canonical key name, e.g. \"v\".", "type": {"name": "string", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setPushToTalkReleaseDelay",
+          "description": "Sets how long transmission continues after push-to-talk is released, so letting go slightly early does not clip the end of a word. Muting, turning voice off and losing input focus still stop it at once.",
+          "static": false,
+          "parameters": [
+            {"name": "milliseconds", "description": "How long to keep transmitting after the key goes up. Clamped to 0..2000.", "type": {"name": "number", "cppName": "", "optional": false}}
+          ],
+          "returns": {"description": "", "type": {"name": "void", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getPushToTalkReleaseDelay",
+          "description": "Reads the push-to-talk release delay.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "Delay in milliseconds; 0 when transmission stops the moment the key is released.", "type": {"name": "number", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "isTalking",
+          "description": "Checks whether the local player is speaking right now. The same state raises the voiceStart and voiceStop events.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "True while push-to-talk is open and the microphone is producing audio.", "type": {"name": "boolean", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "hasMicrophone",
+          "description": "Checks whether a capture device opened for this session.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "False when the player has no working microphone, i.e. they are listen-only.", "type": {"name": "boolean", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ]
+    }
+  ],
+  "variables": [
+    {
+      "name": "localPlayer",
+      "readonly": true,
+      "description": "The local player's handle once streamed; null before spawn. Same as Player.getLocal().",
+      "type": {"name": "Player | null", "cppName": "", "optional": false}
+    }
+  ]
+}

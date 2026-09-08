@@ -1,0 +1,28 @@
+{
+    "name": "@vantamp/types",
+    "version": "0.1.0",
+    "description": "TypeScript ambient types for VantaMP server and client resource scripts",
+    "license": "SEE LICENSE IN ../LICENSE",
+    "types": "server/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./server/index.d.ts"
+        },
+        "./server": {
+            "types": "./server/index.d.ts"
+        },
+        "./client": {
+            "types": "./client/index.d.ts"
+        }
+    },
+    "files": [
+        "server/index.d.ts",
+        "server/globals.d.ts",
+        "client/index.d.ts",
+        "client/globals.d.ts",
+        "shared/globals.d.ts",
+        "vendor/**/*.d.ts",
+        "README.md",
+        "package.json"
+    ]
+}

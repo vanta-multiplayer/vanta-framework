@@ -9,7 +9,11 @@ scripts\build.bat client
 scripts\build.bat launcher
 scripts\build.bat server
 scripts\build.bat ui
+scripts\build.bat types
 ```
+
+`types` regenerates [`@vantamp/types`](../types/README.md) from checked-in
+catalog dumps (see [Scripting types](scripting-types.md)).
 
 ## Version, branch, environment
 

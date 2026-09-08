@@ -12,6 +12,7 @@ still the source of truth for *why a line exists*; this folder is the map.
 | [Voice](voice.md) | Proximity talk, devices, PTT, mic test |
 | [World space](world-space.md) | Interiors, dimensions, `player.interior` / `player.dimension` |
 | [World env](world-env.md) | Server clock, speed, weather, gravity, sky, water, wind, … |
+| [Scripting types](scripting-types.md) | `@vantamp/types` for server/client resource IntelliSense |
 | [SDK and patterns](sdk-and-patterns.md) | Call into GTA, or add a signature |
 | [Setup](setup.md) | Clone or fork this repo on a new machine |
 | [Building](building.md) | Build, run two clients, and not lock the DLL |

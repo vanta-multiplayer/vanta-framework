@@ -38,7 +38,7 @@ server. Full notes: [`docs/setup.md`](docs/setup.md).
 | `code/server` | `VantaMPServer` | 64-bit | Replicas, reliable RPCs, scripting |
 | `code/shared` | — | — | Entities, RPCs and rates compiled into both sides |
 | `code/client/src/sdk` | — | — | The only place game types exist. Signatures, not addresses |
-| `docs/` | — | — | Architecture, player sync, vehicles, voice, world space/env, SDK, building, interface |
+| `docs/` | — | — | Architecture, player sync, vehicles, voice, world space/env, scripting types, SDK, building, interface |
 | `ui/` | — | — | Solid menu. Built into one HTML file and compiled into the client |
 | `data/resources/freeroam` | — | — | Waterfront spawn and the dock Sultan |
 | `vendors/plugin-sdk` | — | — | DK22Pac's plugin-sdk, for San Andreas **structure layouts** |
@@ -51,6 +51,7 @@ scripts\build.bat
 scripts\build.bat client
 scripts\build.bat server
 scripts\build.bat ui
+scripts\build.bat types
 ```
 
 Run `VantaMPServer.exe` from the framework `builds\build-64\bin`, then

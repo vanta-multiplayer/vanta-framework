@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 2,
+  "symbols": [
+    {
+      "name": "VantaPlayer",
+      "bases": ["Entity"],
+      "properties": [
+        {"name": "nickname", "description": "Display name.", "type": {"name": "string", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "health", "description": "Current health.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "armour", "description": "Current armour.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "model", "description": "Ped model id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "money", "description": "Cash.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "wantedLevel", "description": "Wanted stars 0..6.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "frozen", "description": "Whether the ped is frozen.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "collisions", "description": "Whether collisions are enabled.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "fightingStyle", "description": "Fighting style id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "oxygen", "description": "Underwater oxygen.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "walkingStyle", "description": "Walking style id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "alpha", "description": "Ped alpha 0..255.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "onFire", "description": "Whether the ped is on fire.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "maxHealth", "description": "Maximum health.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "jetpack", "description": "Whether the ped has a jetpack.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "onGround", "description": "Whether the ped is on the ground.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "drowning", "description": "Whether the ped is drowning.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "weapon", "description": "Current weapon type.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "ammo", "description": "Total ammo for the current weapon.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "ammoInClip", "description": "Ammo in the current clip.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "weaponSlot", "description": "Active weapon slot.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "dead", "description": "Whether the ped is dead.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "ducked", "description": "Whether the ped is ducking.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "inWater", "description": "Whether the ped is in water.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "inAir", "description": "Whether the ped is in the air.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "inVehicle", "description": "Whether the ped is in a vehicle.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "vehicleSeat", "description": "Seat index when in a vehicle.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "interior", "description": "Interior id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "dimension", "description": "Dimension id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false}
+      ],
+      "functions": [
+        {
+          "name": "spawn",
+          "description": "Spawns the player at a position.",
+          "static": false,
+          "parameters": [
+            {"name": "xOrPos", "description": "X or a Vector3.", "type": {"name": "number | Vector3", "cppName": "", "optional": false}},
+            {"name": "y", "description": "Y when position is components.", "type": {"name": "number", "cppName": "", "optional": true}},
+            {"name": "z", "description": "Z when position is components.", "type": {"name": "number", "cppName": "", "optional": true}},
+            {"name": "heading", "description": "Optional heading radians.", "type": {"name": "number", "cppName": "", "optional": true}},
+            {"name": "model", "description": "Optional ped model.", "type": {"name": "number", "cppName": "", "optional": true}},
+            {"name": "health", "description": "Optional health.", "type": {"name": "number", "cppName": "", "optional": true}},
+            {"name": "armour", "description": "Optional armour.", "type": {"name": "number", "cppName": "", "optional": true}},
+            {"name": "interior", "description": "Optional interior.", "type": {"name": "number", "cppName": "", "optional": true}},
+            {"name": "dimension", "description": "Optional dimension.", "type": {"name": "number", "cppName": "", "optional": true}}
+          ],
+          "returns": {"description": "", "type": {"name": "void", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getOccupiedVehicle",
+          "description": "Returns the vehicle this player occupies, if any.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "Vehicle handle or null.", "type": {"name": "Vehicle | null", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ]
+    },
+    {
+      "name": "Vehicle",
+      "bases": ["Entity"],
+      "properties": [
+        {"name": "model", "description": "Vehicle model id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "name", "description": "Display name for the model.", "type": {"name": "string", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "vehicleType", "description": "Vehicle type id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "maxPassengers", "description": "Maximum passenger seats.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "blown", "description": "Whether the vehicle is blown up.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "plateText", "description": "Number plate text.", "type": {"name": "string", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "dirtLevel", "description": "Dirt level.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "taxiLight", "description": "Taxi light on/off.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "headlightColor", "description": "Headlight RGB color.", "type": {"name": "Color", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "frozen", "description": "Whether the vehicle is frozen.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "damageProof", "description": "Whether the vehicle is damage-proof.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "collisions", "description": "Whether collisions are enabled.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "landingGearDown", "description": "Landing gear state.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "lights", "description": "Lights on/off.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "alpha", "description": "Vehicle alpha 0..255.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "onGround", "description": "Whether the vehicle is on the ground.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": true, "static": false},
+        {"name": "engineBroken", "description": "Whether the engine is broken.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "wheelsCanBurst", "description": "Whether tyres can burst.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "canBeDamaged", "description": "Whether the vehicle can be damaged.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "nitroCount", "description": "Nitro count.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "variant", "description": "Primary variant.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "variant2", "description": "Secondary variant.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "color", "description": "Primary body colour.", "type": {"name": "Color", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "color2", "description": "Secondary body colour.", "type": {"name": "Color", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "color3", "description": "Third body colour.", "type": {"name": "Color", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "color4", "description": "Fourth body colour.", "type": {"name": "Color", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "paintjob", "description": "Paintjob id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "interior", "description": "Interior id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "dimension", "description": "Dimension id.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "health", "description": "Vehicle health.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "engine", "description": "Engine on/off.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "siren", "description": "Siren on/off.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "locked", "description": "Doors locked.", "type": {"name": "boolean", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "overrideLights", "description": "Override lights mode.", "type": {"name": "number", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "velocity", "description": "Linear velocity.", "type": {"name": "Vector3", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "turnVelocity", "description": "Angular velocity.", "type": {"name": "Vector3", "cppName": "", "optional": false}, "readonly": false, "static": false},
+        {"name": "rotation", "description": "MTA degrees X, Y, Z.", "type": {"name": "Vector3", "cppName": "", "optional": false}, "readonly": false, "static": false}
+      ],
+      "functions": [
+        {
+          "name": "getRotation",
+          "description": "Returns rotation as MTA degrees X, Y, Z.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "", "type": {"name": "Vector3", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setColor",
+          "description": "Sets one or more body colours from Color or RGB components.",
+          "static": false,
+          "parameters": [
+            {"name": "colorOrR", "description": "Color or red byte.", "type": {"name": "Color | number", "cppName": "", "optional": false}},
+            {"name": "gOrColor2", "description": "Green or second Color.", "type": {"name": "number | Color", "cppName": "", "optional": true}},
+            {"name": "b", "description": "Blue when using components.", "type": {"name": "number", "cppName": "", "optional": true}}
+          ],
+          "returns": {"description": "", "type": {"name": "void", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "setRotation",
+          "description": "Sets rotation from MTA degrees Vector3 or X,Y,Z components.",
+          "static": false,
+          "parameters": [
+            {"name": "xOrRot", "description": "Vector3 or X degrees.", "type": {"name": "Vector3 | number", "cppName": "", "optional": false}},
+            {"name": "y", "description": "Y degrees.", "type": {"name": "number", "cppName": "", "optional": true}},
+            {"name": "z", "description": "Z degrees.", "type": {"name": "number", "cppName": "", "optional": true}}
+          ],
+          "returns": {"description": "", "type": {"name": "void", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getOccupants",
+          "description": "Returns a sparse map of seat -> Player.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "", "type": {"name": "Record<number, Player>", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getOccupant",
+          "description": "Returns the player in a seat, if any.",
+          "static": false,
+          "parameters": [
+            {"name": "seat", "description": "Seat index (0 = driver).", "type": {"name": "number", "cppName": "", "optional": true}}
+          ],
+          "returns": {"description": "", "type": {"name": "Player | null", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getController",
+          "description": "Returns the driver, if any.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "", "type": {"name": "Player | null", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getUpgrades",
+          "description": "Returns installed upgrade ids.",
+          "static": false,
+          "parameters": [],
+          "returns": {"description": "", "type": {"name": "number[]", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        },
+        {
+          "name": "getCompatibleUpgrades",
+          "description": "Returns upgrade ids compatible with an optional slot.",
+          "static": false,
+          "parameters": [
+            {"name": "slot", "description": "Optional upgrade slot.", "type": {"name": "number", "cppName": "", "optional": true}}
+          ],
+          "returns": {"description": "", "type": {"name": "number[]", "cppName": "", "optional": false}},
+          "since": "",
+          "deprecated": "",
+          "examples": []
+        }
+      ]
+    }
+  ]
+}
