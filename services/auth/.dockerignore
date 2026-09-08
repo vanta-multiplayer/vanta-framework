@@ -1,0 +1,9 @@
+node_modules
+.env
+.git
+.gitignore
+*.log
+deploy/nginx/certs/*.pem
+deploy/nginx/certs/*.key
+deploy/nginx/letsencrypt/
+vanta-auth-app.tar.gz

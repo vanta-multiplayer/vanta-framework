@@ -1,0 +1,9 @@
+# Place TLS material here (mounted read-only into nginx):
+#   fullchain.pem
+#   privkey.pem
+#
+# Dev:  bun run certs:dev
+# Prod: certbot / Cloudflare Origin cert / ACME
+*
+!.gitignore
+!README.md

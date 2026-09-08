@@ -1,0 +1,43 @@
+{
+  "name": "@vantamp/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "migrate": "bun run src/db/migrate.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "secrets:gen": "bun run scripts/gen-secrets.ts",
+    "secrets:rotate": "bun run scripts/gen-secrets.ts --rotate",
+    "certs:dev": "bun run scripts/gen-dev-certs.ts",
+    "certs:dev:force": "bun run scripts/gen-dev-certs.ts --force",
+    "certs:origin": "bash scripts/install-origin-ca.sh",
+    "certs:http": "bun run scripts/gen-http-certs.ts",
+    "setup:fresh": "bash scripts/setup-fresh.sh --yes",
+    "diagnose:522": "bash scripts/diagnose-origin-522.sh",
+    "stack:up": "docker compose up -d --build",
+    "stack:up:nobuild": "docker compose up -d --no-build",
+    "stack:down": "docker compose down",
+    "stack:logs": "docker compose logs -f auth nginx",
+    "image:export": "bash scripts/export-auth-image.sh",
+    "docker:net": "bash scripts/diagnose-docker-net.sh",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "smoke": "bun run scripts/smoke.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "elysia": "^1.2.25",
+    "ioredis": "^6.0.0",
+    "pg": "^8.14.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/ioredis": "^5.0.0",
+    "@types/pg": "^8.11.11",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^5.8.2"
+  }
+}

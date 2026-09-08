@@ -1,0 +1,157 @@
+# Postgres only applies POSTGRES_* on first volume init. Changing .env later
+# without wiping the volume → auth crash: password authentication failed.
+#
+#   bun run secrets:gen          # keep existing passwords if present
+#   bun run secrets:rotate       # new passwords + you must wipe pg volume
+#   bun run certs:dev
+#   docker compose up -d --build
+#
+# Public URL: https://id.vantamp.xyz
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vanta-auth-pg
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vanta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run bun run secrets:gen}
+      POSTGRES_DB: ${POSTGRES_DB:-vanta_auth}
+    volumes:
+      - vanta_auth_pg:/var/lib/postgresql/data
+    networks:
+      - auth_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # Debug only — comment out in hardened production hosts.
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    container_name: vanta-auth-redis
+    restart: unless-stopped
+    env_file: .env
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?run bun run secrets:gen}
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+    volumes:
+      - vanta_auth_redis:/data
+    networks:
+      - auth_net
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "6379:6379"
+
+  auth:
+    image: ${AUTH_IMAGE_NAME:-vanta-auth-app:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Use host network during build so bun can reach the registry.
+      # Docker's default bridge DNS is often broken/slow on small VPS hosts.
+      network: host
+    container_name: vanta-auth-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      VANTA_AUTH_PUBLIC_URL: ${VANTA_AUTH_PUBLIC_URL:-https://id.vantamp.xyz}
+      VANTA_AUTH_HOST: 0.0.0.0
+      VANTA_AUTH_PORT: "28080"
+      # In-cluster service DNS (overrides host-oriented .env URLs).
+      DATABASE_URL: postgres://${POSTGRES_USER:-vanta}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vanta_auth}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - auth_net
+    # App stays private; only nginx is public.
+    expose:
+      - "28080"
+    healthcheck:
+      # busybox wget is in the bun alpine image; avoid async bun -e probes (flaky in Docker).
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:28080/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 18
+      start_period: 45s
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: vanta-auth-nginx
+    restart: unless-stopped
+    depends_on:
+      auth:
+        condition: service_healthy
+    # Do NOT set custom dns here — it replaces Docker's 127.0.0.11 and
+    # breaks resolving the `auth` service name (→ 502 Bad Gateway).
+    environment:
+      # Refresh Cloudflare published proxy ranges (default: 3 hours). Best-effort.
+      CLOUDFLARE_IP_REFRESH_SECONDS: ${CLOUDFLARE_IP_REFRESH_SECONDS:-10800}
+    ports:
+      - "80:80"
+      - "443:443"
+    entrypoint: ["/bin/sh", "/usr/local/bin/docker-entrypoint-cf.sh"]
+    command: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/cloudflare-realip.conf:/etc/nginx/cloudflare-realip.seed.conf:ro
+      - ./deploy/nginx/dynamic:/etc/nginx/dynamic
+      - ./deploy/nginx/refresh-cloudflare-ips.sh:/usr/local/bin/refresh-cloudflare-ips.sh:ro
+      - ./deploy/nginx/docker-entrypoint-cf.sh:/usr/local/bin/docker-entrypoint-cf.sh:ro
+      - ./deploy/nginx/certs:/etc/nginx/certs:ro
+      - ./deploy/nginx/certbot:/var/www/certbot
+      - ./deploy/nginx/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - auth_net
+
+  # One-shot / renew: bun run certs:http
+  # Host network: this VPS's Docker bridge often cannot resolve/reach the public internet
+  # (ACME API). Certbot only needs egress + shared webroot volumes — not auth_net.
+  certbot:
+    image: certbot/certbot:latest
+    profiles: ["certs"]
+    network_mode: host
+    volumes:
+      - ./deploy/nginx/certbot:/var/www/certbot
+      - ./deploy/nginx/letsencrypt:/etc/letsencrypt
+
+  # Optional: Cloudflare Tunnel when inbound :443 is blocked (522) but orange-cloud is required.
+  # Dashboard → Zero Trust → Networks → Tunnels → create → copy token.
+  # Public hostname id.vantamp.xyz → http://127.0.0.1:80  (host network reaches published nginx).
+  # Then: CLOUDFLARE_TUNNEL_TOKEN=... docker compose --profile tunnel up -d cloudflared
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: vanta-auth-tunnel
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    command: tunnel --no-autoupdate run
+
+networks:
+  auth_net:
+    driver: bridge
+
+volumes:
+  vanta_auth_pg:
+  vanta_auth_redis:
