@@ -49,6 +49,11 @@ namespace VantaMP::SDK {
         gPatterns.CClock__ms_nGameClockHours            = OperandAt(hook::get_pattern("80 3D ? ? ? ? 05 72"), 2); // site 0x0045577D -> 0x00B70153
         gPatterns.CClock__ms_nGameClockMinutes          = OperandAt(hook::get_pattern("80 3D ? ? ? ? 3C"), 2); // site 0x0052CF71 -> 0x00B70152
         gPatterns.CWeather__ForceWeatherNow             = Resolve("E9 ? ? ? ? 66 A3"); // 0x0072A4F0
+        gPatterns.CGame__ms_fGravity                    = OperandAt(hook::get_pattern("20 D8 0D ? ? ? ? D9 44 24 3C D8 0D"), 3); // site 0x0067EC84 -> 0x00863984
+        gPatterns.CRenderer__ms_fFarClipPlane           = OperandAt(hook::get_pattern("8B 15 ? ? ? ? A1 3C 70 C1 00 52 50 E8 15"), 2); // site 0x0053DC79 -> 0x00B7C4F0
+        gPatterns.CRenderer__ms_fFogStart               = OperandAt(hook::get_pattern("06 2B 00 D9 05"), 5); // site 0x0053DC88 -> 0x00B7C4F4
+        gPatterns.CWeather__Rain                        = OperandAt(hook::get_pattern("E8 13 C8 00 D8 0D F0 12 C8 00 D8 0D"), 12); // site 0x0072B345 -> 0x00C81324
+        gPatterns.CWater__ms_fWaveHeight                = OperandAt(hook::get_pattern("C7 05 ? ? ? ? 00 00 80 3F EB 06 D9 1D E8"), 2); // site 0x0072C659 -> 0x00C812E8
 
         // --- Boot: loading screens and the frontend ---------------------------
 

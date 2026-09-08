@@ -19,11 +19,33 @@ namespace VantaMP::Game {
         if ((env.flags & Shared::kWorldEnvWeather) != 0) {
             SDK::SetWeather(env.weather);
         }
+
+        if ((env.flags & Shared::kWorldEnvGravity) != 0) {
+            SDK::SetGravity(env.gravity);
+        }
+
+        if ((env.flags & Shared::kWorldEnvFarClip) != 0) {
+            SDK::SetFarClip(env.farClip);
+        }
+
+        if ((env.flags & Shared::kWorldEnvFog) != 0) {
+            SDK::SetFogDistance(env.fogDistance);
+        }
+
+        if ((env.flags & Shared::kWorldEnvRain) != 0) {
+            SDK::SetRainLevel(env.rainLevel);
+        }
+
+        if ((env.flags & Shared::kWorldEnvWave) != 0) {
+            SDK::SetWaveHeight(env.waveHeight);
+        }
     }
 
     void PulseWorldEnv() {
-        // MTA rewrites ms_fTimeScale every pulse. A cheat that pokes the
-        // float is undone before the next physics step.
+        // MTA rewrites timescale / gravity (and visual overrides) every pulse.
+        // A cheat that pokes those floats is undone before the next physics step.
         SDK::EnforceGameSpeed();
+        SDK::EnforceGravity();
+        SDK::EnforceWorldVisuals();
     }
 } // namespace VantaMP::Game

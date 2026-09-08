@@ -49,6 +49,11 @@ namespace VantaMP::SDK {
         uintptr_t CClock__ms_nGameClockHours               = 0;
         uintptr_t CClock__ms_nGameClockMinutes             = 0;
         uintptr_t CWeather__ForceWeatherNow                = 0;
+        uintptr_t CGame__ms_fGravity                       = 0;
+        uintptr_t CRenderer__ms_fFarClipPlane              = 0;
+        uintptr_t CRenderer__ms_fFogStart                  = 0;
+        uintptr_t CWeather__Rain                           = 0;
+        uintptr_t CWater__ms_fWaveHeight                   = 0;
 
         // --- Boot: loading screens and the frontend ---------------------------
         //
