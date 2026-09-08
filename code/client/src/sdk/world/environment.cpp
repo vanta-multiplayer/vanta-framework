@@ -2,7 +2,12 @@
 
 #include "sdk/patterns.h"
 
+#include <utils/safe_win32.h>
+
+#include <logging/logger.h>
+
 #include <algorithm>
+#include <unordered_set>
 
 namespace VantaMP::SDK {
     namespace {
@@ -116,6 +121,52 @@ namespace VantaMP::SDK {
             return reinterpret_cast<float *>(gPatterns.CWeather__WindVel);
         }
 
+        // Hoodlum / "unrecognised" SA builds keep some vanilla .data floats in
+        // .rdata. Patterns still resolve the instruction immediates (e.g.
+        // ms_fGravity @ 0x863984), but a plain store AVs. Unprotect once.
+        bool EnsureWritableGameMemory(void *address, std::size_t bytes) {
+            if (!address || bytes == 0) {
+                return false;
+            }
+
+            MEMORY_BASIC_INFORMATION info {};
+            if (VirtualQuery(address, &info, sizeof(info)) == 0 || info.State != MEM_COMMIT) {
+                return false;
+            }
+
+            const DWORD prot = info.Protect & 0xFF;
+            if (prot == PAGE_READWRITE || prot == PAGE_WRITECOPY || prot == PAGE_EXECUTE_READWRITE || prot == PAGE_EXECUTE_WRITECOPY) {
+                return true;
+            }
+
+            DWORD oldProtect = 0;
+            if (!VirtualProtect(info.BaseAddress, info.RegionSize, PAGE_READWRITE, &oldProtect)) {
+                Framework::Logging::GetLogger("World")->error(
+                    "Cannot unprotect game memory at {} (err {})", address, GetLastError());
+                return false;
+            }
+
+            static std::unordered_set<uintptr_t> logged;
+            const auto key = reinterpret_cast<uintptr_t>(info.BaseAddress);
+            if (logged.insert(key).second) {
+                Framework::Logging::GetLogger("World")->warn(
+                    "Unprotected read-only game page {:#x} (needed for env poke at {})",
+                    static_cast<unsigned>(key),
+                    address);
+            }
+
+            return true;
+        }
+
+        template <typename T>
+        bool WriteGameValue(T *dest, T value) {
+            if (!dest || !EnsureWritableGameMemory(dest, sizeof(T))) {
+                return false;
+            }
+            *dest = value;
+            return true;
+        }
+
         void ApplyCloudsEnabled(bool enabled) {
             if (auto *volumetric = reinterpret_cast<std::uint8_t *>(gPatterns.CClouds__VolumetricRender)) {
                 *volumetric = enabled ? 0xA1 : 0xC3;
@@ -226,7 +277,7 @@ namespace VantaMP::SDK {
 
     void EnforceGameSpeed() {
         if (auto *scale = TimeScale()) {
-            *scale = gAuthoritativeGameSpeed;
+            WriteGameValue(scale, gAuthoritativeGameSpeed);
         }
     }
 
@@ -251,7 +302,7 @@ namespace VantaMP::SDK {
 
     void EnforceGravity() {
         if (auto *gravity = Gravity()) {
-            *gravity = gAuthoritativeGravity;
+            WriteGameValue(gravity, gAuthoritativeGravity);
         }
     }
 
@@ -434,7 +485,7 @@ namespace VantaMP::SDK {
 
         if (gHaveJetpackHeight) {
             if (auto *height = JetpackMaxHeight()) {
-                *height = gJetpackMaxHeight;
+                WriteGameValue(height, gJetpackMaxHeight);
             }
         }
 
