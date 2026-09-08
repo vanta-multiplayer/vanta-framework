@@ -6,6 +6,7 @@
 #include "shared/vehicle/colors.h"
 #include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
+#include "shared/vehicle/info.h"
 #include "shared/vehicle/rotation.h"
 #include "shared/vehicle/upgrades.h"
 
@@ -22,6 +23,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace VantaMP::Scripting {
@@ -301,6 +303,191 @@ namespace VantaMP::Scripting {
         }
     }
 
+    bool Vehicle::GetBlown() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->IsBlown();
+    }
+
+    void Vehicle::Fix() {
+        if (auto *vehicle = ResolveVehicle(); vehicle && gVehicles) {
+            gVehicles->Fix(*vehicle);
+        }
+    }
+
+    std::string Vehicle::GetPlateText() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? vehicle->plateText : "";
+    }
+
+    void Vehicle::SetPlateText(const std::string &text) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->plateText = text.substr(0, 8);
+        }
+    }
+
+    std::uint8_t Vehicle::GetDirtLevel() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? vehicle->dirtLevel : 0;
+    }
+
+    void Vehicle::SetDirtLevel(std::uint8_t level) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->dirtLevel = level > 15 ? 15 : level;
+        }
+    }
+
+    bool Vehicle::GetTaxiLight() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->taxiLight;
+    }
+
+    void Vehicle::SetTaxiLight(bool on) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->taxiLight = on;
+        }
+    }
+
+    Color Vehicle::GetHeadlightColor() const {
+        auto *vehicle = ResolveVehicle();
+
+        if (!vehicle || vehicle->headlightColor == 0) {
+            return Color::fromRGB(255, 255, 255);
+        }
+
+        return UnpackColor(vehicle->headlightColor);
+    }
+
+    void Vehicle::SetHeadlightColor(const Color &color) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->headlightColor = PackColor(color);
+        }
+    }
+
+    bool Vehicle::GetFrozen() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->frozen;
+    }
+
+    void Vehicle::SetFrozen(bool frozen) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->frozen = frozen;
+        }
+    }
+
+    bool Vehicle::GetDamageProof() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->damageProof;
+    }
+
+    void Vehicle::SetDamageProof(bool proof) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->damageProof = proof;
+        }
+    }
+
+    std::string Vehicle::GetName() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? std::string(Shared::VehicleName(vehicle->modelId)) : "";
+    }
+
+    std::string Vehicle::GetVehicleType() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? Shared::VehicleTypeName(vehicle->modelId) : "";
+    }
+
+    std::uint8_t Vehicle::GetMaxPassengers() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? Shared::VehicleMaxPassengers(vehicle->modelId) : 0;
+    }
+
+    std::uint16_t Vehicle::GetUpgradeOnSlot(std::uint8_t slot) const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && slot < Shared::kUpgradeSlots ? vehicle->upgrades[slot] : 0;
+    }
+
+    std::uint8_t Vehicle::GetDoorState(std::uint8_t door) const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && door < Shared::VehicleEntity::kDoorCount ? Shared::VehicleEntity::PackedByte(vehicle->doorsPacked, door) : 0;
+    }
+
+    void Vehicle::SetDoorState(std::uint8_t door, std::uint8_t state) {
+        if (auto *vehicle = ResolveVehicle(); vehicle && door < Shared::VehicleEntity::kDoorCount) {
+            vehicle->doorsPacked = Shared::VehicleEntity::SetPackedByte(vehicle->doorsPacked, door, state);
+            vehicle->ForceState();
+        }
+    }
+
+    std::uint8_t Vehicle::GetWheelState(std::uint8_t wheel) const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && wheel < Shared::VehicleEntity::kWheelCount ? Shared::VehicleEntity::PackedByte(vehicle->wheelsPacked, wheel) : 0;
+    }
+
+    void Vehicle::SetWheelState(std::uint8_t wheel, std::uint8_t state) {
+        if (auto *vehicle = ResolveVehicle(); vehicle && wheel < Shared::VehicleEntity::kWheelCount) {
+            vehicle->wheelsPacked = static_cast<std::uint32_t>(Shared::VehicleEntity::SetPackedByte(vehicle->wheelsPacked, wheel, state));
+            vehicle->ForceState();
+        }
+    }
+
+    std::uint8_t Vehicle::GetLightState(std::uint8_t light) const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && light < Shared::VehicleEntity::kLightCount
+                   ? static_cast<std::uint8_t>(Shared::VehicleEntity::PackedBits(vehicle->lights, light, 2))
+                   : 0;
+    }
+
+    void Vehicle::SetLightState(std::uint8_t light, std::uint8_t state) {
+        if (auto *vehicle = ResolveVehicle(); vehicle && light < Shared::VehicleEntity::kLightCount) {
+            vehicle->lights = Shared::VehicleEntity::SetPackedBits(vehicle->lights, light, 2, state);
+            vehicle->ForceState();
+        }
+    }
+
+    std::uint8_t Vehicle::GetPanelState(std::uint8_t panel) const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && panel < Shared::VehicleEntity::kPanelCount
+                   ? static_cast<std::uint8_t>(Shared::VehicleEntity::PackedBits(vehicle->panels, panel, 4))
+                   : 0;
+    }
+
+    void Vehicle::SetPanelState(std::uint8_t panel, std::uint8_t state) {
+        if (auto *vehicle = ResolveVehicle(); vehicle && panel < Shared::VehicleEntity::kPanelCount) {
+            vehicle->panels = Shared::VehicleEntity::SetPackedBits(vehicle->panels, panel, 4, state);
+            vehicle->ForceState();
+        }
+    }
+
+    float Vehicle::GetDoorOpenRatio(std::uint8_t door) const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && door < Shared::VehicleEntity::kDoorCount
+                   ? static_cast<float>(Shared::VehicleEntity::PackedByte(vehicle->doorRatiosPacked, door)) / 255.0f
+                   : 0.0f;
+    }
+
+    void Vehicle::SetDoorOpenRatio(std::uint8_t door, float ratio) {
+        if (auto *vehicle = ResolveVehicle(); vehicle && door < Shared::VehicleEntity::kDoorCount) {
+            const auto byte = static_cast<std::uint8_t>(std::clamp(ratio, 0.0f, 1.0f) * 255.0f);
+
+            vehicle->doorRatiosPacked = Shared::VehicleEntity::SetPackedByte(vehicle->doorRatiosPacked, door, byte);
+            vehicle->ForceState();
+        }
+    }
+
     void Vehicle::Destroy() {
         if (gVehicles) {
             gVehicles->Destroy(_id);
@@ -502,6 +689,64 @@ namespace VantaMP::Scripting {
         }
     }
 
+    void Vehicle::JS_GetOccupants(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto *self    = v8pp::class_<Vehicle>::unwrap_object(isolate, info.This());
+        auto *vehicle = self ? self->ResolveVehicle() : nullptr;
+
+        if (!vehicle || !gVehicles) {
+            return;
+        }
+
+        auto ctx    = isolate->GetCurrentContext();
+        auto result = v8::Object::New(isolate);
+        const auto id = static_cast<std::uint64_t>(vehicle->GetNetworkID());
+
+        for (std::uint8_t seat = 0; seat <= Shared::VehicleEntity::kMaxSeat; ++seat) {
+            if (auto *occupant = gVehicles->OccupantOf(id, seat)) {
+                result->Set(ctx, v8pp::to_v8(isolate, seat), Player::Wrap(isolate, static_cast<std::uint64_t>(occupant->GetNetworkID()))).Check();
+            }
+        }
+
+        info.GetReturnValue().Set(result);
+    }
+
+    void Vehicle::JS_GetController(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto *self    = v8pp::class_<Vehicle>::unwrap_object(isolate, info.This());
+        auto *vehicle = self ? self->ResolveVehicle() : nullptr;
+
+        if (!vehicle || !gVehicles) {
+            return;
+        }
+
+        if (auto *driver = gVehicles->OccupantOf(static_cast<std::uint64_t>(vehicle->GetNetworkID()), 0)) {
+            info.GetReturnValue().Set(Player::Wrap(isolate, static_cast<std::uint64_t>(driver->GetNetworkID())));
+        }
+    }
+
+    void Vehicle::JS_GetUpgrades(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto *self    = v8pp::class_<Vehicle>::unwrap_object(isolate, info.This());
+        auto *vehicle = self ? self->ResolveVehicle() : nullptr;
+
+        if (!vehicle) {
+            return;
+        }
+
+        auto ctx   = isolate->GetCurrentContext();
+        auto array = v8::Array::New(isolate);
+        std::uint32_t n = 0;
+
+        for (const auto part : vehicle->upgrades) {
+            if (part != 0) {
+                array->Set(ctx, n++, v8pp::to_v8(isolate, part)).Check();
+            }
+        }
+
+        info.GetReturnValue().Set(array);
+    }
+
     v8pp::class_<Vehicle> &Vehicle::GetClass(v8::Isolate *isolate) {
         auto found = gClasses.find(isolate);
 
@@ -525,7 +770,29 @@ namespace VantaMP::Scripting {
             .function("removeUpgrade", &Vehicle::RemoveUpgrade)
             .function("removeAllUpgrades", &Vehicle::RemoveAllUpgrades)
             .function("getRotation", &Vehicle::GetRotationDegrees)
+            .function("fix", &Vehicle::Fix)
+            .function("getUpgradeOnSlot", &Vehicle::GetUpgradeOnSlot)
+            .function("getDoorState", &Vehicle::GetDoorState)
+            .function("setDoorState", &Vehicle::SetDoorState)
+            .function("getWheelState", &Vehicle::GetWheelState)
+            .function("setWheelState", &Vehicle::SetWheelState)
+            .function("getLightState", &Vehicle::GetLightState)
+            .function("setLightState", &Vehicle::SetLightState)
+            .function("getPanelState", &Vehicle::GetPanelState)
+            .function("setPanelState", &Vehicle::SetPanelState)
+            .function("getDoorOpenRatio", &Vehicle::GetDoorOpenRatio)
+            .function("setDoorOpenRatio", &Vehicle::SetDoorOpenRatio)
             .property("model", &Vehicle::GetModel)
+            .property("name", &Vehicle::GetName)
+            .property("vehicleType", &Vehicle::GetVehicleType)
+            .property("maxPassengers", &Vehicle::GetMaxPassengers)
+            .property("blown", &Vehicle::GetBlown)
+            .property("plateText", &Vehicle::GetPlateText, &Vehicle::SetPlateText)
+            .property("dirtLevel", &Vehicle::GetDirtLevel, &Vehicle::SetDirtLevel)
+            .property("taxiLight", &Vehicle::GetTaxiLight, &Vehicle::SetTaxiLight)
+            .property("headlightColor", &Vehicle::GetHeadlightColor, &Vehicle::SetHeadlightColor)
+            .property("frozen", &Vehicle::GetFrozen, &Vehicle::SetFrozen)
+            .property("damageProof", &Vehicle::GetDamageProof, &Vehicle::SetDamageProof)
             .property("color", &Vehicle::GetColor1, &Vehicle::SetColor1)
             .property("color2", &Vehicle::GetColor2, &Vehicle::SetColor2)
             .property("color3", &Vehicle::GetColor3, &Vehicle::SetColor3)
@@ -544,6 +811,9 @@ namespace VantaMP::Scripting {
 
         cls->prototype_function("setColor", &Vehicle::JS_SetColor);
         cls->prototype_function("setRotation", &Vehicle::JS_SetRotation);
+        cls->prototype_function("getOccupants", &Vehicle::JS_GetOccupants);
+        cls->prototype_function("getController", &Vehicle::JS_GetController);
+        cls->prototype_function("getUpgrades", &Vehicle::JS_GetUpgrades);
         cls->prototype_function("getOccupant", [](const v8::FunctionCallbackInfo<v8::Value> &info) {
             auto *isolate = info.GetIsolate();
             auto *self    = v8pp::class_<Vehicle>::unwrap_object(isolate, info.This());

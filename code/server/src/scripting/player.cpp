@@ -1,7 +1,11 @@
 #include "player.h"
 
 #include "game/player_manager.h"
+#include "scripting/vehicle.h"
+#include "shared/catalog/model_catalog.h"
 #include "shared/entity/player_entity.h"
+#include "shared/rpc/player_script.h"
+#include "shared/rpc/player_weapon.h"
 
 #include <scripting/builtins/vector3.h>
 #include <glm/gtc/quaternion.hpp>
@@ -25,6 +29,162 @@ namespace VantaMP::Scripting {
         auto *player = ResolvePlayer();
 
         return player ? player->nickname : "";
+    }
+
+    void Player::SetNickname(const std::string &nickname) {
+        if (auto *player = ResolvePlayer()) {
+            player->nickname = nickname;
+        }
+    }
+
+    float Player::GetHealth() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->health : 0.0f;
+    }
+
+    void Player::SetHealth(float health) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->health = health;
+            gPlayers->SendScript(*player, Shared::kPlayerScriptHealth);
+        }
+    }
+
+    float Player::GetArmour() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->armour : 0.0f;
+    }
+
+    void Player::SetArmour(float armour) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->armour = armour;
+            gPlayers->SendScript(*player, Shared::kPlayerScriptArmour);
+        }
+    }
+
+    std::uint32_t Player::GetModel() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->modelId : 0;
+    }
+
+    void Player::SetModel(std::uint32_t modelId) {
+        if (auto *player = ResolvePlayer(); player && gPlayers && Shared::ModelCatalog::IsPed(modelId)) {
+            player->modelId = modelId;
+            gPlayers->SendScript(*player, Shared::kPlayerScriptModel);
+        }
+    }
+
+    std::int32_t Player::GetMoney() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->money : 0;
+    }
+
+    void Player::SetMoney(std::int32_t money) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->money = money;
+            gPlayers->SendScript(*player, Shared::kPlayerScriptMoney);
+        }
+    }
+
+    std::uint8_t Player::GetWantedLevel() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->wantedLevel : 0;
+    }
+
+    void Player::SetWantedLevel(std::uint8_t stars) {
+        if (auto *player = ResolvePlayer(); player && gPlayers && stars <= 6) {
+            player->wantedLevel = stars;
+            gPlayers->SendScript(*player, Shared::kPlayerScriptWanted);
+        }
+    }
+
+    bool Player::GetFrozen() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->frozen;
+    }
+
+    void Player::SetFrozen(bool frozen) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->frozen = frozen;
+            gPlayers->SendScript(*player, Shared::kPlayerScriptFrozen);
+        }
+    }
+
+    std::uint32_t Player::GetWeapon() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->weaponType : 0;
+    }
+
+    std::uint32_t Player::GetAmmo() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->ammoTotal : 0;
+    }
+
+    std::uint32_t Player::GetAmmoInClip() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->ammoClip : 0;
+    }
+
+    bool Player::IsDead() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->health <= 0.0f;
+    }
+
+    bool Player::IsDucked() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->isDucked;
+    }
+
+    bool Player::IsInWater() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->isInWater;
+    }
+
+    bool Player::IsInAir() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->isInAir;
+    }
+
+    bool Player::IsInVehicle() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->vehicleNetworkId != 0;
+    }
+
+    std::uint8_t Player::GetVehicleSeat() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->vehicleSeat : 0;
+    }
+
+    void Player::GiveWeapon(std::uint32_t weaponType, std::uint32_t ammo) {
+        if (auto *player = ResolvePlayer(); player && gPlayers && Shared::ModelCatalog::IsWeapon(weaponType)) {
+            gPlayers->SendWeapon(*player, Shared::RPC::PlayerWeapon::kGive, weaponType, ammo);
+        }
+    }
+
+    void Player::TakeWeapon(std::uint32_t weaponType) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            gPlayers->SendWeapon(*player, Shared::RPC::PlayerWeapon::kTake, weaponType, 0);
+        }
+    }
+
+    void Player::TakeAllWeapons() {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            gPlayers->SendWeapon(*player, Shared::RPC::PlayerWeapon::kTakeAll, 0, 0);
+        }
     }
 
     std::uint8_t Player::GetInterior() const {
@@ -103,6 +263,18 @@ namespace VantaMP::Scripting {
         gPlayers->Spawn(player->ownerGUID, x, y, z, heading, model, health, armour, interior, dimension);
     }
 
+    void Player::JS_GetOccupiedVehicle(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto *self    = v8pp::class_<Player>::unwrap_object(isolate, info.This());
+        auto *player  = self ? self->ResolvePlayer() : nullptr;
+
+        if (!player || player->vehicleNetworkId == 0) {
+            return;
+        }
+
+        info.GetReturnValue().Set(Vehicle::Wrap(isolate, player->vehicleNetworkId));
+    }
+
     v8pp::class_<Player> &Player::GetClass(v8::Isolate *isolate) {
         auto found = gClasses.find(isolate);
 
@@ -115,16 +287,34 @@ namespace VantaMP::Scripting {
         auto &cls = gClasses[isolate];
         cls       = std::make_unique<v8pp::class_<Player>>(isolate, Framework::Scripting::GetScriptingCatalog(isolate), "VantaPlayer",
                                                      "A connected player. Framework Player (kick, emit, ping, nametag) "
-                                                     "plus spawn, nickname, interior and dimension. Position and "
-                                                     "rotation are the Entity ones.");
+                                                     "plus spawn, vitals, money, wanted, weapons and occupancy.");
 
         cls->inherit<Framework::Scripting::Builtins::Player>()
             .ctor<std::uint64_t>()
-            .property("nickname", &Player::GetNickname)
+            .property("nickname", &Player::GetNickname, &Player::SetNickname)
+            .property("health", &Player::GetHealth, &Player::SetHealth)
+            .property("armour", &Player::GetArmour, &Player::SetArmour)
+            .property("model", &Player::GetModel, &Player::SetModel)
+            .property("money", &Player::GetMoney, &Player::SetMoney)
+            .property("wantedLevel", &Player::GetWantedLevel, &Player::SetWantedLevel)
+            .property("frozen", &Player::GetFrozen, &Player::SetFrozen)
+            .property("weapon", &Player::GetWeapon)
+            .property("ammo", &Player::GetAmmo)
+            .property("ammoInClip", &Player::GetAmmoInClip)
+            .property("dead", &Player::IsDead)
+            .property("ducked", &Player::IsDucked)
+            .property("inWater", &Player::IsInWater)
+            .property("inAir", &Player::IsInAir)
+            .property("inVehicle", &Player::IsInVehicle)
+            .property("vehicleSeat", &Player::GetVehicleSeat)
             .property("interior", &Player::GetInterior, &Player::SetInterior)
-            .property("dimension", &Player::GetDimension, &Player::SetDimension);
+            .property("dimension", &Player::GetDimension, &Player::SetDimension)
+            .function("giveWeapon", &Player::GiveWeapon)
+            .function("takeWeapon", &Player::TakeWeapon)
+            .function("takeAllWeapons", &Player::TakeAllWeapons);
 
         cls->prototype_function("spawn", &Player::JS_Spawn);
+        cls->prototype_function("getOccupiedVehicle", &Player::JS_GetOccupiedVehicle);
 
         return *cls;
     }

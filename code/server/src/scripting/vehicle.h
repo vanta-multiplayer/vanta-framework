@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <v8.h>
 #include <v8pp/class.hpp>
@@ -81,6 +82,48 @@ namespace VantaMP::Scripting {
         Framework::Scripting::Builtins::Vector3 GetRotationDegrees() const;
         void SetRotationDegrees(const Framework::Scripting::Builtins::Vector3 &degrees);
 
+        bool GetBlown() const;
+        void Fix();
+
+        std::string GetPlateText() const;
+        void SetPlateText(const std::string &text);
+
+        std::uint8_t GetDirtLevel() const;
+        void SetDirtLevel(std::uint8_t level);
+
+        bool GetTaxiLight() const;
+        void SetTaxiLight(bool on);
+
+        Framework::Scripting::Builtins::Color GetHeadlightColor() const;
+        void SetHeadlightColor(const Framework::Scripting::Builtins::Color &color);
+
+        bool GetFrozen() const;
+        void SetFrozen(bool frozen);
+
+        bool GetDamageProof() const;
+        void SetDamageProof(bool proof);
+
+        std::string GetName() const;
+        std::string GetVehicleType() const;
+        std::uint8_t GetMaxPassengers() const;
+
+        std::uint16_t GetUpgradeOnSlot(std::uint8_t slot) const;
+
+        std::uint8_t GetDoorState(std::uint8_t door) const;
+        void SetDoorState(std::uint8_t door, std::uint8_t state);
+
+        std::uint8_t GetWheelState(std::uint8_t wheel) const;
+        void SetWheelState(std::uint8_t wheel, std::uint8_t state);
+
+        std::uint8_t GetLightState(std::uint8_t light) const;
+        void SetLightState(std::uint8_t light, std::uint8_t state);
+
+        std::uint8_t GetPanelState(std::uint8_t panel) const;
+        void SetPanelState(std::uint8_t panel, std::uint8_t state);
+
+        float GetDoorOpenRatio(std::uint8_t door) const;
+        void SetDoorOpenRatio(std::uint8_t door, float ratio);
+
         void Destroy();
 
         static void Bind(Game::VehicleManager &vehicles);
@@ -99,6 +142,9 @@ namespace VantaMP::Scripting {
       private:
         static void JS_SetColor(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void JS_SetRotation(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_GetOccupants(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_GetController(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_GetUpgrades(const v8::FunctionCallbackInfo<v8::Value> &info);
 
         inline static Game::VehicleManager *gVehicles = nullptr;
         inline static std::unordered_map<v8::Isolate *, std::unique_ptr<v8pp::class_<Vehicle>>> gClasses;

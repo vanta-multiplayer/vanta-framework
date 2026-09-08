@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <v8.h>
 #include <v8pp/class.hpp>
@@ -28,6 +29,40 @@ namespace VantaMP::Scripting {
         Shared::PlayerEntity *ResolvePlayer() const;
 
         std::string GetNickname() const;
+        void SetNickname(const std::string &nickname);
+
+        float GetHealth() const;
+        void SetHealth(float health);
+
+        float GetArmour() const;
+        void SetArmour(float armour);
+
+        std::uint32_t GetModel() const;
+        void SetModel(std::uint32_t modelId);
+
+        std::int32_t GetMoney() const;
+        void SetMoney(std::int32_t money);
+
+        std::uint8_t GetWantedLevel() const;
+        void SetWantedLevel(std::uint8_t stars);
+
+        bool GetFrozen() const;
+        void SetFrozen(bool frozen);
+
+        std::uint32_t GetWeapon() const;
+        std::uint32_t GetAmmo() const;
+        std::uint32_t GetAmmoInClip() const;
+
+        bool IsDead() const;
+        bool IsDucked() const;
+        bool IsInWater() const;
+        bool IsInAir() const;
+        bool IsInVehicle() const;
+        std::uint8_t GetVehicleSeat() const;
+
+        void GiveWeapon(std::uint32_t weaponType, std::uint32_t ammo);
+        void TakeWeapon(std::uint32_t weaponType);
+        void TakeAllWeapons();
 
         std::uint8_t GetInterior() const;
         void SetInterior(std::uint8_t interior);
@@ -46,6 +81,7 @@ namespace VantaMP::Scripting {
 
       private:
         static void JS_Spawn(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_GetOccupiedVehicle(const v8::FunctionCallbackInfo<v8::Value> &info);
 
         inline static Game::PlayerManager *gPlayers = nullptr;
         inline static std::unordered_map<v8::Isolate *, std::unique_ptr<v8pp::class_<Player>>> gClasses;

@@ -420,6 +420,18 @@ namespace VantaMP::Game {
         vehicle.upgrades = {};
     }
 
+    void VehicleManager::Fix(Shared::VehicleEntity &vehicle) {
+        vehicle.health           = 1000.0f;
+        vehicle.blown            = false;
+        vehicle.damageEngine     = 0;
+        vehicle.doorsPacked      = 0;
+        vehicle.wheelsPacked     = 0;
+        vehicle.panels           = 0;
+        vehicle.lights           = 0;
+        vehicle.doorRatiosPacked = 0;
+        vehicle.ForceState();
+    }
+
     Shared::VehicleEntity *VehicleManager::Find(std::uint64_t networkId) const {
         const auto found = _vehicles.find(networkId);
 

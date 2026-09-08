@@ -3,6 +3,8 @@
 #include "shared/catalog/model_catalog.h"
 #include "shared/entity/player_entity.h"
 #include "shared/rpc/local_player_spawn.h"
+#include "shared/rpc/player_script.h"
+#include "shared/rpc/player_weapon.h"
 #include "shared/rpc/world_space.h"
 #include "shared/world/world_space.h"
 
@@ -129,6 +131,36 @@ namespace VantaMP::Game {
     void PlayerManager::SetDimension(Shared::PlayerEntity &player, std::uint16_t dimension) {
         player.dimension = dimension;
         SendWorldSpace(player.ownerGUID, static_cast<std::uint64_t>(player.GetNetworkID()), player.interior, dimension, Shared::kWorldSpaceDimension);
+    }
+
+    void PlayerManager::SendScript(Shared::PlayerEntity &player, std::uint8_t flags) {
+        auto *net = Framework::CoreModules::GetNetworkPeer();
+
+        if (!net || static_cast<std::uint64_t>(player.ownerGUID) == 0 || flags == 0) {
+            return;
+        }
+
+        Shared::RPC::PlayerScript message;
+        message.flags       = flags;
+        message.health      = player.health;
+        message.armour      = player.armour;
+        message.modelId     = player.modelId;
+        message.money       = player.money;
+        message.wantedLevel = player.wantedLevel;
+        message.frozen      = player.frozen;
+        net->SendRPC(message, MafiaNet::ToGuid(player.ownerGUID));
+    }
+
+    void PlayerManager::SendWeapon(Shared::PlayerEntity &player, std::uint8_t action, std::uint32_t weaponType, std::uint32_t ammo) {
+        auto *net = Framework::CoreModules::GetNetworkPeer();
+
+        if (!net || static_cast<std::uint64_t>(player.ownerGUID) == 0) {
+            return;
+        }
+
+        Shared::RPC::PlayerWeapon message;
+        message.FromParameters(action, weaponType, ammo);
+        net->SendRPC(message, MafiaNet::ToGuid(player.ownerGUID));
     }
 
     Shared::PlayerEntity *PlayerManager::Find(MafiaNet::PeerGuid guid) const {
