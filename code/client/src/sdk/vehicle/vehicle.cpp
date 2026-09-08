@@ -887,39 +887,35 @@ namespace VantaMP::SDK {
     void SetVehiclePlateText(void *handle, const std::string &text) {
         auto *vehicle = AsVehicle(handle);
 
-        if (!vehicle || !gPatterns.CModelInfo__ms_modelInfoPtrs || !gPatterns.CVehicle__CustomCarPlate_TextureCreate ||
-            !gPatterns.CVehicle__CustomCarPlate_TextureDestroy) {
+        if (!vehicle || !gPatterns.CModelInfo__ms_modelInfoPtrs || !gPatterns.CVehicle__CustomCarPlate_TextureCreate) {
             return;
         }
 
-        auto **modelInfos = *reinterpret_cast<CBaseModelInfo ***>(gPatterns.CModelInfo__ms_modelInfoPtrs);
-        auto *model       = reinterpret_cast<CVehicleModelInfo *>(modelInfos[vehicle->m_nModelIndex]);
+        const auto modelIndex = vehicle->m_nModelIndex;
+        if (modelIndex < 0 || modelIndex >= 20000) {
+            return;
+        }
+
+        auto **modelInfos = reinterpret_cast<CBaseModelInfo **>(gPatterns.CModelInfo__ms_modelInfoPtrs);
+        auto *model       = reinterpret_cast<CVehicleModelInfo *>(modelInfos[modelIndex]);
 
         if (!model || !model->m_pPlateMaterial) {
             return;
         }
 
-        char plate[9] {};
+        std::memset(model->m_szPlateText, 0, 8);
         const auto n = (std::min)(text.size(), std::size_t {8});
-        std::memcpy(plate, text.data(), n);
-
-        char saved[8];
-        std::memcpy(saved, model->m_szPlateText, 8);
-
-        using DestroyPlateFn = void(__thiscall *)(CVehicle *);
-        using CreatePlateFn  = bool(__thiscall *)(CVehicle *, CVehicleModelInfo *);
-
-        reinterpret_cast<DestroyPlateFn>(gPatterns.CVehicle__CustomCarPlate_TextureDestroy)(vehicle);
-
-        if (plate[0] != '\0') {
-            std::memset(model->m_szPlateText, 0, 8);
-            std::memcpy(model->m_szPlateText, plate, 8);
-            reinterpret_cast<CreatePlateFn>(gPatterns.CVehicle__CustomCarPlate_TextureCreate)(vehicle, model);
+        if (n) {
+            std::memcpy(model->m_szPlateText, text.data(), n);
         }
 
-        // Model plate text is shared across instances; restore so the next
-        // CreateCar does not bake this string into another vehicle.
-        std::memcpy(model->m_szPlateText, saved, 8);
+        if (gPatterns.CVehicle__CustomCarPlate_TextureDestroy && vehicle->m_pCustomCarPlate) {
+            using DestroyPlateFn = void(__thiscall *)(CVehicle *);
+            reinterpret_cast<DestroyPlateFn>(gPatterns.CVehicle__CustomCarPlate_TextureDestroy)(vehicle);
+        }
+
+        using CreatePlateFn = bool(__thiscall *)(CVehicle *, CVehicleModelInfo *);
+        reinterpret_cast<CreatePlateFn>(gPatterns.CVehicle__CustomCarPlate_TextureCreate)(vehicle, model);
     }
 
     void SetVehicleAlpha(void *handle, std::uint8_t alpha) {

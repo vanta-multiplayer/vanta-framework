@@ -1,0 +1,10 @@
+; GTA:SA imports EAX.DLL by ordinal (primarily #6). Keep this table stable.
+LIBRARY eax
+EXPORTS
+    DllCanUnloadNow       @1
+    DllGetClassObject     @2
+    DllRegisterServer     @3
+    DllUnregisterServer   @4
+    EAXDirectSoundCreate  @5
+    EAXDirectSoundCreate8 @6
+    GetCurrentVersion     @7

@@ -10,6 +10,7 @@
 #include "core/client_config.h"
 #include "core/diagnostics/crash_report.h"
 #include "core/globals.h"
+#include "eac/host_modules.h"
 #include "game/startup.h"
 
 namespace VantaMP::Core {
@@ -24,6 +25,9 @@ extern "C" void __declspec(dllexport) InitClient(const wchar_t *projectPath) {
     VantaMP::Core::LoadClientConfig(VantaMP::Core::gProjectPath);
 
     MH_Initialize();
+    // Host stubs (eax/ogg/vorbis) ship beside the launcher; no LoadLibrary hooks.
+    VantaMP::Eac::InstallHostModuleRedirects();
+
     hook::set_base();
     VantaMP::Game::Start();
     InitFunction::RunAll();

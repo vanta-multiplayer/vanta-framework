@@ -68,6 +68,12 @@ set(VANTAMP_CLIENT_FILES
     src/game/sync/vehicle_sync.cpp
     src/game/sync/world_sync.cpp
 
+    # Usermode EOS Connect (Steam-free) + optional EAC.
+    src/eos/manager.cpp
+    src/eac/eac.cpp
+    src/eac/host_modules.cpp
+    ../shared/eos/runtime_config.cpp
+
     # Resource scripting (readonly Player / Vehicle handles).
     src/scripting/bindings.cpp
     src/scripting/player.cpp
@@ -113,6 +119,41 @@ add_library(VantaMPClient SHARED ${VANTAMP_CLIENT_FILES})
 target_include_directories(VantaMPClient PRIVATE src ${CMAKE_CURRENT_SOURCE_DIR}/../ ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(VantaMPClient Framework FrameworkClient)
 target_link_options(VantaMPClient PRIVATE /MANIFEST:NO)
+target_compile_definitions(VantaMPClient PRIVATE VANTA_CLIENT=1)
+
+# GTA:SA IAT-imports EAX.DLL (ordinal 6). A Vanta-built forwarder to dsound.dll
+# lives next to the launcher so LoadLibrary never pulls eax.dll from the GTA
+# install (EAC Untrusted). Not a copy of the retail DLL.
+add_library(VantaEaxStub SHARED host_stubs/eax/eax.cpp host_stubs/eax/eax.def)
+set_target_properties(VantaEaxStub PROPERTIES
+    OUTPUT_NAME eax
+    PREFIX ""
+    CXX_STANDARD 17
+    RUNTIME_OUTPUT_DIRECTORY $<TARGET_FILE_DIR:VantaMPClient>
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG $<TARGET_FILE_DIR:VantaMPClient>
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE $<TARGET_FILE_DIR:VantaMPClient>
+    RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO $<TARGET_FILE_DIR:VantaMPClient>
+    RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL $<TARGET_FILE_DIR:VantaMPClient>)
+target_link_libraries(VantaEaxStub PRIVATE dsound ole32)
+target_compile_definitions(VantaEaxStub PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+add_dependencies(VantaMPClient VantaEaxStub)
+
+# ogg / vorbis / vorbisFile — Xiph sources, GTA IAT names (see host_stubs/vorbis).
+add_subdirectory(host_stubs/vorbis)
+
+# Epic Online Services / Easy Anti-Cheat (32-bit client needs Win32 EOSSDK).
+# Connect uses Device ID - Steam is not required for EOS identity.
+set(VANTA_EOS_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../vendors/eos")
+target_include_directories(VantaMPClient PRIVATE "${VANTA_EOS_ROOT}/Include")
+if(EXISTS "${VANTA_EOS_ROOT}/Lib/Win32/EOSSDK-Win32-Shipping.lib")
+    target_compile_definitions(VantaMPClient PRIVATE VANTAMP_HAS_EOS=1)
+    target_link_libraries(VantaMPClient "${VANTA_EOS_ROOT}/Lib/Win32/EOSSDK-Win32-Shipping.lib")
+    add_custom_command(TARGET VantaMPClient POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${VANTA_EOS_ROOT}/Bin/Win32/EOSSDK-Win32-Shipping.dll"
+            "$<TARGET_FILE_DIR:VantaMPClient>"
+        COMMENT "Copy EOSSDK-Win32-Shipping.dll next to VantaMPClient")
+endif()
 
 # plugin-sdk's bundled safetyhook uses std::expected
 set_target_properties(VantaMPClient PROPERTIES CXX_STANDARD 23)

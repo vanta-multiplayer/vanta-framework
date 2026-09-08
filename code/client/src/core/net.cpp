@@ -18,6 +18,8 @@
 #include "shared/rpc/vehicle_damage_report.h"
 #include "shared/rpc/world_env.h"
 #include "shared/rpc/world_space.h"
+#include "shared/rpc/eac_messages.h"
+#include "eac/eac.h"
 
 #include <core_modules.h>
 #include <networking/network_peer.h>
@@ -86,6 +88,14 @@ namespace VantaMP::Core::Net {
         net->RegisterRPC<Shared::RPC::VehicleDamageReport>([](const Shared::RPC::VehicleDamageReport &report, MafiaNet::Packet *) {
             Game::ApplyRemoteVehicleDamage(report.vehicleId, report.damageEngine, report.doorsPacked, report.wheelsPacked, report.panels, report.lights,
                                            report.doorRatiosPacked, report.applyRatios, report.health);
+        });
+
+        net->RegisterRPC<Shared::RPC::EacOpaque>([](const Shared::RPC::EacOpaque &opaque, MafiaNet::Packet *) {
+            Eac::HandleOpaqueFromServer(opaque);
+        });
+
+        net->RegisterRPC<Shared::RPC::EacAction>([](const Shared::RPC::EacAction &action, MafiaNet::Packet *) {
+            Eac::HandleActionFromServer(action);
         });
     }
 } // namespace VantaMP::Core::Net

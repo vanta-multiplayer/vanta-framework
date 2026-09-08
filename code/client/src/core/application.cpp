@@ -12,6 +12,8 @@
 #include "core/voice_io.h"
 #include "core/ui/window_input.h"
 #include "core/ui/ped_debug_ui.h"
+#include "eac/eac.h"
+#include "eos/manager.h"
 #include "game/patches/boot.h"
 #include "scripting/bindings.h"
 #include "sdk/world/draw.h"
@@ -32,6 +34,8 @@ namespace VantaMP::Core {
 
     void Application::PostInit() {
         Net::Register();
+        (void)Eos::GetManager().Initialize(gProjectPath, GetClientConfig().nickname);
+        Eac::Init();
 
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client initialized");
         ApplyVoiceSettings();
@@ -46,9 +50,11 @@ namespace VantaMP::Core {
         // the server decides where this player belongs, and says so with a
         // spawn - which is what lifts the fade.
         Core::OnConnectionFinalized(*this, serverTickRate);
+        Eac::OnGameConnected();
     }
 
     void Application::OnConnectionClosed() {
+        Eac::EndSession();
         Core::OnConnectionClosed(*this);
     }
 
@@ -114,6 +120,9 @@ namespace VantaMP::Core {
     }
 
     void Application::PostUpdate() {
+        Eos::GetManager().Tick();
+        Eac::Tick();
+
         // The menu waits for the game's own startup to finish.
         //
         // The copyright notice is the one screen Vanta does not remove, so it
@@ -222,6 +231,8 @@ namespace VantaMP::Core {
     }
 
     void Application::PreShutdown() {
+        Eac::Shutdown();
+        Eos::GetManager().Shutdown();
         StopMicTest();
         Nui::ReportMicTest(false);
         SetTalkLatched(false);
