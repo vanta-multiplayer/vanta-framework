@@ -44,6 +44,8 @@ by the on-foot interpolator.
 | `walkingStyle` | `CPed::m_nAnimGroup`. The owner reports it; script set sends `PlayerScript` then `SetMoveAnim` |
 | `alpha` | Clump alpha 0–255. Script-owned. Applied every frame — GTA rewrites it from ProcessControl |
 | `onFire` | `m_pFire`. The owner reports it; script set starts or extinguishes |
+| `maxHealth` | Script-owned. The owner echoes; script set sends `PlayerScript` first |
+| `isDrowning` | `bIsDrowning`. The owner reports underwater damage |
 
 Position, velocity and rotation live on `NetworkEntity`, not on `PlayerEntity`.
 Re-declaring them would put the same numbers on the wire twice.

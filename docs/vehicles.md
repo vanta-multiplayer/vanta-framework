@@ -178,6 +178,10 @@ car.landingGearDown = true; // planes; cars stay true
 car.lights = true;
 car.alpha = 180;
 car.onGround; // owner reports bOnSolidSurface
+car.engineBroken = false;
+car.wheelsCanBurst = true;
+car.canBeDamaged = true;
+car.nitroCount = 3;
 car.fix();
 car.blow();
 car.getCompatibleUpgrades(12); // wheel ids, not filtered by model
