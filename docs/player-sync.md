@@ -41,6 +41,9 @@ by the on-foot interpolator.
 | `wantedLevel` | Stars. The owner reports what GTA has; script set sends `PlayerScript` first |
 | `fightingStyle` | Fists. The owner reports GTA's style (4 is standard); 0 means remotes leave it |
 | `oxygen` | Breath. The owner reports `CPlayerData::m_fBreath`; script set sends `PlayerScript` first |
+| `walkingStyle` | `CPed::m_nAnimGroup`. The owner reports it; script set sends `PlayerScript` then `SetMoveAnim` |
+| `alpha` | Clump alpha 0–255. Script-owned. Applied every frame — GTA rewrites it from ProcessControl |
+| `onFire` | `m_pFire`. The owner reports it; script set starts or extinguishes |
 
 Position, velocity and rotation live on `NetworkEntity`, not on `PlayerEntity`.
 Re-declaring them would put the same numbers on the wire twice.
