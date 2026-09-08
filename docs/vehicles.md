@@ -168,6 +168,14 @@ car.locked = true;
 car.overrideLights = 2; // 0 none, 1 force off, 2 force on
 car.velocity = new Vector3(0, 0, 0);
 car.turnVelocity = new Vector3(0, 0, 0);
+car.dirtLevel = 0;
+car.taxiLight = true;
+car.plateText = 'VANTA';
+car.frozen = false;
+car.damageProof = false;
+car.fix();
+car.setDoorOpenRatio(0, 1);
+const driver = car.getController();
 ```
 
 `return false` from `vehicleStartEnter` / `vehicleStartExit` vetoes the
