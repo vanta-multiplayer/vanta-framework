@@ -73,7 +73,14 @@ namespace VantaMP::Game {
         }
         void SetSunSize(float size);
 
-        // Full snapshot to one peer (join). Partial broadcast for script sets.
+        void GetWaterColor(float &r, float &g, float &b, float &a) const;
+        void SetWaterColor(float r, float g, float b, float a);
+
+        void GetHeatHaze(std::uint8_t &intensity, std::uint8_t &randomShift, std::uint16_t &speedMin, std::uint16_t &speedMax, std::int16_t &scanX,
+                         std::int16_t &scanY, std::uint16_t &renderX, std::uint16_t &renderY, bool &insideBuilding) const;
+        void SetHeatHaze(std::uint8_t intensity, std::uint8_t randomShift, std::uint16_t speedMin, std::uint16_t speedMax, std::int16_t scanX,
+                         std::int16_t scanY, std::uint16_t renderX, std::uint16_t renderY, bool insideBuilding);
+
         void SendTo(MafiaNet::PeerGuid guid) const;
         void Broadcast(std::uint16_t flags) const;
 
@@ -96,6 +103,16 @@ namespace VantaMP::Game {
         std::uint8_t  _sunCoreR = 0, _sunCoreG = 0, _sunCoreB = 0;
         std::uint8_t  _sunCoronaR = 0, _sunCoronaG = 0, _sunCoronaB = 0;
         float         _sunSize        = 1.0f;
+        float         _waterR = 0, _waterG = 0, _waterB = 0, _waterA = 255;
+        std::uint8_t  _hazeIntensity  = 0;
+        std::uint8_t  _hazeRandomShift = 0;
+        std::uint16_t _hazeSpeedMin   = 12;
+        std::uint16_t _hazeSpeedMax   = 18;
+        std::int16_t  _hazeScanX      = 75;
+        std::int16_t  _hazeScanY      = 80;
+        std::uint16_t _hazeRenderX    = 80;
+        std::uint16_t _hazeRenderY    = 85;
+        bool          _hazeInside     = false;
         bool          _haveMidnight   = false;
         bool          _farClipSet     = false;
         bool          _fogSet         = false;
@@ -105,5 +122,7 @@ namespace VantaMP::Game {
         bool          _moonSet        = false;
         bool          _sunColorSet    = false;
         bool          _sunSizeSet     = false;
+        bool          _waterSet       = false;
+        bool          _hazeSet        = false;
     };
 } // namespace VantaMP::Game

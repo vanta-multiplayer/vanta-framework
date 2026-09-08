@@ -225,6 +225,78 @@ namespace VantaMP::Scripting {
         info.GetReturnValue().Set(arr);
     }
 
+    void World::JS_SetWaterColor(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        if (!gWorld || info.Length() < 3) {
+            return;
+        }
+
+        auto *isolate = info.GetIsolate();
+        const float a = info.Length() > 3 ? v8pp::from_v8<float>(isolate, info[3]) : 255.0f;
+        gWorld->SetWaterColor(v8pp::from_v8<float>(isolate, info[0]), v8pp::from_v8<float>(isolate, info[1]), v8pp::from_v8<float>(isolate, info[2]), a);
+    }
+
+    void World::JS_GetWaterColor(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto  ctx     = isolate->GetCurrentContext();
+        auto  arr     = v8::Array::New(isolate, 4);
+
+        float r = 0, g = 0, b = 0, a = 255;
+        if (gWorld) {
+            gWorld->GetWaterColor(r, g, b, a);
+        }
+
+        arr->Set(ctx, 0, v8pp::to_v8(isolate, r)).Check();
+        arr->Set(ctx, 1, v8pp::to_v8(isolate, g)).Check();
+        arr->Set(ctx, 2, v8pp::to_v8(isolate, b)).Check();
+        arr->Set(ctx, 3, v8pp::to_v8(isolate, a)).Check();
+        info.GetReturnValue().Set(arr);
+    }
+
+    void World::JS_SetHeatHaze(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        if (!gWorld || info.Length() < 1) {
+            return;
+        }
+
+        auto *isolate = info.GetIsolate();
+        const auto intensity   = v8pp::from_v8<std::uint8_t>(isolate, info[0]);
+        const auto randomShift = info.Length() > 1 ? v8pp::from_v8<std::uint8_t>(isolate, info[1]) : std::uint8_t {0};
+        const auto speedMin    = info.Length() > 2 ? v8pp::from_v8<std::uint16_t>(isolate, info[2]) : std::uint16_t {12};
+        const auto speedMax    = info.Length() > 3 ? v8pp::from_v8<std::uint16_t>(isolate, info[3]) : std::uint16_t {18};
+        const auto scanX       = info.Length() > 4 ? v8pp::from_v8<std::int16_t>(isolate, info[4]) : std::int16_t {75};
+        const auto scanY       = info.Length() > 5 ? v8pp::from_v8<std::int16_t>(isolate, info[5]) : std::int16_t {80};
+        const auto renderX     = info.Length() > 6 ? v8pp::from_v8<std::uint16_t>(isolate, info[6]) : std::uint16_t {80};
+        const auto renderY     = info.Length() > 7 ? v8pp::from_v8<std::uint16_t>(isolate, info[7]) : std::uint16_t {85};
+        const auto inside      = info.Length() > 8 && info[8]->BooleanValue(isolate);
+
+        gWorld->SetHeatHaze(intensity, randomShift, speedMin, speedMax, scanX, scanY, renderX, renderY, inside);
+    }
+
+    void World::JS_GetHeatHaze(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto  ctx     = isolate->GetCurrentContext();
+        auto  arr     = v8::Array::New(isolate, 9);
+
+        std::uint8_t intensity = 0, randomShift = 0;
+        std::uint16_t speedMin = 12, speedMax = 18, renderX = 80, renderY = 85;
+        std::int16_t scanX = 75, scanY = 80;
+        bool inside = false;
+
+        if (gWorld) {
+            gWorld->GetHeatHaze(intensity, randomShift, speedMin, speedMax, scanX, scanY, renderX, renderY, inside);
+        }
+
+        arr->Set(ctx, 0, v8pp::to_v8(isolate, intensity)).Check();
+        arr->Set(ctx, 1, v8pp::to_v8(isolate, randomShift)).Check();
+        arr->Set(ctx, 2, v8pp::to_v8(isolate, speedMin)).Check();
+        arr->Set(ctx, 3, v8pp::to_v8(isolate, speedMax)).Check();
+        arr->Set(ctx, 4, v8pp::to_v8(isolate, scanX)).Check();
+        arr->Set(ctx, 5, v8pp::to_v8(isolate, scanY)).Check();
+        arr->Set(ctx, 6, v8pp::to_v8(isolate, renderX)).Check();
+        arr->Set(ctx, 7, v8pp::to_v8(isolate, renderY)).Check();
+        arr->Set(ctx, 8, v8::Boolean::New(isolate, inside)).Check();
+        info.GetReturnValue().Set(arr);
+    }
+
     namespace {
         template <auto Getter>
         void JS_Get(const v8::FunctionCallbackInfo<v8::Value> &info) {
@@ -278,6 +350,10 @@ namespace VantaMP::Scripting {
         put("getSunColor", &World::JS_GetSunColor);
         put("getSunSize", &JS_Get<&World::GetSunSize>);
         put("setSunSize", &JS_Set<&World::SetSunSize, float>);
+        put("setWaterColor", &World::JS_SetWaterColor);
+        put("getWaterColor", &World::JS_GetWaterColor);
+        put("setHeatHaze", &World::JS_SetHeatHaze);
+        put("getHeatHaze", &World::JS_GetHeatHaze);
 
         global->Set(ctx, v8pp::to_v8(isolate, "World"), world).Check();
     }

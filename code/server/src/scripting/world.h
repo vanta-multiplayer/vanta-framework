@@ -59,6 +59,10 @@ namespace VantaMP::Scripting {
         static void JS_GetSkyGradient(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void JS_SetSunColor(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void JS_GetSunColor(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_SetWaterColor(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_GetWaterColor(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_SetHeatHaze(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_GetHeatHaze(const v8::FunctionCallbackInfo<v8::Value> &info);
 
         inline static Game::WorldManager *gWorld = nullptr;
     };

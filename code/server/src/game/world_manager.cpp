@@ -148,6 +148,51 @@ namespace VantaMP::Game {
         Broadcast(Shared::kWorldEnvSunSize);
     }
 
+    void WorldManager::GetWaterColor(float &r, float &g, float &b, float &a) const {
+        r = _waterR;
+        g = _waterG;
+        b = _waterB;
+        a = _waterA;
+    }
+
+    void WorldManager::SetWaterColor(float r, float g, float b, float a) {
+        auto clamp255 = [](float v) { return std::clamp(v, 0.0f, 255.0f); };
+        _waterR   = clamp255(r);
+        _waterG   = clamp255(g);
+        _waterB   = clamp255(b);
+        _waterA   = clamp255(a);
+        _waterSet = true;
+        Broadcast(Shared::kWorldEnvWaterColor);
+    }
+
+    void WorldManager::GetHeatHaze(std::uint8_t &intensity, std::uint8_t &randomShift, std::uint16_t &speedMin, std::uint16_t &speedMax, std::int16_t &scanX,
+                                   std::int16_t &scanY, std::uint16_t &renderX, std::uint16_t &renderY, bool &insideBuilding) const {
+        intensity      = _hazeIntensity;
+        randomShift    = _hazeRandomShift;
+        speedMin       = _hazeSpeedMin;
+        speedMax       = _hazeSpeedMax;
+        scanX          = _hazeScanX;
+        scanY          = _hazeScanY;
+        renderX        = _hazeRenderX;
+        renderY        = _hazeRenderY;
+        insideBuilding = _hazeInside;
+    }
+
+    void WorldManager::SetHeatHaze(std::uint8_t intensity, std::uint8_t randomShift, std::uint16_t speedMin, std::uint16_t speedMax, std::int16_t scanX,
+                                   std::int16_t scanY, std::uint16_t renderX, std::uint16_t renderY, bool insideBuilding) {
+        _hazeIntensity   = intensity;
+        _hazeRandomShift = randomShift;
+        _hazeSpeedMin    = speedMin;
+        _hazeSpeedMax    = speedMax;
+        _hazeScanX       = scanX;
+        _hazeScanY       = scanY;
+        _hazeRenderX     = renderX;
+        _hazeRenderY     = renderY;
+        _hazeInside      = insideBuilding;
+        _hazeSet         = true;
+        Broadcast(Shared::kWorldEnvHeatHaze);
+    }
+
     std::uint16_t WorldManager::JoinFlags() const {
         auto flags = Shared::kWorldEnvCoreFlags;
 
@@ -183,6 +228,14 @@ namespace VantaMP::Game {
             flags |= Shared::kWorldEnvSunSize;
         }
 
+        if (_waterSet) {
+            flags |= Shared::kWorldEnvWaterColor;
+        }
+
+        if (_hazeSet) {
+            flags |= Shared::kWorldEnvHeatHaze;
+        }
+
         return flags;
     }
 
@@ -190,28 +243,41 @@ namespace VantaMP::Game {
         Shared::RPC::WorldEnv packet;
         packet.flags = flags;
         GetTime(packet.hour, packet.minute);
-        packet.minuteDuration = _minuteDuration;
-        packet.gameSpeed      = _gameSpeed;
-        packet.weather        = _weather;
-        packet.gravity        = _gravity;
-        packet.farClip        = _farClip;
-        packet.fogDistance    = _fogDistance;
-        packet.rainLevel      = _rainLevel;
-        packet.waveHeight     = _waveHeight;
-        packet.skyTopR        = _skyTopR;
-        packet.skyTopG        = _skyTopG;
-        packet.skyTopB        = _skyTopB;
-        packet.skyBotR        = _skyBotR;
-        packet.skyBotG        = _skyBotG;
-        packet.skyBotB        = _skyBotB;
-        packet.moonSize       = _moonSize;
-        packet.sunCoreR       = _sunCoreR;
-        packet.sunCoreG       = _sunCoreG;
-        packet.sunCoreB       = _sunCoreB;
-        packet.sunCoronaR     = _sunCoronaR;
-        packet.sunCoronaG     = _sunCoronaG;
-        packet.sunCoronaB     = _sunCoronaB;
-        packet.sunSize        = _sunSize;
+        packet.minuteDuration      = _minuteDuration;
+        packet.gameSpeed           = _gameSpeed;
+        packet.weather             = _weather;
+        packet.gravity             = _gravity;
+        packet.farClip             = _farClip;
+        packet.fogDistance         = _fogDistance;
+        packet.rainLevel           = _rainLevel;
+        packet.waveHeight          = _waveHeight;
+        packet.skyTopR             = _skyTopR;
+        packet.skyTopG             = _skyTopG;
+        packet.skyTopB             = _skyTopB;
+        packet.skyBotR             = _skyBotR;
+        packet.skyBotG             = _skyBotG;
+        packet.skyBotB             = _skyBotB;
+        packet.moonSize            = _moonSize;
+        packet.sunCoreR            = _sunCoreR;
+        packet.sunCoreG            = _sunCoreG;
+        packet.sunCoreB            = _sunCoreB;
+        packet.sunCoronaR          = _sunCoronaR;
+        packet.sunCoronaG          = _sunCoronaG;
+        packet.sunCoronaB          = _sunCoronaB;
+        packet.sunSize             = _sunSize;
+        packet.waterR              = _waterR;
+        packet.waterG              = _waterG;
+        packet.waterB              = _waterB;
+        packet.waterA              = _waterA;
+        packet.hazeIntensity       = _hazeIntensity;
+        packet.hazeRandomShift     = _hazeRandomShift;
+        packet.hazeSpeedMin        = _hazeSpeedMin;
+        packet.hazeSpeedMax        = _hazeSpeedMax;
+        packet.hazeScanX           = _hazeScanX;
+        packet.hazeScanY           = _hazeScanY;
+        packet.hazeRenderX         = _hazeRenderX;
+        packet.hazeRenderY         = _hazeRenderY;
+        packet.hazeInsideBuilding  = _hazeInside;
         return packet;
     }
 
