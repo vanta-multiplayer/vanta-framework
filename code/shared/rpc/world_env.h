@@ -18,6 +18,8 @@ namespace VantaMP::Shared {
     inline constexpr std::uint16_t kWorldEnvMoon           = 1024;
     inline constexpr std::uint16_t kWorldEnvSunColor       = 2048;
     inline constexpr std::uint16_t kWorldEnvSunSize        = 4096;
+    inline constexpr std::uint16_t kWorldEnvWaterColor     = 8192;
+    inline constexpr std::uint16_t kWorldEnvHeatHaze       = 16384;
 
     // Always on join. Optional visual overrides are OR'd when script has set them.
     inline constexpr std::uint16_t kWorldEnvCoreFlags =
@@ -53,6 +55,16 @@ namespace VantaMP::Shared::RPC {
         std::uint8_t  sunCoreR = 0, sunCoreG = 0, sunCoreB = 0;
         std::uint8_t  sunCoronaR = 0, sunCoronaG = 0, sunCoronaB = 0;
         float         sunSize        = 1.0f;
+        float         waterR = 0, waterG = 0, waterB = 0, waterA = 255;
+        std::uint8_t  hazeIntensity  = 0;
+        std::uint8_t  hazeRandomShift = 0;
+        std::uint16_t hazeSpeedMin   = 12;
+        std::uint16_t hazeSpeedMax   = 18;
+        std::int16_t  hazeScanX      = 75;
+        std::int16_t  hazeScanY      = 80;
+        std::uint16_t hazeRenderX    = 80;
+        std::uint16_t hazeRenderY    = 85;
+        bool          hazeInsideBuilding = false;
 
         void Serialize(MafiaNet::BitStream *bs, bool write) {
             bs->Serialize(write, flags);
@@ -80,6 +92,19 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, sunCoronaG);
             bs->Serialize(write, sunCoronaB);
             bs->Serialize(write, sunSize);
+            bs->Serialize(write, waterR);
+            bs->Serialize(write, waterG);
+            bs->Serialize(write, waterB);
+            bs->Serialize(write, waterA);
+            bs->Serialize(write, hazeIntensity);
+            bs->Serialize(write, hazeRandomShift);
+            bs->Serialize(write, hazeSpeedMin);
+            bs->Serialize(write, hazeSpeedMax);
+            bs->Serialize(write, hazeScanX);
+            bs->Serialize(write, hazeScanY);
+            bs->Serialize(write, hazeRenderX);
+            bs->Serialize(write, hazeRenderY);
+            bs->Serialize(write, hazeInsideBuilding);
         }
     };
 } // namespace VantaMP::Shared::RPC
