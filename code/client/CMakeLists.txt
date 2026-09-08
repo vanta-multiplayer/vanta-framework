@@ -66,6 +66,7 @@ set(VANTAMP_CLIENT_FILES
     src/game/sync/shots.cpp
     src/game/sync/death.cpp
     src/game/sync/vehicle_sync.cpp
+    src/game/sync/world_sync.cpp
 
     src/game/ui/nametags.cpp
 
@@ -73,6 +74,7 @@ set(VANTAMP_CLIENT_FILES
     # address is a number and a slot is an integer.
     src/sdk/world/camera.cpp
     src/sdk/world/draw.cpp
+    src/sdk/world/environment.cpp
     src/sdk/game_build.cpp
     src/sdk/patterns.cpp
     src/sdk/ped/aim.cpp

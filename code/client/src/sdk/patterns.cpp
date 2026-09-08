@@ -44,6 +44,12 @@ namespace VantaMP::SDK {
         // array is a common thing for the game to do.
         gPatterns.CWorld__Players = OperandAt(hook::get_pattern("C7 69 C0 90 01 00 00 8B 80 ? ? ? ? 3B C3 74"), 9); // site 0x00570D05 -> 0x00B7CD98
 
+        gPatterns.CTimer__ms_fTimeScale                 = OperandAt(hook::get_pattern("C7 00 00 C7 05 ? ? ? ? 00 00 80 3F C3"), 5); // site 0x00721D3D -> 0x00B7CB64
+        gPatterns.CClock__ms_nMillisecondsPerGameMinute = OperandAt(hook::get_pattern("8B 35 ? ? ? ? 32"), 2); // site 0x0052CF22 -> 0x00B7015C
+        gPatterns.CClock__ms_nGameClockHours            = OperandAt(hook::get_pattern("80 3D ? ? ? ? 05 72"), 2); // site 0x0045577D -> 0x00B70153
+        gPatterns.CClock__ms_nGameClockMinutes          = OperandAt(hook::get_pattern("80 3D ? ? ? ? 3C"), 2); // site 0x0052CF71 -> 0x00B70152
+        gPatterns.CWeather__ForceWeatherNow             = Resolve("E9 ? ? ? ? 66 A3"); // 0x0072A4F0
+
         // --- Boot: loading screens and the frontend ---------------------------
 
         gPatterns.CGame__Init3Call                = Resolve("E8 ? ? ? ? 83 C4 04 B0 01 5E C3 90"); // 0x0053BCD9

@@ -2,6 +2,7 @@
 
 #include "game/sync/death.h"
 #include "game/sync/vehicle_sync.h"
+#include "game/sync/world_sync.h"
 #include "game/entities/local_player.h"
 #include "game/entities/player_slots.h"
 #include "game/entities/remote_players.h"
@@ -724,6 +725,8 @@ namespace VantaMP::Game {
     } // namespace
 
     void UpdatePlayerSync() {
+        PulseWorldEnv();
+
         auto *replication = Framework::CoreModules::GetReplication();
 
         if (!replication) {

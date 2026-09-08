@@ -41,6 +41,15 @@ namespace VantaMP::SDK {
         // the live array is; this field is only for the relocation itself.
         uintptr_t CWorld__Players = 0;
 
+        // Server-authoritative clock and timer scale. Game speed is rewritten
+        // every client pulse (MTA-style) so a local poke cannot keep the sim
+        // accelerated. Weather is ForceWeatherNow, not a gradual blend.
+        uintptr_t CTimer__ms_fTimeScale                    = 0;
+        uintptr_t CClock__ms_nMillisecondsPerGameMinute    = 0;
+        uintptr_t CClock__ms_nGameClockHours               = 0;
+        uintptr_t CClock__ms_nGameClockMinutes             = 0;
+        uintptr_t CWeather__ForceWeatherNow                = 0;
+
         // --- Boot: loading screens and the frontend ---------------------------
         //
         // GTA boots into a single-player menu and a sequence of loading screens.

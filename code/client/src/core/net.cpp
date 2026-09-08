@@ -4,6 +4,7 @@
 #include "game/sync/player_sync.h"
 #include "game/sync/shots.h"
 #include "game/sync/vehicle_sync.h"
+#include "game/sync/world_sync.h"
 #include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
 #include "shared/rpc/local_player_spawn.h"
@@ -15,6 +16,7 @@
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
 #include "shared/rpc/vehicle_damage_report.h"
+#include "shared/rpc/world_env.h"
 #include "shared/rpc/world_space.h"
 
 #include <core_modules.h>
@@ -44,6 +46,10 @@ namespace VantaMP::Core::Net {
 
         net->RegisterRPC<Shared::RPC::WorldSpace>([](const Shared::RPC::WorldSpace &space, MafiaNet::Packet *) {
             Game::ApplyWorldSpace(space);
+        });
+
+        net->RegisterRPC<Shared::RPC::WorldEnv>([](const Shared::RPC::WorldEnv &env, MafiaNet::Packet *) {
+            Game::ApplyWorldEnv(env);
         });
 
         net->RegisterRPC<Shared::RPC::PlayerScript>([](const Shared::RPC::PlayerScript &script, MafiaNet::Packet *) {
