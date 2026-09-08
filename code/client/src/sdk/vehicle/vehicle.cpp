@@ -818,7 +818,8 @@ namespace VantaMP::SDK {
     }
 
     void ApplyVehicleExtras(void *handle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof,
-                            bool collisions, bool landingGearDown, bool lightsOn) {
+                            bool collisions, bool landingGearDown, bool lightsOn, bool engineBroken, bool wheelsCanBurst, bool canBeDamaged,
+                            std::uint8_t nitroCount) {
         auto *vehicle = AsVehicle(handle);
 
         if (!vehicle) {
@@ -834,6 +835,10 @@ namespace VantaMP::SDK {
         vehicle->bDisableTurnForce = frozen;
         vehicle->bUsesCollision    = collisions;
         vehicle->bLightsOn         = lightsOn;
+        vehicle->bEngineBroken     = engineBroken;
+        vehicle->bTyresDontBurst   = !wheelsCanBurst;
+        vehicle->bCanBeDamaged     = canBeDamaged;
+        vehicle->m_nNitroBoosts    = nitroCount;
 
         if (frozen) {
             vehicle->m_vecMoveSpeed = CVector();

@@ -97,7 +97,8 @@ namespace VantaMP::SDK {
     // landing gear. plate is stored on the replica; GTA has no
     // per-instance plate string we can write without a texture.
     void ApplyVehicleExtras(void *vehicle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof,
-                            bool collisions, bool landingGearDown, bool lightsOn);
+                            bool collisions, bool landingGearDown, bool lightsOn, bool engineBroken, bool wheelsCanBurst, bool canBeDamaged,
+                            std::uint8_t nitroCount);
 
     // GTA rewrites clump alpha from UpdateClumpAlpha. Call every frame.
     void SetVehicleAlpha(void *vehicle, std::uint8_t alpha);

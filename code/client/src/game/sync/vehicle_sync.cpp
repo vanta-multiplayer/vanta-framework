@@ -88,6 +88,10 @@ namespace VantaMP::Game {
             bool         lastCollisions      = true;
             bool         lastLandingGear     = true;
             bool         lastLightsOn        = false;
+            bool         lastEngineBroken    = false;
+            bool         lastWheelsCanBurst  = true;
+            bool         lastCanBeDamaged    = true;
+            std::uint8_t lastNitroCount      = 0;
             bool         haveExtras          = false;
         };
 
@@ -407,21 +411,28 @@ namespace VantaMP::Game {
 
             if (remote.haveExtras && remote.lastDirt == entity->dirtLevel && remote.lastTaxiLight == entity->taxiLight &&
                 remote.lastHeadlight == entity->headlightColor && remote.lastFrozen == entity->frozen && remote.lastDamageProof == entity->damageProof &&
-                remote.lastCollisions == entity->collisions && remote.lastLandingGear == entity->landingGearDown && remote.lastLightsOn == entity->lightsOn) {
+                remote.lastCollisions == entity->collisions && remote.lastLandingGear == entity->landingGearDown && remote.lastLightsOn == entity->lightsOn &&
+                remote.lastEngineBroken == entity->engineBroken && remote.lastWheelsCanBurst == entity->wheelsCanBurst &&
+                remote.lastCanBeDamaged == entity->canBeDamaged && remote.lastNitroCount == entity->nitroCount) {
                 return;
             }
 
             SDK::ApplyVehicleExtras(remote.handle, entity->dirtLevel, entity->taxiLight, entity->headlightColor, entity->frozen, entity->damageProof,
-                                    entity->collisions, entity->landingGearDown, entity->lightsOn);
-            remote.lastDirt        = entity->dirtLevel;
-            remote.lastTaxiLight   = entity->taxiLight;
-            remote.lastHeadlight   = entity->headlightColor;
-            remote.lastFrozen      = entity->frozen;
-            remote.lastDamageProof = entity->damageProof;
-            remote.lastCollisions  = entity->collisions;
-            remote.lastLandingGear = entity->landingGearDown;
-            remote.lastLightsOn    = entity->lightsOn;
-            remote.haveExtras      = true;
+                                    entity->collisions, entity->landingGearDown, entity->lightsOn, entity->engineBroken, entity->wheelsCanBurst,
+                                    entity->canBeDamaged, entity->nitroCount);
+            remote.lastDirt           = entity->dirtLevel;
+            remote.lastTaxiLight      = entity->taxiLight;
+            remote.lastHeadlight      = entity->headlightColor;
+            remote.lastFrozen         = entity->frozen;
+            remote.lastDamageProof    = entity->damageProof;
+            remote.lastCollisions     = entity->collisions;
+            remote.lastLandingGear    = entity->landingGearDown;
+            remote.lastLightsOn       = entity->lightsOn;
+            remote.lastEngineBroken   = entity->engineBroken;
+            remote.lastWheelsCanBurst = entity->wheelsCanBurst;
+            remote.lastCanBeDamaged   = entity->canBeDamaged;
+            remote.lastNitroCount     = entity->nitroCount;
+            remote.haveExtras         = true;
         }
 
         bool DamageWorseThan(const SDK::VehicleState &local, const Shared::VehicleEntity &entity) {

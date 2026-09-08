@@ -425,6 +425,8 @@ namespace VantaMP::Game {
             entity->oxygen         = SDK::LocalPlayerOxygen();
             entity->walkingStyle   = SDK::LocalPedWalkingStyle();
             entity->onFire         = SDK::LocalPedOnFire();
+            entity->isDrowning     = local.drowning;
+            // maxHealth is script-owned — echo, do not invent from GTA.
             SDK::SetLocalPedAlpha(entity->alpha);
 
             // TEMPORARY TELEMETRY - remove once the desync is closed.
@@ -915,7 +917,8 @@ namespace VantaMP::Game {
                 SDK::ApplyVehicleDoorRatios(handle, vehicle->doorRatiosPacked);
                 SDK::ApplyVehicleScriptState(handle, vehicle->engineOn, vehicle->sirenOn, vehicle->overrideLights, vehicle->locked);
                 SDK::ApplyVehicleExtras(handle, vehicle->dirtLevel, vehicle->taxiLight, vehicle->headlightColor, vehicle->frozen, vehicle->damageProof,
-                                        vehicle->collisions, vehicle->landingGearDown, vehicle->lightsOn);
+                                        vehicle->collisions, vehicle->landingGearDown, vehicle->lightsOn, vehicle->engineBroken, vehicle->wheelsCanBurst,
+                                        vehicle->canBeDamaged, vehicle->nitroCount);
                 SDK::SetVehicleAlpha(handle, vehicle->alpha);
 
                 if (vehicle->IsBlown()) {
@@ -1053,6 +1056,10 @@ namespace VantaMP::Game {
             SDK::SetLocalPedOnFire(script.onFire);
         }
 
+        if ((script.flags2 & Shared::kPlayerScript2MaxHealth) != 0) {
+            SDK::SetLocalPedMaxHealth(script.maxHealth);
+        }
+
         if (auto *player = OwnedPlayer(Framework::CoreModules::GetReplication())) {
             if ((script.flags & Shared::kPlayerScriptHealth) != 0) {
                 player->health = script.health;
@@ -1100,6 +1107,10 @@ namespace VantaMP::Game {
 
             if ((script.flags2 & Shared::kPlayerScript2OnFire) != 0) {
                 player->onFire = script.onFire;
+            }
+
+            if ((script.flags2 & Shared::kPlayerScript2MaxHealth) != 0) {
+                player->maxHealth = script.maxHealth;
             }
         }
     }

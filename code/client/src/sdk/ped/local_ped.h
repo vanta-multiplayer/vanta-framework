@@ -33,9 +33,10 @@ namespace VantaMP::SDK {
 
         // Pose the game is actually in, which is not always what the input
         // asked for - see PlayerEntity::isDucked.
-        bool ducked  = false;
-        bool inAir   = false;
-        bool inWater = false;
+        bool ducked   = false;
+        bool inAir    = false;
+        bool inWater  = false;
+        bool drowning = false;
 
         // Metres per game unit of time, as the game stores it.
         float velocityX = 0.0f;
@@ -70,6 +71,7 @@ namespace VantaMP::SDK {
     void SetLocalPedTransform(float x, float y, float z, float heading);
 
     void SetLocalPedVitals(float health, float armour);
+    void SetLocalPedMaxHealth(float maxHealth);
     void SetLocalPedModel(int modelIndex);
     void SetLocalPedFrozen(bool frozen);
     void SetLocalPedCollision(bool enabled);

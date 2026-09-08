@@ -35,6 +35,7 @@ namespace VantaMP::SDK {
         state.velocityZ = ped->m_vecMoveSpeed.z;
 
         state.inWater = Internal::IsPedInWater(ped);
+        state.drowning = ped->bIsDrowning;
 
         // SWIMMING IS NOT FALLING, AND THE DIFFERENCE COSTS REAL MONEY.
         //
@@ -126,6 +127,12 @@ namespace VantaMP::SDK {
         ped->m_fHealth    = health;
         ped->m_fMaxHealth = health > ped->m_fMaxHealth ? health : ped->m_fMaxHealth;
         ped->m_fArmour    = armour;
+    }
+
+    void SetLocalPedMaxHealth(float maxHealth) {
+        if (auto *ped = Internal::LocalPed()) {
+            ped->m_fMaxHealth = maxHealth;
+        }
     }
 
     void SetLocalPedModel(int modelIndex) {
