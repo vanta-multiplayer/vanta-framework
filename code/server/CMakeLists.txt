@@ -1,6 +1,7 @@
 set(VANTAMP_SERVER_FILES
     src/main.cpp
     src/core/server.cpp
+    src/core/net.cpp
     src/game/player_manager.cpp
     src/game/vehicle_manager.cpp
     src/scripting/bindings.cpp
