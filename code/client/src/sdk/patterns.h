@@ -65,6 +65,12 @@ namespace VantaMP::SDK {
         uintptr_t CPostEffects__HeatHazeScanSizeX          = 0;
         uintptr_t CPostEffects__bHeatHazeFX                = 0;
         uintptr_t CPostEffects__HeatHazeAutoType           = 0;
+        uintptr_t CClouds__VolumetricRender                = 0;
+        uintptr_t CClouds__BottomRender                    = 0;
+        uintptr_t CClouds__SkylineRender                   = 0;
+        uintptr_t CPlane__TrailRender                      = 0;
+        uintptr_t CWorld__fJetpackMaxHeight                = 0;
+        uintptr_t CWeather__WindVel                        = 0;
 
         // --- Boot: loading screens and the frontend ---------------------------
         //

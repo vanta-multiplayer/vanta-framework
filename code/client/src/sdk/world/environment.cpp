@@ -24,9 +24,12 @@ namespace VantaMP::SDK {
         std::int16_t gHazeScanX = 75, gHazeScanY = 80;
         std::uint16_t gHazeRenderX = 80, gHazeRenderY = 85;
         bool gHazeInside = false;
+        bool gCloudsEnabled = true;
+        float gJetpackMaxHeight = 100.0f;
+        float gWindX = 0, gWindY = 0, gWindZ = 0;
         bool gHaveFarClip = false, gHaveFog = false, gHaveRain = false, gHaveWave = false;
         bool gHaveSky = false, gHaveMoon = false, gHaveSunColor = false, gHaveSunSize = false;
-        bool gHaveWater = false, gHaveHaze = false;
+        bool gHaveWater = false, gHaveHaze = false, gHaveClouds = false, gHaveJetpackHeight = false, gHaveWind = false;
 
         std::uint8_t *ClockHours() {
             return reinterpret_cast<std::uint8_t *>(gPatterns.CClock__ms_nGameClockHours);
@@ -103,6 +106,50 @@ namespace VantaMP::SDK {
 
         bool *HazeInsideBuilding() {
             return reinterpret_cast<bool *>(gPatterns.CPostEffects__bHeatHazeFX);
+        }
+
+        float *JetpackMaxHeight() {
+            return reinterpret_cast<float *>(gPatterns.CWorld__fJetpackMaxHeight);
+        }
+
+        float *WindVelocity() {
+            return reinterpret_cast<float *>(gPatterns.CWeather__WindVel);
+        }
+
+        void ApplyCloudsEnabled(bool enabled) {
+            if (auto *volumetric = reinterpret_cast<std::uint8_t *>(gPatterns.CClouds__VolumetricRender)) {
+                *volumetric = enabled ? 0xA1 : 0xC3;
+            }
+
+            if (auto *bottom = reinterpret_cast<std::uint8_t *>(gPatterns.CClouds__BottomRender)) {
+                *bottom = enabled ? 0x83 : 0xC3;
+            }
+
+            if (auto *skyline = reinterpret_cast<std::uint8_t *>(gPatterns.CClouds__SkylineRender)) {
+                if (enabled) {
+                    skyline[0] = 0xD9;
+                    skyline[1] = 0x41;
+                    skyline[2] = 0x08;
+                }
+                else {
+                    skyline[0] = 0x90;
+                    skyline[1] = 0x90;
+                    skyline[2] = 0x90;
+                }
+            }
+
+            if (auto *trails = reinterpret_cast<std::uint8_t *>(gPatterns.CPlane__TrailRender)) {
+                if (enabled) {
+                    trails[0] = 0x83;
+                    trails[1] = 0xEC;
+                    trails[2] = 0x08;
+                }
+                else {
+                    trails[0] = 0xC2;
+                    trails[1] = 0x04;
+                    trails[2] = 0x00;
+                }
+            }
         }
 
         void WriteRgbStride2(std::uint8_t *base, std::uint8_t r, std::uint8_t g, std::uint8_t b) {
@@ -290,6 +337,26 @@ namespace VantaMP::SDK {
         EnforceWorldVisuals();
     }
 
+    void SetCloudsEnabled(bool enabled) {
+        gCloudsEnabled = enabled;
+        gHaveClouds    = true;
+        EnforceWorldVisuals();
+    }
+
+    void SetJetpackMaxHeight(float height) {
+        gJetpackMaxHeight  = height;
+        gHaveJetpackHeight = true;
+        EnforceWorldVisuals();
+    }
+
+    void SetWindVelocity(float x, float y, float z) {
+        gWindX    = x;
+        gWindY    = y;
+        gWindZ    = z;
+        gHaveWind = true;
+        EnforceWorldVisuals();
+    }
+
     void EnforceWorldVisuals() {
         if (gHaveFarClip) {
             if (auto *farClip = FarClip()) {
@@ -359,6 +426,24 @@ namespace VantaMP::SDK {
 
         if (gHaveHaze) {
             ApplyHeatHazePokes();
+        }
+
+        if (gHaveClouds) {
+            ApplyCloudsEnabled(gCloudsEnabled);
+        }
+
+        if (gHaveJetpackHeight) {
+            if (auto *height = JetpackMaxHeight()) {
+                *height = gJetpackMaxHeight;
+            }
+        }
+
+        if (gHaveWind) {
+            if (auto *wind = WindVelocity()) {
+                wind[0] = gWindX;
+                wind[1] = gWindY;
+                wind[2] = gWindZ;
+            }
         }
     }
 } // namespace VantaMP::SDK

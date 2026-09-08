@@ -64,6 +64,18 @@ namespace VantaMP::Game {
             SDK::SetHeatHaze(env.hazeIntensity, env.hazeRandomShift, env.hazeSpeedMin, env.hazeSpeedMax, env.hazeScanX, env.hazeScanY, env.hazeRenderX,
                              env.hazeRenderY, env.hazeInsideBuilding);
         }
+
+        if ((env.flags & Shared::kWorldEnvClouds) != 0) {
+            SDK::SetCloudsEnabled(env.cloudsEnabled);
+        }
+
+        if ((env.flags & Shared::kWorldEnvJetpackHeight) != 0) {
+            SDK::SetJetpackMaxHeight(env.jetpackMaxHeight);
+        }
+
+        if ((env.flags & Shared::kWorldEnvWind) != 0) {
+            SDK::SetWindVelocity(env.windX, env.windY, env.windZ);
+        }
     }
 
     void PulseWorldEnv() {

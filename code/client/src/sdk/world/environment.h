@@ -32,5 +32,8 @@ namespace VantaMP::SDK {
     void SetWaterColor(float r, float g, float b, float a);
     void SetHeatHaze(std::uint8_t intensity, std::uint8_t randomShift, std::uint16_t speedMin, std::uint16_t speedMax, std::int16_t scanX,
                      std::int16_t scanY, std::uint16_t renderX, std::uint16_t renderY, bool insideBuilding);
+    void SetCloudsEnabled(bool enabled);
+    void SetJetpackMaxHeight(float height);
+    void SetWindVelocity(float x, float y, float z);
     void EnforceWorldVisuals();
 } // namespace VantaMP::SDK

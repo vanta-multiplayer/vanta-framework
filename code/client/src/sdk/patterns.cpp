@@ -65,6 +65,12 @@ namespace VantaMP::SDK {
         gPatterns.CPostEffects__HeatHazeScanSizeX       = OperandAt(hook::get_pattern("89 3D ? ? ? ? D8 0D 24"), 2); // site 0x00701549 -> 0x00C40304
         gPatterns.CPostEffects__bHeatHazeFX             = OperandAt(hook::get_pattern("C3 90 90 90 8A 44 24 04 A2 ? ? ? ? C3 90 90 90 90 90 90 8A"), 9); // site 0x0070115C -> 0x00C402BA
         gPatterns.CPostEffects__HeatHazeAutoType        = Resolve("83 EC 08 53 8B 1D"); // 0x00701455
+        gPatterns.CClouds__VolumetricRender             = Resolve("A1 14 29 B7 00 83 EC 7C"); // 0x00716380
+        gPatterns.CClouds__BottomRender                 = Resolve("83 EC 44 0F B7 05"); // 0x007154B0
+        gPatterns.CClouds__SkylineRender                = Resolve("D9 41 08 D9 C9 D9 F3 EB"); // 0x0071411A
+        gPatterns.CPlane__TrailRender                   = Resolve("83 EC 08 D9 44 24 0C 53"); // 0x00717180
+        gPatterns.CWorld__fJetpackMaxHeight             = OperandAt(hook::get_pattern("D8 05 ? ? ? ? D8 5D 08"), 2); // site 0x0067F25A -> 0x008703D8
+        gPatterns.CWeather__WindVel                     = OperandAt(hook::get_pattern("00 D9 05 ? ? ? ? D8 0D F0 12 C8 00 D8 0D 1C"), 3); // site 0x0072B2AF -> 0x00C813E0
 
         // --- Boot: loading screens and the frontend ---------------------------
 
