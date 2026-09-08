@@ -13,6 +13,7 @@
 #include "core/ui/window_input.h"
 #include "core/ui/ped_debug_ui.h"
 #include "game/patches/boot.h"
+#include "scripting/bindings.h"
 #include "sdk/world/draw.h"
 
 #include <graphics/backend/d3d9.h>
@@ -228,7 +229,9 @@ namespace VantaMP::Core {
         Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client shutting down");
     }
 
-    void Application::ModuleRegister(Framework::Scripting::Engine *) {}
+    void Application::ModuleRegister(Framework::Scripting::Engine *engine) {
+        Scripting::Register(engine);
+    }
 
     void BringUpApplication(IDirect3DDevice9 *device, HWND window) {
         if (gApplication) {

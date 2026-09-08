@@ -68,6 +68,11 @@ set(VANTAMP_CLIENT_FILES
     src/game/sync/vehicle_sync.cpp
     src/game/sync/world_sync.cpp
 
+    # Resource scripting (readonly Player / Vehicle handles).
+    src/scripting/bindings.cpp
+    src/scripting/player.cpp
+    src/scripting/vehicle.cpp
+
     src/game/ui/nametags.cpp
 
     # The game's memory, wrapped. These need no plugin-sdk of their own: an
