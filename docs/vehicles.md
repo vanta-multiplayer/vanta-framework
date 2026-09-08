@@ -145,14 +145,20 @@ not snap.
 
 ## Script spawn
 
-`Vehicle` is a Framework `Entity`. Position and rotation are the Entity
-ones (`ForceState`); a heading is still radians on `create` / `spawn`.
+`Vehicle` is a Framework `Entity`. Position is the Entity one
+(`ForceState`). Rotation is MTA degrees about X, Y, Z — not a heading,
+and not the Entity quaternion getter. A numeric heading on `create` is
+still radians, same as `player.spawn`.
 
 ```js
 const car = Vehicles.create(560, 2865.93, -1665.88, 10.88, 0);
 // or Vehicle.create(560, new Vector3(x, y, z), heading)
+// or Vehicles.create(560, pos, new Vector3(pitch, roll, yaw))  // degrees
 
 car.position = new Vector3(x, y, z);
+car.rotation = new Vector3(0, 0, 90); // degrees, MTA CMatrix
+car.setRotation(10, 0, 180);
+const { x, y, z } = car.getRotation();
 car.setColor(Color.fromRGB(20, 200, 40), Color.fromRGB(8, 8, 8));
 car.color3 = Color.fromRGB(255, 16, 64);
 car.addUpgrade(1074); // wheels, ids 1000–1193
@@ -190,9 +196,9 @@ only stores palette indexes on the vehicle; the client rewrites
 `ms_vehicleColourTable` around `CVehicle::SetupRender` so the mesh
 actually gets that green.
 
-Create still accepts the old two palette indexes after heading. They
-are converted to RGB on the replica. Interior and dimension follow.
-See [world space](world-space.md).
+Create still accepts the old two palette indexes after the heading or
+the rotation Vector3. They are converted to RGB on the replica.
+Interior and dimension follow. See [world space](world-space.md).
 
 A model or upgrade that is not in `catalog/gta_sa.models` is refused.
 The owner never writes paint or parts back from GTA.

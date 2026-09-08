@@ -88,10 +88,12 @@ only enters the isolate and calls `Player::Register` / `Vehicle::Register`.
 `Player` **is** the Framework Player (`kick`, `emit`, `ping`, nametag,
 Entity `position` / `rotation`) with spawn and world-space hung on it.
 `Vehicle` is a Framework Entity. `Vehicles.create` returns a handle.
-Interior and dimension are properties on both; vehicle colour is any RGB
-via `setColor` / `Color`. See
-[world space](world-space.md). If a resource listens for `playerReady` or
-`playerDeath`, C++ does not also spawn — that is the resource's job.
+Vehicle `rotation` is MTA degrees X, Y, Z; a numeric heading on create
+is still radians. Interior and dimension are properties on both; vehicle
+colour is any RGB via `setColor` / `Color`. RPC registration lives in
+`core/net.cpp` on both sides, not in `server.cpp` / `application.cpp`.
+See [world space](world-space.md). If a resource listens for `playerReady`
+or `playerDeath`, C++ does not also spawn — that is the resource's job.
 
 The current freeroam spawn is the Los Santos waterfront so two clients start
 near water and a test Sultan. Grove Street is commented next to the numbers

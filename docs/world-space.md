@@ -35,6 +35,8 @@ player.dimension                // get / set, 0–65535
 player.spawn(x, y, z, heading?, model?, health?, armour?, interior?, dimension?)
 
 const car = Vehicles.create(model, x, y, z, heading?, color?, color2?, interior?, dimension?)
+// heading is radians. Pass a Vector3 after position for MTA degrees (x, y, z).
+car.rotation = new Vector3(pitch, roll, yaw) // degrees, not the Entity quaternion
 car.interior = n
 car.dimension = n
 Vehicles.setInterior(id, n)
