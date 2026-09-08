@@ -452,6 +452,58 @@ namespace VantaMP::Scripting {
         return vehicle && vehicle->onGround;
     }
 
+    bool Vehicle::GetEngineBroken() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle && vehicle->engineBroken;
+    }
+
+    void Vehicle::SetEngineBroken(bool broken) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->engineBroken = broken;
+
+            if (broken) {
+                vehicle->engineOn = false;
+            }
+        }
+    }
+
+    bool Vehicle::GetWheelsCanBurst() const {
+        auto *vehicle = ResolveVehicle();
+
+        return !vehicle || vehicle->wheelsCanBurst;
+    }
+
+    void Vehicle::SetWheelsCanBurst(bool canBurst) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->wheelsCanBurst = canBurst;
+        }
+    }
+
+    bool Vehicle::GetCanBeDamaged() const {
+        auto *vehicle = ResolveVehicle();
+
+        return !vehicle || vehicle->canBeDamaged;
+    }
+
+    void Vehicle::SetCanBeDamaged(bool can) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->canBeDamaged = can;
+        }
+    }
+
+    std::uint8_t Vehicle::GetNitroCount() const {
+        auto *vehicle = ResolveVehicle();
+
+        return vehicle ? vehicle->nitroCount : 0;
+    }
+
+    void Vehicle::SetNitroCount(std::uint8_t count) {
+        if (auto *vehicle = ResolveVehicle()) {
+            vehicle->nitroCount = count;
+        }
+    }
+
     std::string Vehicle::GetName() const {
         auto *vehicle = ResolveVehicle();
 
@@ -884,6 +936,10 @@ namespace VantaMP::Scripting {
             .property("lights", &Vehicle::GetLights, &Vehicle::SetLights)
             .property("alpha", &Vehicle::GetAlpha, &Vehicle::SetAlpha)
             .property("onGround", &Vehicle::IsOnGround)
+            .property("engineBroken", &Vehicle::GetEngineBroken, &Vehicle::SetEngineBroken)
+            .property("wheelsCanBurst", &Vehicle::GetWheelsCanBurst, &Vehicle::SetWheelsCanBurst)
+            .property("canBeDamaged", &Vehicle::GetCanBeDamaged, &Vehicle::SetCanBeDamaged)
+            .property("nitroCount", &Vehicle::GetNitroCount, &Vehicle::SetNitroCount)
             .property("color", &Vehicle::GetColor1, &Vehicle::SetColor1)
             .property("color2", &Vehicle::GetColor2, &Vehicle::SetColor2)
             .property("color3", &Vehicle::GetColor3, &Vehicle::SetColor3)

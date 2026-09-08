@@ -118,6 +118,18 @@ namespace VantaMP::Scripting {
 
         bool IsOnGround() const;
 
+        bool GetEngineBroken() const;
+        void SetEngineBroken(bool broken);
+
+        bool GetWheelsCanBurst() const;
+        void SetWheelsCanBurst(bool canBurst);
+
+        bool GetCanBeDamaged() const;
+        void SetCanBeDamaged(bool can);
+
+        std::uint8_t GetNitroCount() const;
+        void SetNitroCount(std::uint8_t count);
+
         std::string GetName() const;
         std::string GetVehicleType() const;
         std::uint8_t GetMaxPassengers() const;

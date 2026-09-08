@@ -67,7 +67,11 @@ namespace VantaMP::Scripting {
         bool GetOnFire() const;
         void SetOnFire(bool on);
 
+        float GetMaxHealth() const;
+        void SetMaxHealth(float maxHealth);
+
         bool IsOnGround() const;
+        bool IsDrowning() const;
 
         std::uint32_t GetWeapon() const;
         std::uint32_t GetAmmo() const;

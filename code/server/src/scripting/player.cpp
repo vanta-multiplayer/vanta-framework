@@ -197,10 +197,29 @@ namespace VantaMP::Scripting {
         }
     }
 
+    float Player::GetMaxHealth() const {
+        auto *player = ResolvePlayer();
+
+        return player ? player->maxHealth : 100.0f;
+    }
+
+    void Player::SetMaxHealth(float maxHealth) {
+        if (auto *player = ResolvePlayer(); player && gPlayers) {
+            player->maxHealth = std::max(1.0f, maxHealth);
+            gPlayers->SendScript(*player, 0, Shared::kPlayerScript2MaxHealth);
+        }
+    }
+
     bool Player::IsOnGround() const {
         auto *player = ResolvePlayer();
 
         return player && !player->isInAir && !player->isInWater;
+    }
+
+    bool Player::IsDrowning() const {
+        auto *player = ResolvePlayer();
+
+        return player && player->isDrowning;
     }
 
     std::uint32_t Player::GetWeapon() const {
@@ -414,7 +433,9 @@ namespace VantaMP::Scripting {
             .property("walkingStyle", &Player::GetWalkingStyle, &Player::SetWalkingStyle)
             .property("alpha", &Player::GetAlpha, &Player::SetAlpha)
             .property("onFire", &Player::GetOnFire, &Player::SetOnFire)
+            .property("maxHealth", &Player::GetMaxHealth, &Player::SetMaxHealth)
             .property("onGround", &Player::IsOnGround)
+            .property("drowning", &Player::IsDrowning)
             .property("weapon", &Player::GetWeapon)
             .property("ammo", &Player::GetAmmo)
             .property("ammoInClip", &Player::GetAmmoInClip)

@@ -155,6 +155,7 @@ namespace VantaMP::Game {
         message.walkingStyle  = player.walkingStyle;
         message.alpha         = player.alpha;
         message.onFire        = player.onFire;
+        message.maxHealth     = player.maxHealth;
         net->SendRPC(message, MafiaNet::ToGuid(player.ownerGUID));
     }
 
