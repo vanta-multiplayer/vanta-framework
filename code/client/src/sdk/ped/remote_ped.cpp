@@ -444,4 +444,20 @@ namespace VantaMP::SDK {
             ped->m_vecTurnSpeed = CVector();
         }
     }
+
+    void SetRemotePedFightingStyle(int slot, std::uint8_t style) {
+        auto *ped = PedAt(slot);
+
+        if (!ped || style == 0) {
+            return;
+        }
+
+        ped->m_nFightingStyle = static_cast<eFightingStyle>(style);
+    }
+
+    void SetRemotePedOxygen(int slot, float breath) {
+        if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot))) {
+            info->m_PlayerData.m_fBreath = breath;
+        }
+    }
 } // namespace VantaMP::SDK

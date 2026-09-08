@@ -156,6 +156,24 @@ namespace VantaMP::SDK {
         }
     }
 
+    void SetLocalPedCollision(bool enabled) {
+        if (auto *ped = Internal::LocalPed()) {
+            ped->bUsesCollision = enabled;
+        }
+    }
+
+    void SetLocalPedFightingStyle(std::uint8_t style) {
+        if (auto *ped = Internal::LocalPed(); ped && style != 0) {
+            ped->m_nFightingStyle = static_cast<eFightingStyle>(style);
+        }
+    }
+
+    std::uint8_t LocalPedFightingStyle() {
+        const auto *ped = Internal::LocalPed();
+
+        return ped ? static_cast<std::uint8_t>(ped->m_nFightingStyle) : 0;
+    }
+
     void SetLocalPlayerMoney(std::int32_t money) {
         if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(0))) {
             info->m_nMoney        = money;
@@ -191,5 +209,19 @@ namespace VantaMP::SDK {
         const auto level = info->m_PlayerData.m_pWanted->m_nWantedLevel;
 
         return level > 6 ? 6 : static_cast<std::uint8_t>(level);
+    }
+
+    void SetLocalPlayerOxygen(float breath) {
+        if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(0))) {
+            info->m_PlayerData.m_fBreath = breath;
+        }
+    }
+
+    float LocalPlayerOxygen() {
+        if (const auto *info = reinterpret_cast<const CPlayerInfo *>(Game::PlayerInfoAt(0))) {
+            return info->m_PlayerData.m_fBreath;
+        }
+
+        return 0.0f;
     }
 } // namespace VantaMP::SDK

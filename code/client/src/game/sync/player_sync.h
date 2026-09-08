@@ -4,6 +4,7 @@
 
 namespace VantaMP::Shared::RPC {
     struct WorldSpace;
+    struct PlayerScript;
 }
 
 namespace VantaMP::Game {
@@ -64,6 +65,6 @@ namespace VantaMP::Game {
 
     void ApplyWorldSpace(const Shared::RPC::WorldSpace &space);
 
-    void ApplyPlayerScript(std::uint8_t flags, float health, float armour, std::uint32_t modelId, std::int32_t money, std::uint8_t wantedLevel, bool frozen);
+    void ApplyPlayerScript(const Shared::RPC::PlayerScript &script);
     void ApplyPlayerWeapon(std::uint8_t action, std::uint32_t weaponType, std::uint32_t ammo);
 } // namespace VantaMP::Game

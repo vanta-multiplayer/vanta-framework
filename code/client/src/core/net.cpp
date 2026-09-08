@@ -47,7 +47,7 @@ namespace VantaMP::Core::Net {
         });
 
         net->RegisterRPC<Shared::RPC::PlayerScript>([](const Shared::RPC::PlayerScript &script, MafiaNet::Packet *) {
-            Game::ApplyPlayerScript(script.flags, script.health, script.armour, script.modelId, script.money, script.wantedLevel, script.frozen);
+            Game::ApplyPlayerScript(script);
         });
 
         net->RegisterRPC<Shared::RPC::PlayerWeapon>([](const Shared::RPC::PlayerWeapon &weapon, MafiaNet::Packet *) {

@@ -15,6 +15,7 @@
 #include <CDamageManager.h>
 #include <CDoor.h>
 #include <CFireManager.h>
+#include <CPlane.h>
 
 #include <array>
 #include <algorithm>
@@ -816,7 +817,8 @@ namespace VantaMP::SDK {
         vehicle->m_eDoorLock    = locked ? DOORLOCK_LOCKED : DOORLOCK_UNLOCKED;
     }
 
-    void ApplyVehicleExtras(void *handle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof) {
+    void ApplyVehicleExtras(void *handle, std::uint8_t dirtLevel, bool taxiLight, std::uint32_t headlightColor, bool frozen, bool damageProof,
+                            bool collisions, bool landingGearDown) {
         auto *vehicle = AsVehicle(handle);
 
         if (!vehicle) {
@@ -830,6 +832,7 @@ namespace VantaMP::SDK {
         vehicle->bDontApplySpeed   = frozen;
         vehicle->bDisableMoveForce = frozen;
         vehicle->bDisableTurnForce = frozen;
+        vehicle->bUsesCollision    = collisions;
 
         if (frozen) {
             vehicle->m_vecMoveSpeed = CVector();
@@ -845,6 +848,24 @@ namespace VantaMP::SDK {
         if (auto *car = AsAutomobile(vehicle)) {
             car->m_nAutomobileFlags.bTaxiLight = taxiLight;
         }
+
+        if (vehicle->m_nVehicleClass == VEHICLE_PLANE || vehicle->m_nVehicleClass == VEHICLE_FPLANE) {
+            static_cast<CPlane *>(vehicle)->m_fLandingGearStatus = landingGearDown ? 0.0f : 1.0f;
+        }
+    }
+
+    bool VehicleLandingGearDown(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle) {
+            return true;
+        }
+
+        if (vehicle->m_nVehicleClass != VEHICLE_PLANE && vehicle->m_nVehicleClass != VEHICLE_FPLANE) {
+            return true;
+        }
+
+        return static_cast<const CPlane *>(vehicle)->m_fLandingGearStatus < 0.5f;
     }
 
     bool IsLocalPlayerDriving(const void *handle) {

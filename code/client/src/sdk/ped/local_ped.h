@@ -72,10 +72,16 @@ namespace VantaMP::SDK {
     void SetLocalPedVitals(float health, float armour);
     void SetLocalPedModel(int modelIndex);
     void SetLocalPedFrozen(bool frozen);
+    void SetLocalPedCollision(bool enabled);
+    void SetLocalPedFightingStyle(std::uint8_t style);
+    [[nodiscard]] std::uint8_t LocalPedFightingStyle();
 
     void SetLocalPlayerMoney(std::int32_t money);
     [[nodiscard]] std::int32_t LocalPlayerMoney();
 
     void SetLocalPlayerWanted(std::uint8_t stars);
     [[nodiscard]] std::uint8_t LocalPlayerWanted();
+
+    void SetLocalPlayerOxygen(float breath);
+    [[nodiscard]] float LocalPlayerOxygen();
 } // namespace VantaMP::SDK

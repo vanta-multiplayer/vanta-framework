@@ -20,6 +20,8 @@ namespace VantaMP::SDK {
     void GiveLocalPedWeapon(unsigned int weaponType, unsigned int ammo);
     void TakeLocalPedWeapon(unsigned int weaponType);
     void TakeAllLocalPedWeapons();
+    void SetLocalPedWeaponAmmo(unsigned int weaponType, unsigned int ammo);
+    void SetLocalPedWeaponSlot(unsigned int slot);
 
     // Starts a reload: CTaskSimpleUseGun command 1 (plugin-sdk: 0x1
     // reloading) plus WEAPONSTATE_RELOADING. Writing the state alone is

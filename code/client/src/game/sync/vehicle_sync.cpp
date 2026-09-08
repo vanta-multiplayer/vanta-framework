@@ -85,6 +85,8 @@ namespace VantaMP::Game {
             std::uint32_t lastHeadlight      = 0;
             bool         lastFrozen          = false;
             bool         lastDamageProof     = false;
+            bool         lastCollisions      = true;
+            bool         lastLandingGear     = true;
             bool         haveExtras          = false;
         };
 
@@ -345,6 +347,10 @@ namespace VantaMP::Game {
             }
 
             entity->interior = SDK::VehicleInterior(remote.handle);
+
+            // Landing gear is a GTA fact on planes (the key toggles it).
+            // Cars stay true and this read is a no-op.
+            entity->landingGearDown = SDK::VehicleLandingGearDown(remote.handle);
         }
 
         void ApplyCosmetics(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
@@ -397,16 +403,20 @@ namespace VantaMP::Game {
             }
 
             if (remote.haveExtras && remote.lastDirt == entity->dirtLevel && remote.lastTaxiLight == entity->taxiLight &&
-                remote.lastHeadlight == entity->headlightColor && remote.lastFrozen == entity->frozen && remote.lastDamageProof == entity->damageProof) {
+                remote.lastHeadlight == entity->headlightColor && remote.lastFrozen == entity->frozen && remote.lastDamageProof == entity->damageProof &&
+                remote.lastCollisions == entity->collisions && remote.lastLandingGear == entity->landingGearDown) {
                 return;
             }
 
-            SDK::ApplyVehicleExtras(remote.handle, entity->dirtLevel, entity->taxiLight, entity->headlightColor, entity->frozen, entity->damageProof);
+            SDK::ApplyVehicleExtras(remote.handle, entity->dirtLevel, entity->taxiLight, entity->headlightColor, entity->frozen, entity->damageProof,
+                                    entity->collisions, entity->landingGearDown);
             remote.lastDirt        = entity->dirtLevel;
             remote.lastTaxiLight   = entity->taxiLight;
             remote.lastHeadlight   = entity->headlightColor;
             remote.lastFrozen      = entity->frozen;
             remote.lastDamageProof = entity->damageProof;
+            remote.lastCollisions  = entity->collisions;
+            remote.lastLandingGear = entity->landingGearDown;
             remote.haveExtras      = true;
         }
 

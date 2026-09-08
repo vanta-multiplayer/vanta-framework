@@ -166,6 +166,38 @@ namespace VantaMP::SDK {
         reinterpret_cast<SetCurrentWeaponFn>(gPatterns.CPed__SetCurrentWeapon)(ped, kSlotUnarmed);
     }
 
+    void SetLocalPedWeaponAmmo(unsigned int weaponType, unsigned int ammo) {
+        auto *ped = LocalPed();
+
+        if (!ped || weaponType == 0) {
+            return;
+        }
+
+        for (auto &slot : ped->m_aWeapons) {
+            if (static_cast<unsigned int>(slot.m_eWeaponType) != weaponType) {
+                continue;
+            }
+
+            slot.m_nAmmoTotal = ammo;
+
+            if (slot.m_nAmmoInClip > ammo) {
+                slot.m_nAmmoInClip = ammo;
+            }
+
+            return;
+        }
+    }
+
+    void SetLocalPedWeaponSlot(unsigned int slot) {
+        auto *ped = LocalPed();
+
+        if (!ped || slot >= std::size(ped->m_aWeapons)) {
+            return;
+        }
+
+        reinterpret_cast<SetCurrentWeaponFn>(gPatterns.CPed__SetCurrentWeapon)(ped, static_cast<int>(slot));
+    }
+
     bool ReloadLocalPedWeapon() {
         auto *ped = LocalPed();
 
