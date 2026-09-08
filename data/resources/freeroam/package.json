@@ -1,8 +1,9 @@
 {
   "name": "freeroam",
-  "version": "0.1.0",
-  "description": "Default spawn until a real gamemode exists.",
+  "version": "0.2.0",
+  "description": "Example freeroam gamemode: spawn, death, vehicles, world, voice, chat commands, and client↔server Events.",
   "mafiahub": {
+    "sharedScripts": ["shared.js"],
     "serverScripts": ["server.js"],
     "clientScripts": ["client.js"]
   }
