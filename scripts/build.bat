@@ -2,7 +2,8 @@
 rem Build Vanta from this repo. The CMake tree still lives in the framework;
 rem this just finds it and forwards. From a fresh clone, run setup.bat first.
 rem
-rem   scripts\build.bat                 client + launcher + server
+rem   scripts\build.bat                 client + launcher + server + pack
+rem   scripts\build.bat all             same as no args
 rem   scripts\build.bat client
 rem   scripts\build.bat launcher
 rem   scripts\build.bat server
@@ -41,6 +42,11 @@ if /i "%~1"=="pack" (
     exit /b !errorlevel!
 )
 
+if /i "%~1"=="protect" (
+    powershell -NoProfile -File "%VANTA%\scripts\protect_client.ps1"
+    exit /b !errorlevel!
+)
+
 if "%~1"=="" goto build_all
 if /i "%~1"=="all" goto build_all
 
@@ -63,23 +69,33 @@ call "%FRAMEWORK_ROOT%\builds\build.bat" %*
 exit /b %errorlevel%
 
 :build_all
+echo -- VantaMPClient (32)
 call "%FRAMEWORK_ROOT%\builds\build.bat" VantaMPClient 32
 if errorlevel 1 exit /b 1
+echo -- VantaMPLauncher (32)
 call "%FRAMEWORK_ROOT%\builds\build.bat" VantaMPLauncher 32
 if errorlevel 1 exit /b 1
+echo -- VantaMPServer (64)
 call "%FRAMEWORK_ROOT%\builds\build.bat" VantaMPServer 64
+if errorlevel 1 exit /b 1
+echo -- pack ^(client + server + EOS/EAC runtime^)
+powershell -NoProfile -File "%VANTA%\scripts\package_build.ps1"
+if errorlevel 1 exit /b 1
+echo -- protect ^(base.bin - pack wipes Certificates^)
+powershell -NoProfile -File "%VANTA%\scripts\protect_client.ps1"
 exit /b %errorlevel%
 
 :usage
 echo usage: scripts\build.bat [target]
 echo.
-echo   ^(no args^) / all   client, launcher, server
+echo   ^(no args^) / all   client, launcher, server, then pack into build\
 echo   client             VantaMPClient, 32-bit
 echo   launcher           VantaMPLauncher, 32-bit
 echo   server             VantaMPServer, 64-bit
 echo   ui                 rebuild and embed the Solid page
 echo   types              regenerate @vantamp/types from catalog dumps
-echo   pack               copy runtime files into a tester tree
+echo   pack               copy runtime + EOSSDK / EasyAntiCheat into build\
+echo   protect            run anticheat_integritytool on build\client
 echo   ^<CMake target^> ^<32^|64^>
 echo                      forwarded to the framework build, e.g.
 echo                      scripts\build.bat VantaMPClient 32

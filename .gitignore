@@ -25,3 +25,8 @@ crashes/
 
 # Exported chat transcripts. Session artefacts, not project content.
 .ai/*history*.txt
+
+# EOS SDK: keep Bin/Lib/Include/HostModules; skip huge Tools archives and
+# the integrity private key (never commit base_private.key).
+/vendors/eos/Tools/
+/vendors/eos/Keys/base_private.key
