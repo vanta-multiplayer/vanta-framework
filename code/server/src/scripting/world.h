@@ -53,6 +53,12 @@ namespace VantaMP::Scripting {
         static float GetSunSize();
         static void SetSunSize(float size);
 
+        static bool GetCloudsEnabled();
+        static void SetCloudsEnabled(bool enabled);
+
+        static float GetJetpackMaxHeight();
+        static void SetJetpackMaxHeight(float height);
+
       private:
         static void JS_SetTime(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void JS_SetSkyGradient(const v8::FunctionCallbackInfo<v8::Value> &info);
@@ -63,6 +69,9 @@ namespace VantaMP::Scripting {
         static void JS_GetWaterColor(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void JS_SetHeatHaze(const v8::FunctionCallbackInfo<v8::Value> &info);
         static void JS_GetHeatHaze(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_SetCloudsEnabled(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_SetWindVelocity(const v8::FunctionCallbackInfo<v8::Value> &info);
+        static void JS_GetWindVelocity(const v8::FunctionCallbackInfo<v8::Value> &info);
 
         inline static Game::WorldManager *gWorld = nullptr;
     };

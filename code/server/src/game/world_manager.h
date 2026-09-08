@@ -81,12 +81,25 @@ namespace VantaMP::Game {
         void SetHeatHaze(std::uint8_t intensity, std::uint8_t randomShift, std::uint16_t speedMin, std::uint16_t speedMax, std::int16_t scanX,
                          std::int16_t scanY, std::uint16_t renderX, std::uint16_t renderY, bool insideBuilding);
 
+        [[nodiscard]] bool GetCloudsEnabled() const {
+            return _cloudsEnabled;
+        }
+        void SetCloudsEnabled(bool enabled);
+
+        [[nodiscard]] float GetJetpackMaxHeight() const {
+            return _jetpackMaxHeight;
+        }
+        void SetJetpackMaxHeight(float height);
+
+        void GetWindVelocity(float &x, float &y, float &z) const;
+        void SetWindVelocity(float x, float y, float z);
+
         void SendTo(MafiaNet::PeerGuid guid) const;
-        void Broadcast(std::uint16_t flags) const;
+        void Broadcast(std::uint32_t flags) const;
 
       private:
-        [[nodiscard]] std::uint16_t JoinFlags() const;
-        Shared::RPC::WorldEnv MakePacket(std::uint16_t flags) const;
+        [[nodiscard]] std::uint32_t JoinFlags() const;
+        Shared::RPC::WorldEnv MakePacket(std::uint32_t flags) const;
 
         std::uint64_t _midnightMs     = 0;
         std::uint32_t _minuteDuration = Shared::kDefaultMinuteDuration;
@@ -113,6 +126,9 @@ namespace VantaMP::Game {
         std::uint16_t _hazeRenderX    = 80;
         std::uint16_t _hazeRenderY    = 85;
         bool          _hazeInside     = false;
+        bool          _cloudsEnabled  = true;
+        float         _jetpackMaxHeight = Shared::kDefaultJetpackHeight;
+        float         _windX = 0, _windY = 0, _windZ = 0;
         bool          _haveMidnight   = false;
         bool          _farClipSet     = false;
         bool          _fogSet         = false;
@@ -124,5 +140,8 @@ namespace VantaMP::Game {
         bool          _sunSizeSet     = false;
         bool          _waterSet       = false;
         bool          _hazeSet        = false;
+        bool          _cloudsSet      = false;
+        bool          _jetpackHeightSet = false;
+        bool          _windSet        = false;
     };
 } // namespace VantaMP::Game

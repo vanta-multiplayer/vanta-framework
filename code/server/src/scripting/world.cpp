@@ -297,6 +297,59 @@ namespace VantaMP::Scripting {
         info.GetReturnValue().Set(arr);
     }
 
+    bool World::GetCloudsEnabled() {
+        return gWorld ? gWorld->GetCloudsEnabled() : true;
+    }
+
+    void World::SetCloudsEnabled(bool enabled) {
+        if (gWorld) {
+            gWorld->SetCloudsEnabled(enabled);
+        }
+    }
+
+    void World::JS_SetCloudsEnabled(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        if (info.Length() < 1) {
+            return;
+        }
+
+        SetCloudsEnabled(info[0]->BooleanValue(info.GetIsolate()));
+    }
+
+    float World::GetJetpackMaxHeight() {
+        return gWorld ? gWorld->GetJetpackMaxHeight() : Shared::kDefaultJetpackHeight;
+    }
+
+    void World::SetJetpackMaxHeight(float height) {
+        if (gWorld) {
+            gWorld->SetJetpackMaxHeight(height);
+        }
+    }
+
+    void World::JS_SetWindVelocity(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        if (!gWorld || info.Length() < 3) {
+            return;
+        }
+
+        auto *isolate = info.GetIsolate();
+        gWorld->SetWindVelocity(v8pp::from_v8<float>(isolate, info[0]), v8pp::from_v8<float>(isolate, info[1]), v8pp::from_v8<float>(isolate, info[2]));
+    }
+
+    void World::JS_GetWindVelocity(const v8::FunctionCallbackInfo<v8::Value> &info) {
+        auto *isolate = info.GetIsolate();
+        auto  ctx     = isolate->GetCurrentContext();
+        auto  arr     = v8::Array::New(isolate, 3);
+
+        float x = 0, y = 0, z = 0;
+        if (gWorld) {
+            gWorld->GetWindVelocity(x, y, z);
+        }
+
+        arr->Set(ctx, 0, v8pp::to_v8(isolate, x)).Check();
+        arr->Set(ctx, 1, v8pp::to_v8(isolate, y)).Check();
+        arr->Set(ctx, 2, v8pp::to_v8(isolate, z)).Check();
+        info.GetReturnValue().Set(arr);
+    }
+
     namespace {
         template <auto Getter>
         void JS_Get(const v8::FunctionCallbackInfo<v8::Value> &info) {
@@ -354,6 +407,12 @@ namespace VantaMP::Scripting {
         put("getWaterColor", &World::JS_GetWaterColor);
         put("setHeatHaze", &World::JS_SetHeatHaze);
         put("getHeatHaze", &World::JS_GetHeatHaze);
+        put("setCloudsEnabled", &World::JS_SetCloudsEnabled);
+        put("getCloudsEnabled", &JS_Get<&World::GetCloudsEnabled>);
+        put("getJetpackMaxHeight", &JS_Get<&World::GetJetpackMaxHeight>);
+        put("setJetpackMaxHeight", &JS_Set<&World::SetJetpackMaxHeight, float>);
+        put("setWindVelocity", &World::JS_SetWindVelocity);
+        put("getWindVelocity", &World::JS_GetWindVelocity);
 
         global->Set(ctx, v8pp::to_v8(isolate, "World"), world).Check();
     }

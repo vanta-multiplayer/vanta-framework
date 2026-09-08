@@ -193,7 +193,33 @@ namespace VantaMP::Game {
         Broadcast(Shared::kWorldEnvHeatHaze);
     }
 
-    std::uint16_t WorldManager::JoinFlags() const {
+    void WorldManager::SetCloudsEnabled(bool enabled) {
+        _cloudsEnabled = enabled;
+        _cloudsSet     = true;
+        Broadcast(Shared::kWorldEnvClouds);
+    }
+
+    void WorldManager::SetJetpackMaxHeight(float height) {
+        _jetpackMaxHeight = height;
+        _jetpackHeightSet = true;
+        Broadcast(Shared::kWorldEnvJetpackHeight);
+    }
+
+    void WorldManager::GetWindVelocity(float &x, float &y, float &z) const {
+        x = _windX;
+        y = _windY;
+        z = _windZ;
+    }
+
+    void WorldManager::SetWindVelocity(float x, float y, float z) {
+        _windX   = x;
+        _windY   = y;
+        _windZ   = z;
+        _windSet = true;
+        Broadcast(Shared::kWorldEnvWind);
+    }
+
+    std::uint32_t WorldManager::JoinFlags() const {
         auto flags = Shared::kWorldEnvCoreFlags;
 
         if (_farClipSet) {
@@ -236,10 +262,22 @@ namespace VantaMP::Game {
             flags |= Shared::kWorldEnvHeatHaze;
         }
 
+        if (_cloudsSet) {
+            flags |= Shared::kWorldEnvClouds;
+        }
+
+        if (_jetpackHeightSet) {
+            flags |= Shared::kWorldEnvJetpackHeight;
+        }
+
+        if (_windSet) {
+            flags |= Shared::kWorldEnvWind;
+        }
+
         return flags;
     }
 
-    Shared::RPC::WorldEnv WorldManager::MakePacket(std::uint16_t flags) const {
+    Shared::RPC::WorldEnv WorldManager::MakePacket(std::uint32_t flags) const {
         Shared::RPC::WorldEnv packet;
         packet.flags = flags;
         GetTime(packet.hour, packet.minute);
@@ -278,6 +316,11 @@ namespace VantaMP::Game {
         packet.hazeRenderX         = _hazeRenderX;
         packet.hazeRenderY         = _hazeRenderY;
         packet.hazeInsideBuilding  = _hazeInside;
+        packet.cloudsEnabled       = _cloudsEnabled;
+        packet.jetpackMaxHeight    = _jetpackMaxHeight;
+        packet.windX               = _windX;
+        packet.windY               = _windY;
+        packet.windZ               = _windZ;
         return packet;
     }
 
@@ -292,7 +335,7 @@ namespace VantaMP::Game {
         net->SendRPC(packet, MafiaNet::ToGuid(guid));
     }
 
-    void WorldManager::Broadcast(std::uint16_t flags) const {
+    void WorldManager::Broadcast(std::uint32_t flags) const {
         auto *net = Framework::CoreModules::GetNetworkPeer();
 
         if (!net || flags == 0) {
