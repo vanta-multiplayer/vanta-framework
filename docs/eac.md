@@ -129,8 +129,9 @@ formats.
 ### Private key
 
 `base_private.key` is for **signing only**. Never ship it in player builds.
-`protect_client.ps1` reads it from `vendors/eos/Keys/` and leaves only the
-generated `Certificates\` outputs in `build\client`.
+It is tracked in this private repo under `vendors/eos/Keys/` as a backup;
+`protect_client.ps1` reads it from there and leaves only the generated
+`Certificates\` outputs in `build\client`.
 
 ## Runtime flow
 
