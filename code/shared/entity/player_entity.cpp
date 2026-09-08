@@ -65,6 +65,9 @@ namespace VantaMP::Shared {
         fields.Field(walkingStyle);
         fields.Field(alpha);
         fields.Field(onFire);
+
+        fields.Field(maxHealth);
+        fields.Field(isDrowning);
     }
 
     Framework::Networking::Replication::NetworkEntity *PlayerEntity::GetInterestDependency() {

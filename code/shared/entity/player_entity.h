@@ -184,6 +184,13 @@ namespace VantaMP::Shared {
         // On fire. The owner reports m_pFire; script set sends PlayerScript.
         bool onFire = false;
 
+        // Cap for health. Script set sends PlayerScript so the owner
+        // writes m_fMaxHealth before the next snapshot.
+        float maxHealth = 100.0f;
+
+        // Ped is drowning (underwater damage). Owner reports bIsDrowning.
+        bool isDrowning = false;
+
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnStateForced() override;

@@ -149,6 +149,13 @@ namespace VantaMP::Shared {
         // CPhysical::bOnSolidSurface. Owner reports. Script is read-only.
         bool onGround = true;
 
+        // Script switches. Owner echoes; never reads GTA.
+        // wheelsCanBurst is the inverse of bTyresDontBurst (MTA naming).
+        bool         engineBroken   = false;
+        bool         wheelsCanBurst = true;
+        bool         canBeDamaged   = true;
+        std::uint8_t nitroCount     = 0;
+
         static std::uint8_t PackedByte(std::uint64_t packed, int index) {
             return static_cast<std::uint8_t>((packed >> (index * 8)) & 0xFFu);
         }

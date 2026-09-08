@@ -19,6 +19,7 @@ namespace VantaMP::Shared {
     inline constexpr std::uint8_t kPlayerScript2WalkingStyle  = 8;
     inline constexpr std::uint8_t kPlayerScript2Alpha         = 16;
     inline constexpr std::uint8_t kPlayerScript2OnFire        = 32;
+    inline constexpr std::uint8_t kPlayerScript2MaxHealth     = 64;
 } // namespace VantaMP::Shared
 
 namespace VantaMP::Shared::RPC {
@@ -44,6 +45,7 @@ namespace VantaMP::Shared::RPC {
         std::uint16_t walkingStyle  = 0;
         std::uint8_t  alpha         = 255;
         bool          onFire        = false;
+        float         maxHealth     = 100.0f;
 
         void Serialize(MafiaNet::BitStream *bs, bool write) {
             bs->Serialize(write, flags);
@@ -60,6 +62,7 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, walkingStyle);
             bs->Serialize(write, alpha);
             bs->Serialize(write, onFire);
+            bs->Serialize(write, maxHealth);
         }
     };
 } // namespace VantaMP::Shared::RPC

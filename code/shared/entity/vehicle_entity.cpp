@@ -60,6 +60,11 @@ namespace VantaMP::Shared {
         fields.Field(lightsOn);
         fields.Field(alpha);
         fields.Field(onGround);
+
+        fields.Field(engineBroken);
+        fields.Field(wheelsCanBurst);
+        fields.Field(canBeDamaged);
+        fields.Field(nitroCount);
     }
 
     void VehicleEntity::OnStateForced() {
