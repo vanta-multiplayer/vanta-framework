@@ -77,13 +77,6 @@ namespace VantaMP::Core {
         const auto reason       = app.GetLastDisconnectionReason();
         const bool reachedWorld = Nui::IsInWorld();
 
-        if (reason.empty()) {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Disconnected from the server");
-        }
-        else {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("Disconnected from the server: {}", reason);
-        }
-
         // MTA ~CClientGame: explosions and projectiles first, then every
         // script entity, then the local session. Dead or seated does not
         // change the order. The GTA ped stays allocated or the next
