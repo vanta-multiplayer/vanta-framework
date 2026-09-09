@@ -59,40 +59,78 @@ is true — that fights the drag-out.
 occupied car is a jack, not "put me in the next free seat". That reassign
 was a warp onto a ped still climbing, and it crashed.
 
-## Motion
+## Types and capabilities
 
-Only the driver writes pose. Remotes interpolate.
+`shared/vehicle/type.h` holds a `VehicleType` enum ordered to match GTA's own
+`eVehicleType`, plus the capability predicates the sync layer asks:
 
-**Authority is the driver seat, not being in the car.** MTA gates every
-vehicle read and write behind `uiSeat == 0`, and so do we. A passenger
-must never push pose, momentum, steer or pedals. Three places enforce it:
+```
+VehicleHasDamageModel   VehicleHasDoors      VehicleIsAircraft
+VehicleIsBike           VehicleHasLandingGear VehicleHasSirens
+VehicleHasTurret        VehicleHasTaxiLight   VehicleMaxPassengers
+```
 
-- The server revokes ownership when the owner takes a non-driver seat, and
-  hands it to the actual driver (`HandleEnter`). Ownership surviving an
-  exit is deliberate; ownership surviving into a *passenger* seat was the
-  bug that let someone drive from the back seat.
-- `PushOwnedVehicle` checks GTA's own `m_pDriver` before writing anything,
-  and warns (rate-limited) if the replica handed it authority as a passenger.
-- The `ProcessControl` pad swap neutralises the local pad when the local
-  player is a passenger and the driver has no Vanta slot (mid-jack, driver
-  streaming in). Otherwise GTA falls through to the raw local pad and the
-  passenger physically steers the car, below any packet we send.
+**Type selects capabilities, never a sync path.** A bike is synchronised
+exactly like a car, minus what it does not have. This is MTA's split - see
+[MTA vehicle sync](mta-vehicle-sync.md) section 7.
 
-- Delay range 100–400 ms. Position compensation can go to 1.5.
-- Error = target − current, scaled by `lerp(0.25, 1, unlerp(100, delay, 400))`.
-- Extrapolate about 5 ms of GTA velocity so the car does not sit still
-  between packets.
-- Warp at `15 + 10 × speed`, then `× tick/100`. Tighter numbers snap a
-  moving car every packet, and a car that warps while someone is punching
-  it launches them.
-- Do not interpolate the local driver's (or syncer's) car.
-- After the pose correction, write move speed back — **on the packet, not
-  every frame**. `SetPosn` and collision from the correction can kill the
-  speed the game just integrated, so it goes back on the frame a packet
-  arrived. Re-injecting turn speed every frame is what over-leans a bike:
-  `CBike::ProcessControl` derives lean from turn speed and damps it as it
-  integrates, and a stale value written 60x/s cancels that damping. MTA
-  writes `SetMoveSpeed` / `SetTurnSpeed` once per puresync packet.
+`RemoteVehicle` caches its type at spawn; nothing in the sync loop switches on
+a model id.
+
+| Rule | Applies to |
+|------|------------|
+| Damage / doors / door ratios skipped | no `CDamageManager`: bikes, BMX, boats, trains |
+| Rotor speed synced | helis (`m_fRotorZ` / `m_fSecondRotorZ`) |
+| Landing gear written | planes only |
+| Rudder controls sent | while seated (aircraft use them; MTA gates the same way) |
+| No transform written | trains, and anything with `m_pTractor` set |
+
+### An empty car's owner is re-elected by proximity
+
+The driver keeps the car after they get out - that is what lets it roll to a
+stop. But they can then walk away, drive off, or change dimension, and the car
+is still theirs: simulated by a client nowhere near it, or not simulated at all.
+
+`VehicleManager::PulseSyncers` runs each server tick and re-elects. The current
+owner keeps it while within **130 m** and in the same dimension; otherwise the
+nearest player within **110 m** takes over (the gap stops it churning between
+two equidistant players). A vehicle with nobody in range is owned by nobody and
+holds its last pose.
+
+Occupied vehicles are skipped entirely - seat 0 owns those, and
+`HandleEnter` / `HandleExit` already maintain that. MTA does the same thing in
+`CUnoccupiedVehicleSync::Update`; see [MTA vehicle sync](mta-vehicle-sync.md)
+section 3.
+
+### Trains and towed vehicles get momentum, not a pose
+
+A train's pose comes from its rail position and GTA recomputes it every frame;
+a towed trailer belongs to the tow physics of whatever pulls it. Writing a
+network pose over either fights the game. Both still receive move/turn speed -
+that is what carries them. MTA does the same (`CNetAPI.cpp:1407`,
+`CClientVehicle.cpp:2447`).
+
+### Known open issue: `UpdateRwFrame` on the per-frame path
+
+`SetVehiclePose` publishes the RW matrix and frame, and the interpolation
+path calls it **every frame**. `CEntity::UpdateRwFrame` rebuilds the entity's
+RenderWare frame hierarchy, and on a vehicle the wheels hang off that
+hierarchy - so doing it 60x/s is a candidate cause of remote wheels not
+visibly turning.
+
+MTA splits the two cases and we currently do not:
+
+| MTA | When |
+|-----|------|
+| `CEntitySA::SetPosition` - writes `matrix->vPos` and the placement, **no** RW update | every interpolation frame |
+| `CEntitySA::SetMatrix` - full write + `UpdateRwMatrix` + `UpdateRwFrame` + `CWorld` re-bucket | warps and explicit rotation sets only |
+
+A previous attempt to split them here also changed several other things at
+once and had to be reverted wholesale, so the split has never been tested on
+its own. It is the obvious next experiment for the wheel symptom, and it
+should land by itself with nothing else in the same build.
+
+See [MTA vehicle sync](mta-vehicle-sync.md) sections 9 and 37.
 
 ### Writing a pose
 

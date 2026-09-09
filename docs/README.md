@@ -9,6 +9,7 @@ still the source of truth for *why a line exists*; this folder is the map.
 | [Architecture](architecture.md) | Understand the layers, who owns what, and which channel a fact rides |
 | [Player sync](player-sync.md) | Change how remotes walk, aim, shoot, duck or swim |
 | [Vehicles](vehicles.md) | Change enter / exit, jacking, doors, steering or car motion |
+| [MTA vehicle sync](mta-vehicle-sync.md) | Check what MTA does before changing vehicle sync — a field-by-field audit |
 | [Voice](voice.md) | Proximity talk, devices, PTT, mic test |
 | [World space](world-space.md) | Interiors, dimensions, `player.interior` / `player.dimension` |
 | [World env](world-env.md) | Server clock, speed, weather, gravity, sky, water, wind, … |
