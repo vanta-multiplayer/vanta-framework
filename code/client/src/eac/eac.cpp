@@ -158,7 +158,15 @@ namespace VantaMP::Eac {
     }
 
     void OnGameConnected() {
-#if !defined(VANTAMP_HAS_EOS)
+#if defined(FW_DEBUG)
+        // Anti-Cheat is off in a Debug build. It fights the two-client test
+        // loop on one machine, and start_protected_game re-entry is exactly
+        // what makes a rebuild-run-rebuild cycle painful. Nothing else needs
+        // a guard: every other entry point here gates on gActive/gWantSession,
+        // which stay false when the session never begins.
+        Framework::Logging::GetLogger("EAC")->info("EAC disabled: FW_DEBUG build");
+        return;
+#elif !defined(VANTAMP_HAS_EOS)
         return;
 #else
         gWantSession = true;

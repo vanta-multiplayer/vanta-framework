@@ -15,6 +15,16 @@ scripts\build.bat types
 `types` regenerates [`@vantamp/types`](../types/README.md) from checked-in
 catalog dumps (see [Scripting types](scripting-types.md)).
 
+No args builds client, launcher and server, then `pack`s the runtime into
+`build\`. It deliberately **stops before `protect`** — that step re-hashes and
+signs the whole client tree for Anti-Cheat, and a Debug build never starts
+Anti-Cheat (see [EAC](eac.md)). When shipping:
+
+```bat
+scripts\build.bat release      :: all of the above, plus protect
+scripts\build.bat protect      :: just the signing step
+```
+
 ## Version, branch, environment
 
 CMake stamps `VERSION` plus the GitHub branch and the channel into
@@ -48,11 +58,16 @@ anything. Each instance writes `<Framework>/builds/build/bin/logs/VantaMP-<pid>.
 
 ## The DLL is locked while a client runs
 
-Kill these before a client rebuild, or the link fails with LNK1168:
+Kill these before a client rebuild, or the link fails with LNK1168 (or
+LNK1201, which is the same problem reaching the PDB):
 
 - `VantaMPLauncher`
 - `gta_sa`
 - `cef_subprocess`
+
+A Debug build no longer re-enters through `start_protected_game.exe`, so there
+is one launcher process per client rather than two — which is most of what
+used to leave the DLL held after a run.
 
 Restart the **server** as well whenever a `PlayerEntity` or `VehicleEntity`
 field changed, or whenever `WorldEnv` gained fields. The wire is positional.

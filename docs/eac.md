@@ -7,6 +7,30 @@ With the default `YOUR_*` placeholders in
 [`code/shared/eos/credentials.h`](../code/shared/eos/credentials.h), EAC stays
 **disabled** and the game runs normally.
 
+## Debug builds do not run Anti-Cheat
+
+`FW_DEBUG` (set by CMake for `CMAKE_BUILD_TYPE=Debug`, which is what
+`scripts\build.bat` uses) turns the whole thing off at three points:
+
+| Where | What it skips |
+|-------|---------------|
+| `code/launcher/src/eac_launch.cpp` | `EnsureEacProtectedProcess()` returns early — no `start_protected_game.exe` re-entry |
+| `code/client/src/eac/eac.cpp` | `OnGameConnected()` returns before `gWantSession` — no `BeginSession` |
+| `code/server/src/eac/eac.cpp` | `Init()` returns before `BeginSession` — `gActive` stays false |
+
+Three returns are enough because every other entry point on both sides
+already gates on `gActive` / `gWantSession`. With the session never started,
+`Tick`, `HandleRegister`, `HandleOpaqueFromClient`, `OnPlayerConnected` and
+`Shutdown` are all no-ops on their own. Nothing changes in Release.
+
+`EAC disabled: FW_DEBUG build` in the log is that, not a regression. The
+launcher relaunching itself through the bootstrapper was the reason: it made
+every rebuild a process hunt, and left the client DLL locked (LNK1168 /
+LNK1201). Two launchers on one machine is the normal test, so it had to go.
+
+To test EAC for real, build Release, or run `scripts\build.bat release` and
+launch the packed `build\client` tree.
+
 ## Where to get the IDs / secrets
 
 1. Open the [Epic Games Developer Portal](https://dev.epicgames.com/portal).
@@ -56,6 +80,7 @@ client\EasyAntiCheat\Localization\
 
 The launcher restarts itself through `start_protected_game.exe` when needed
 (parent process name check only — no `VANTA_EAC_*` environment variables).
+**Not in a Debug build** — see above.
 Framework records **cwd** as the client runtime path, so the launcher pins cwd
 to its exe directory before `Project` constructs. The client does not read
 process environment variables for EAC.
@@ -100,6 +125,11 @@ scripts\build.bat protect
 ```
 
 `protect` hashes the **client** pack into `base.bin`.
+
+It is **not** part of the default `scripts\build.bat` chain: it re-hashes the
+whole client tree (every CEF locale and DLL) on every build to sign `base.bin`,
+and a Debug client never starts Anti-Cheat anyway. Run it on its own, or use
+`scripts\build.bat release`, when shipping a build that must be protected.
 
 **EAX:** `gta_sa.exe` hard-imports `EAX.DLL`. We ship a **Vanta-built**
 `eax.dll` (dsound forwarder under `code/client/host_stubs/eax`), not a copy of

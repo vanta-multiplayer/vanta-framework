@@ -85,6 +85,15 @@ namespace VantaMP::Launcher {
     }
 
     bool EnsureEacProtectedProcess() {
+#if defined(FW_DEBUG)
+        // No start_protected_game re-entry in a Debug build. The bootstrapper
+        // relaunches this launcher as a new process, which is what turns
+        // every rebuild-and-run into a process hunt - and the client and
+        // server both skip Anti-Cheat under FW_DEBUG anyway, so a protected
+        // process would have nothing to protect. Same "carry on unprotected"
+        // return the missing-bootstrapper path already uses.
+        return true;
+#else
         const auto clientRoot = LauncherDirectory();
         const auto eacRoot    = clientRoot / "EasyAntiCheat";
 
@@ -107,5 +116,6 @@ namespace VantaMP::Launcher {
         }
 
         return false;
+#endif
     }
 } // namespace VantaMP::Launcher

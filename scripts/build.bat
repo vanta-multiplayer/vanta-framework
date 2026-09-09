@@ -49,6 +49,7 @@ if /i "%~1"=="protect" (
 
 if "%~1"=="" goto build_all
 if /i "%~1"=="all" goto build_all
+if /i "%~1"=="release" goto build_release
 
 if /i "%~1"=="client" (
     call "%FRAMEWORK_ROOT%\builds\build.bat" VantaMPClient 32
@@ -81,6 +82,26 @@ if errorlevel 1 exit /b 1
 echo -- pack ^(client + server + EOS/EAC runtime^)
 powershell -NoProfile -File "%VANTA%\scripts\package_build.ps1"
 if errorlevel 1 exit /b 1
+rem protect is skipped by default: it re-hashes the whole client tree to
+rem sign base.bin on every build, and a Debug client never starts
+rem Anti-Cheat anyway (FW_DEBUG). Run "scripts\build.bat protect" on its
+rem own, or "scripts\build.bat release", before shipping a protected build.
+echo -- protect skipped ^(Debug^). run "scripts\build.bat protect" when shipping
+exit /b 0
+
+:build_release
+echo -- VantaMPClient (32)
+call "%FRAMEWORK_ROOT%\builds\build.bat" VantaMPClient 32
+if errorlevel 1 exit /b 1
+echo -- VantaMPLauncher (32)
+call "%FRAMEWORK_ROOT%\builds\build.bat" VantaMPLauncher 32
+if errorlevel 1 exit /b 1
+echo -- VantaMPServer (64)
+call "%FRAMEWORK_ROOT%\builds\build.bat" VantaMPServer 64
+if errorlevel 1 exit /b 1
+echo -- pack ^(client + server + EOS/EAC runtime^)
+powershell -NoProfile -File "%VANTA%\scripts\package_build.ps1"
+if errorlevel 1 exit /b 1
 echo -- protect ^(base.bin - pack wipes Certificates^)
 powershell -NoProfile -File "%VANTA%\scripts\protect_client.ps1"
 exit /b %errorlevel%
@@ -89,6 +110,8 @@ exit /b %errorlevel%
 echo usage: scripts\build.bat [target]
 echo.
 echo   ^(no args^) / all   client, launcher, server, then pack into build\
+echo                      ^(protect skipped - Debug does not run Anti-Cheat^)
+echo   release            all + protect. use before shipping
 echo   client             VantaMPClient, 32-bit
 echo   launcher           VantaMPLauncher, 32-bit
 echo   server             VantaMPServer, 64-bit

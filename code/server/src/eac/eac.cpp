@@ -250,7 +250,15 @@ namespace VantaMP::Eac {
     }
 
     void Init() {
-#if !defined(VANTAMP_HAS_EOS)
+#if defined(FW_DEBUG)
+        // Anti-Cheat is off in a Debug build, to match the client. Returning
+        // before BeginSession leaves gActive false, and every other entry
+        // point here already gates on it - so registration, opaque traffic
+        // and the register deadline all become no-ops rather than half a
+        // session waiting for clients that will never enrol.
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("EAC disabled: FW_DEBUG build");
+        return;
+#elif !defined(VANTAMP_HAS_EOS)
         Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("EOSSDK not linked (missing Win64 lib)");
         return;
 #else

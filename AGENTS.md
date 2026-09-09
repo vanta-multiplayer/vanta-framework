@@ -113,16 +113,29 @@ not the matrix (that was the permanent 90° bug).
 
 ## Build
 
-From the Framework root (`new/`), never ad-hoc CMake:
+From **this** repo, never ad-hoc CMake. `scripts\build.bat` finds the
+framework and forwards:
 
 ```bat
-builds\build.bat VantaMPClient 32
-builds\build.bat VantaMPServer 64
+scripts\build.bat client       :: VantaMPClient 32
+scripts\build.bat server       :: VantaMPServer 64
+scripts\build.bat launcher     :: VantaMPLauncher 32
+scripts\build.bat              :: all three, then pack
 ```
 
+It also takes `ui`, `types`, `pack`, `protect`, `release`, and forwards any
+`<target> <32|64>` pair to the framework script. The framework's own
+`builds\build.bat` still works, but the wrapper is the entry point — it is
+what handles framework discovery.
+
+`protect` (Anti-Cheat catalog signing) is **not** in the default chain, and
+Debug builds do not start Anti-Cheat at all — `EAC disabled: FW_DEBUG build`
+in the log is expected. Use `scripts\build.bat release` when shipping.
+See [`docs/eac.md`](docs/eac.md).
+
 Kill `VantaMPLauncher`, `gta_sa`, `cef_subprocess` before a client link
-(LNK1168). Two launchers on one machine is the normal test. Logs:
-`new/builds/build/bin/logs/VantaMP-<pid>.log`.
+(LNK1168, or LNK1201 on the PDB). Two launchers on one machine is the normal
+test. Logs: `new/builds/build/bin/logs/VantaMP-<pid>.log`.
 
 ## Where to read first
 
