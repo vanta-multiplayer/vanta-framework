@@ -85,11 +85,5 @@ namespace VantaMP::Game {
             reinterpret_cast<LPVOID>(&LoadSettings_Hook),
             reinterpret_cast<void **>(&gLoadSettings));
         MH_EnableHook(reinterpret_cast<LPVOID>(loadSettings));
-
-        Framework::Logging::GetLogger("Audio")->info(
-            "Volume master {:.0f}% sfx {:.0f}% radio {:.0f}%",
-            gMaster * 100.0f,
-            gSfx * 100.0f,
-            gRadio * 100.0f);
     }
 } // namespace VantaMP::Game

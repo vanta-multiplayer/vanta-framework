@@ -66,8 +66,6 @@ namespace VantaMP::Game {
         // shows a world, and the game would otherwise undo every attempt to
         // make a pointer visible.
         hook::nop(p.Cursor__Hiding, kCursorHidingSize);
-
-        Framework::Logging::GetLogger("Input")->info("Mouse released: non-exclusive, no re-centring, no cursor hiding");
     }
 
     void InstallPadSuppressHook() {

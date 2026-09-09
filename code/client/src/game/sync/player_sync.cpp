@@ -467,8 +467,6 @@ namespace VantaMP::Game {
 
                 found       = gSlotByNetworkId.emplace(networkId, slot).first;
                 justCreated = true;
-
-                Framework::Logging::GetLogger("Sync")->info("Player {} ('{}') appeared in slot {}", networkId, entity->nickname, slot);
             }
 
             const int slot = found->second;
@@ -771,8 +769,6 @@ namespace VantaMP::Game {
                 ++it;
                 continue;
             }
-
-            Framework::Logging::GetLogger("Sync")->info("Player {} left slot {}", it->first, it->second);
 
             gInterpolationBySlot.erase(it->second);
             gRemoteAlpha.erase(it->second);

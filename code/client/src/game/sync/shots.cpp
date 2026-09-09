@@ -35,7 +35,8 @@ namespace VantaMP::Game {
             shot.FromParameters(0, weaponType, ox, oy, oz, tx, ty, tz, ++gShotOrder, hitId, hitDamage);
             net->BroadcastRPC(shot);
 
-            Framework::Logging::GetLogger("Shots")->debug("sent shot #{} weapon {} hit {} dmg {:.0f} ({:.1f},{:.1f},{:.1f})->({:.1f},{:.1f},{:.1f})", gShotOrder, weaponType, hitId, hitDamage, ox, oy, oz, tx, ty, tz);
+            // debug
+            // Framework::Logging::GetLogger("Shots")->debug("sent shot #{} weapon {} hit {} dmg {:.0f} ({:.1f},{:.1f},{:.1f})->({:.1f},{:.1f},{:.1f})", gShotOrder, weaponType, hitId, hitDamage, ox, oy, oz, tx, ty, tz);
         }
     } // namespace
 
@@ -84,7 +85,8 @@ namespace VantaMP::Game {
         const int slot = SlotOfNetworkId(networkId);
 
         if (slot < 0) {
-            Framework::Logging::GetLogger("Shots")->debug("shot from {} dropped; no ped yet", networkId);
+            // debug
+            // Framework::Logging::GetLogger("Shots")->debug("shot from {} dropped; no ped yet", networkId);
             return;
         }
 
@@ -97,7 +99,9 @@ namespace VantaMP::Game {
         }
 
         last = order;
-        Framework::Logging::GetLogger("Shots")->debug("apply shot #{} from {} slot {} weapon {} hit {}", order, networkId, slot, weaponType, damagedNetworkId);
+
+        // debug
+        // Framework::Logging::GetLogger("Shots")->debug("apply shot #{} from {} slot {} weapon {} hit {}", order, networkId, slot, weaponType, damagedNetworkId);
 
         // Health is ours to lose. The ray is the owner's, but interpolation
         // can put this ped off it; MTA then applies the damage the shooter

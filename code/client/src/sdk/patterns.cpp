@@ -1,5 +1,6 @@
 #include "patterns.h"
 
+#include <logging/logger.h>
 #include <utils/hooking/hooking.h>
 #include <utils/hooking/hooking_patterns.h>
 
@@ -9,6 +10,8 @@ namespace VantaMP::SDK {
     Patterns gPatterns;
 
     namespace {
+        std::size_t gPatternScanCount = 0;
+
         // Reads the absolute address out of an instruction's operand.
         //
         // A global has no bytes of its own worth matching - .data holds a value,
@@ -25,11 +28,30 @@ namespace VantaMP::SDK {
 
         // get_pattern hands back a pointer; the table stores addresses.
         uintptr_t Resolve(std::string_view signature) {
+            ++gPatternScanCount;
             return reinterpret_cast<uintptr_t>(hook::get_pattern(signature));
+        }
+
+        // Resolves a signature and reads an absolute address from its operand.
+        uintptr_t ResolveOperand(std::string_view signature, std::size_t offset) {
+            ++gPatternScanCount;
+            return OperandAt(hook::get_pattern(signature), offset);
+        }
+
+        // Resolves the destination of a relative opcode (e.g. CALL rel32).
+        //
+        // hook::get_opcode_address only takes a string literal, so the rel32
+        // arithmetic is repeated here against the string_view get_pattern
+        // overload: destination = site + 5 + rel32 stored at site + 1.
+        uintptr_t ResolveOpcode(std::string_view signature) {
+            ++gPatternScanCount;
+            const auto *site = static_cast<const std::uint8_t *>(hook::get_pattern(signature));
+            return reinterpret_cast<uintptr_t>(site + *reinterpret_cast<const std::int32_t *>(site + 1) + 5);
         }
     } // namespace
 
     void Patterns::InitPatterns() {
+        gPatternScanCount = 0;
         // Signatures were derived from GTA:SA 1.0 US and proven to resolve to the
         // addresses named in the comments - see scripts/derive_pattern.py and
         // scripts/derive_global.py. The addresses are provenance, not values the
@@ -42,35 +64,35 @@ namespace VantaMP::SDK {
         // The leading C7 and the trailing compare are both load-bearing: without
         // them the imul/mov pair alone matches 22 sites, because indexing that
         // array is a common thing for the game to do.
-        gPatterns.CWorld__Players = OperandAt(hook::get_pattern("C7 69 C0 90 01 00 00 8B 80 ? ? ? ? 3B C3 74"), 9); // site 0x00570D05 -> 0x00B7CD98
+        gPatterns.CWorld__Players = ResolveOperand("C7 69 C0 90 01 00 00 8B 80 ? ? ? ? 3B C3 74", 9); // site 0x00570D05 -> 0x00B7CD98
 
-        gPatterns.CTimer__ms_fTimeScale                 = OperandAt(hook::get_pattern("C7 00 00 C7 05 ? ? ? ? 00 00 80 3F C3"), 5); // site 0x00721D3D -> 0x00B7CB64
-        gPatterns.CClock__ms_nMillisecondsPerGameMinute = OperandAt(hook::get_pattern("8B 35 ? ? ? ? 32"), 2); // site 0x0052CF22 -> 0x00B7015C
-        gPatterns.CClock__ms_nGameClockHours            = OperandAt(hook::get_pattern("80 3D ? ? ? ? 05 72"), 2); // site 0x0045577D -> 0x00B70153
-        gPatterns.CClock__ms_nGameClockMinutes          = OperandAt(hook::get_pattern("80 3D ? ? ? ? 3C"), 2); // site 0x0052CF71 -> 0x00B70152
+        gPatterns.CTimer__ms_fTimeScale                 = ResolveOperand("C7 00 00 C7 05 ? ? ? ? 00 00 80 3F C3", 5); // site 0x00721D3D -> 0x00B7CB64
+        gPatterns.CClock__ms_nMillisecondsPerGameMinute = ResolveOperand("8B 35 ? ? ? ? 32", 2); // site 0x0052CF22 -> 0x00B7015C
+        gPatterns.CClock__ms_nGameClockHours            = ResolveOperand("80 3D ? ? ? ? 05 72", 2); // site 0x0045577D -> 0x00B70153
+        gPatterns.CClock__ms_nGameClockMinutes          = ResolveOperand("80 3D ? ? ? ? 3C", 2); // site 0x0052CF71 -> 0x00B70152
         gPatterns.CWeather__ForceWeatherNow             = Resolve("E9 ? ? ? ? 66 A3"); // 0x0072A4F0
-        gPatterns.CGame__ms_fGravity                    = OperandAt(hook::get_pattern("20 D8 0D ? ? ? ? D9 44 24 3C D8 0D"), 3); // site 0x0067EC84 -> 0x00863984
-        gPatterns.CRenderer__ms_fFarClipPlane           = OperandAt(hook::get_pattern("8B 15 ? ? ? ? A1 3C 70 C1 00 52 50 E8 15"), 2); // site 0x0053DC79 -> 0x00B7C4F0
-        gPatterns.CRenderer__ms_fFogStart               = OperandAt(hook::get_pattern("06 2B 00 D9 05"), 5); // site 0x0053DC88 -> 0x00B7C4F4
-        gPatterns.CWeather__Rain                        = OperandAt(hook::get_pattern("E8 13 C8 00 D8 0D F0 12 C8 00 D8 0D"), 12); // site 0x0072B345 -> 0x00C81324
-        gPatterns.CWater__ms_fWaveHeight                = OperandAt(hook::get_pattern("C7 05 ? ? ? ? 00 00 80 3F EB 06 D9 1D E8"), 2); // site 0x0072C659 -> 0x00C812E8
-        gPatterns.CTimeCycle__m_nSkyTopRed              = OperandAt(hook::get_pattern("00 90 90 90 90 90 66 A1"), 8); // site 0x0053D49A -> 0x00B7C4C4
-        gPatterns.CTimeCycle__m_nSunCoreRed             = OperandAt(hook::get_pattern("D2 C4 B7 00 D9 1C 24 51 33 C9 8A 0D"), 12); // site 0x006FC695 -> 0x00B7C4D0
-        gPatterns.CTimeCycle__m_fSunSize                = OperandAt(hook::get_pattern("C3 90 90 90 90 90 90 90 90 90 D9 05 ? ? ? ? D8 0D 1C"), 12); // site 0x006FA9E6 -> 0x00B7C4DC
-        gPatterns.CCoronas__MoonSize                    = OperandAt(hook::get_pattern("8B 0D ? ? ? ? 83 C4 18 85"), 2); // site 0x00713B10 -> 0x008D4B60
-        gPatterns.CTimeCycle__m_fWaterRed               = OperandAt(hook::get_pattern("D9 05 ? ? ? ? D8 C9 E8 D4"), 2); // site 0x0051295F -> 0x00B7C508
-        gPatterns.CWater__UnderwaterRGBA                = OperandAt(hook::get_pattern("8B 1D ? ? ? ? D8 05"), 2); // site 0x00705187 -> 0x008D5140
-        gPatterns.CPostEffects__HeatHazeHourStart       = OperandAt(hook::get_pattern("8B 3D ? ? ? ? 0F B6 F3"), 2); // site 0x0072C176 -> 0x008D50D4
-        gPatterns.CPostEffects__HeatHazeRandomShift     = OperandAt(hook::get_pattern("89 35 ? ? ? ? C7 05 EC 50 8D 00 0C"), 2); // site 0x0070148B -> 0x00C402C0
-        gPatterns.CPostEffects__HeatHazeScanSizeX       = OperandAt(hook::get_pattern("89 3D ? ? ? ? D8 0D 24"), 2); // site 0x00701549 -> 0x00C40304
-        gPatterns.CPostEffects__bHeatHazeFX             = OperandAt(hook::get_pattern("C3 90 90 90 8A 44 24 04 A2 ? ? ? ? C3 90 90 90 90 90 90 8A"), 9); // site 0x0070115C -> 0x00C402BA
+        gPatterns.CGame__ms_fGravity                    = ResolveOperand("20 D8 0D ? ? ? ? D9 44 24 3C D8 0D", 3); // site 0x0067EC84 -> 0x00863984
+        gPatterns.CRenderer__ms_fFarClipPlane           = ResolveOperand("8B 15 ? ? ? ? A1 3C 70 C1 00 52 50 E8 15", 2); // site 0x0053DC79 -> 0x00B7C4F0
+        gPatterns.CRenderer__ms_fFogStart               = ResolveOperand("06 2B 00 D9 05", 5); // site 0x0053DC88 -> 0x00B7C4F4
+        gPatterns.CWeather__Rain                        = ResolveOperand("E8 13 C8 00 D8 0D F0 12 C8 00 D8 0D", 12); // site 0x0072B345 -> 0x00C81324
+        gPatterns.CWater__ms_fWaveHeight                = ResolveOperand("C7 05 ? ? ? ? 00 00 80 3F EB 06 D9 1D E8", 2); // site 0x0072C659 -> 0x00C812E8
+        gPatterns.CTimeCycle__m_nSkyTopRed              = ResolveOperand("00 90 90 90 90 90 66 A1", 8); // site 0x0053D49A -> 0x00B7C4C4
+        gPatterns.CTimeCycle__m_nSunCoreRed             = ResolveOperand("D2 C4 B7 00 D9 1C 24 51 33 C9 8A 0D", 12); // site 0x006FC695 -> 0x00B7C4D0
+        gPatterns.CTimeCycle__m_fSunSize                = ResolveOperand("C3 90 90 90 90 90 90 90 90 90 D9 05 ? ? ? ? D8 0D 1C", 12); // site 0x006FA9E6 -> 0x00B7C4DC
+        gPatterns.CCoronas__MoonSize                    = ResolveOperand("8B 0D ? ? ? ? 83 C4 18 85", 2); // site 0x00713B10 -> 0x008D4B60
+        gPatterns.CTimeCycle__m_fWaterRed               = ResolveOperand("D9 05 ? ? ? ? D8 C9 E8 D4", 2); // site 0x0051295F -> 0x00B7C508
+        gPatterns.CWater__UnderwaterRGBA                = ResolveOperand("8B 1D ? ? ? ? D8 05", 2); // site 0x00705187 -> 0x008D5140
+        gPatterns.CPostEffects__HeatHazeHourStart       = ResolveOperand("8B 3D ? ? ? ? 0F B6 F3", 2); // site 0x0072C176 -> 0x008D50D4
+        gPatterns.CPostEffects__HeatHazeRandomShift     = ResolveOperand("89 35 ? ? ? ? C7 05 EC 50 8D 00 0C", 2); // site 0x0070148B -> 0x00C402C0
+        gPatterns.CPostEffects__HeatHazeScanSizeX       = ResolveOperand("89 3D ? ? ? ? D8 0D 24", 2); // site 0x00701549 -> 0x00C40304
+        gPatterns.CPostEffects__bHeatHazeFX             = ResolveOperand("C3 90 90 90 8A 44 24 04 A2 ? ? ? ? C3 90 90 90 90 90 90 8A", 9); // site 0x0070115C -> 0x00C402BA
         gPatterns.CPostEffects__HeatHazeAutoType        = Resolve("83 EC 08 53 8B 1D"); // 0x00701455
         gPatterns.CClouds__VolumetricRender             = Resolve("A1 14 29 B7 00 83 EC 7C"); // 0x00716380
         gPatterns.CClouds__BottomRender                 = Resolve("83 EC 44 0F B7 05"); // 0x007154B0
         gPatterns.CClouds__SkylineRender                = Resolve("D9 41 08 D9 C9 D9 F3 EB"); // 0x0071411A
         gPatterns.CPlane__TrailRender                   = Resolve("83 EC 08 D9 44 24 0C 53"); // 0x00717180
-        gPatterns.CWorld__fJetpackMaxHeight             = OperandAt(hook::get_pattern("D8 05 ? ? ? ? D8 5D 08"), 2); // site 0x0067F25A -> 0x008703D8
-        gPatterns.CWeather__WindVel                     = OperandAt(hook::get_pattern("00 D9 05 ? ? ? ? D8 0D F0 12 C8 00 D8 0D 1C"), 3); // site 0x0072B2AF -> 0x00C813E0
+        gPatterns.CWorld__fJetpackMaxHeight             = ResolveOperand("D8 05 ? ? ? ? D8 5D 08", 2); // site 0x0067F25A -> 0x008703D8
+        gPatterns.CWeather__WindVel                     = ResolveOperand("00 D9 05 ? ? ? ? D8 0D F0 12 C8 00 D8 0D 1C", 3); // site 0x0072B2AF -> 0x00C813E0
 
         // --- Boot: loading screens and the frontend ---------------------------
 
@@ -98,10 +120,10 @@ namespace VantaMP::SDK {
         gPatterns.Print__SoundManager             = Resolve("E8 ? ? ? ? 8B 4C 24 14 83 C4 04 5F"); // 0x005B97C9
 
         // Globals, read out of the instruction that references them.
-        gPatterns.CTimer__UserPause   = OperandAt(hook::get_pattern("51 A0 ? ? ? ? 84 C0 56 57 8B"), 2); // site 0x004D6DF0 -> 0x00B7CB49
-        gPatterns.CMenuManager__Pause = OperandAt(hook::get_pattern("1F 00 A0 ? ? ? ? 84 C0 74"), 3); // site 0x0053E81D -> 0x00BA67A4
-        gPatterns.gGameState          = OperandAt(hook::get_pattern("83 3D ? ? ? ? 08 75 63"), 2); // site 0x00730EDD -> 0x00C8D4C0
-        gPatterns.RsGlobal            = OperandAt(hook::get_pattern("C7 05 ? ? ? ? 88 D3"), 2); // site 0x00619602 -> 0x00C17040
+        gPatterns.CTimer__UserPause   = ResolveOperand("51 A0 ? ? ? ? 84 C0 56 57 8B", 2); // site 0x004D6DF0 -> 0x00B7CB49
+        gPatterns.CMenuManager__Pause = ResolveOperand("1F 00 A0 ? ? ? ? 84 C0 74", 3); // site 0x0053E81D -> 0x00BA67A4
+        gPatterns.gGameState          = ResolveOperand("83 3D ? ? ? ? 08 75 63", 2); // site 0x00730EDD -> 0x00C8D4C0
+        gPatterns.RsGlobal            = ResolveOperand("C7 05 ? ? ? ? 88 D3", 2); // site 0x00619602 -> 0x00C17040
 
         // --- Script and the local player --------------------------------------
 
@@ -118,8 +140,8 @@ namespace VantaMP::SDK {
         gPatterns.CCamera__Fade                     = Resolve("E9 ? ? ? ? 53 8A 59"); // 0x0050AC20
         gPatterns.CCamera__SetFadeColour            = Resolve("8A 44 24 04 3C 02"); // 0x0050BF00
 
-        gPatterns.CWorld__PlayerInFocus = OperandAt(hook::get_pattern("3B F8 75 19 0F B6 0D"), 7); // site 0x004B5C58 -> 0x00B7CD74
-        gPatterns.TheCamera             = OperandAt(hook::get_pattern("50 56 B9 ? ? ? ? C6"), 3); // site 0x00520D82 -> 0x00B6F028
+        gPatterns.CWorld__PlayerInFocus = ResolveOperand("3B F8 75 19 0F B6 0D", 7); // site 0x004B5C58 -> 0x00B7CD74
+        gPatterns.TheCamera             = ResolveOperand("50 56 B9 ? ? ? ? C6", 3); // site 0x00520D82 -> 0x00B6F028
         gPatterns.CameraSize            = Resolve("83 EC 34 57 8B 7C 24 3C 85 FF"); // 0x0072FC70
         gPatterns.RwCameraClear         = Resolve("8B 4C 24 0C A1 24 7B C9 00"); // 0x007EE340
         gPatterns.CGame__Process        = Resolve("83 EC 0C 53 56 57 E8"); // 0x0053BEE0
@@ -131,16 +153,16 @@ namespace VantaMP::SDK {
         gPatterns.RwD3D9RestoreAfterReset3 = Resolve("A1 1C BF C9 00 83 EC 20"); // 0x007FB480
         gPatterns.RwD3D9RestoreAfterReset4 = Resolve("A1 1C BF C9 00 83 EC 28"); // 0x0080E020
         gPatterns.CPostEffects__SetupBackBufferVertex = Resolve("55 8B EC 83 E4 F8 83 EC 20 D9"); // 0x007043D0
-        gPatterns.CPostEffects__pRasterFrontBuffer    = OperandAt(hook::get_pattern("8B F8 A1 ? ? ? ? 85 C0 89 7C 24 24 74"), 3); // site 0x0070446D -> 0x00C402D8
+        gPatterns.CPostEffects__pRasterFrontBuffer    = ResolveOperand("8B F8 A1 ? ? ? ? 85 C0 89 7C 24 24 74", 3); // site 0x0070446D -> 0x00C402D8
         gPatterns.RwRasterDestroy                     = Resolve("56 8B 74 24 08 56 68 ? ? ? ? E8 ? ? ? ? A1 24 7B C9 00 6A 00 56 6A 00"); // 0x007FB020
-        gPatterns.D3DPresentParameters     = OperandAt(hook::get_pattern("BE ? ? ? ? 8D 7C 24 20 F3 A5"), 1); // site 0x007F867D -> 0x00C9C040
-        gPatterns.RwD3D9RenderSurface      = OperandAt(hook::get_pattern("68 ? ? ? ? 57 50 8B 10 FF 92 98"), 1); // site 0x007F86DC -> 0x00C97C30
+        gPatterns.D3DPresentParameters     = ResolveOperand("BE ? ? ? ? 8D 7C 24 20 F3 A5", 1); // site 0x007F867D -> 0x00C9C040
+        gPatterns.RwD3D9RenderSurface      = ResolveOperand("68 ? ? ? ? 57 50 8B 10 FF 92 98", 1); // site 0x007F86DC -> 0x00C97C30
 
         // mov eax, [GnumSubSystems]; mov edi, 1; cmp eax, edi; jle single
         gPatterns.PsSelectDeviceHook    = Resolve("A1 ? ? ? ? BF 01 00 00 00 3B C7 7E"); // 0x00746219
         gPatterns.VidModeDialogFuncPush = Resolve("68 ? ? ? ? 55 6A 68 53 FF 15"); // 0x00746238
-        gPatterns.SavedVideoMode        = OperandAt(hook::get_pattern("75 29 E8 ? ? ? ? 8B 0D ? ? ? ? 83 3C 88 00"), 9); // site 0x0074629A -> 0x00BA6820
-        gPatterns.GcurSelVM             = OperandAt(hook::get_pattern("89 0D ? ? ? ? 8B 15 ? ? ? ? 52 8D 44 24 18"), 2); // site 0x007462BF -> 0x008D6220
+        gPatterns.SavedVideoMode        = ResolveOperand("75 29 E8 ? ? ? ? 8B 0D ? ? ? ? 83 3C 88 00", 9); // site 0x0074629A -> 0x00BA6820
+        gPatterns.GcurSelVM             = ResolveOperand("89 0D ? ? ? ? 8B 15 ? ? ? ? 52 8D 44 24 18", 2); // site 0x007462BF -> 0x008D6220
         gPatterns.RwEngineGetVideoModeInfo = Resolve("8B 44 24 08 8B 0D ? ? ? ? 56 8B 74 24 08 50 6A 00 56 83 C1 10 6A 06"); // 0x007F2CF0
         gPatterns.RwEngineGetNumVideoModes = Resolve("51 8B 0D ? ? ? ? 6A 00 8D 44 24 04 6A 00 50 83 C1 10 6A 05"); // 0x007F2CC0
         gPatterns.SetVideoMode             = Resolve("8B 44 24 04 50 E8 ? ? ? ? 83 C4 04 E8 ? ? ? ? A1"); // 0x00745C70
@@ -154,7 +176,7 @@ namespace VantaMP::SDK {
         gPatterns.Cursor__Recentre                = Resolve("83 EC 10 56 8B 74 24 18 D9"); // 0x007453F0
         gPatterns.Cursor__Hiding                  = Resolve("6A 00 FF 15 EC 82 85 00 6A"); // 0x007481CD
 
-        gPatterns.IsForegroundApp = OperandAt(hook::get_pattern("A1 1C 62 8D 00 85 C0 0F"), 1); // site 0x00746060 -> 0x008D621C
+        gPatterns.IsForegroundApp = ResolveOperand("A1 1C 62 8D 00 85 C0 0F", 1); // site 0x00746060 -> 0x008D621C
 
         // --- Gameplay the server owns instead ---------------------------------
 
@@ -212,7 +234,7 @@ namespace VantaMP::SDK {
         gPatterns.CHud__AspectMultiplier  = Resolve("25 49 12 3B 50 41"); // 0x00859524
         gPatterns.CCamera__CrosshairScale = Resolve("00 00 40 43 00 00"); // 0x00866C74
 
-        gPatterns.CDraw__AspectRatio = OperandAt(hook::get_pattern("8B 0D ? ? ? ? D8 0D D4"), 2); // site 0x0053EB26 -> 0x00C3EFA4
+        gPatterns.CDraw__AspectRatio = ResolveOperand("8B 0D ? ? ? ? D8 0D D4", 2); // site 0x0053EB26 -> 0x00C3EFA4
 
         // --- Player slots ------------------------------------------------------
         //
@@ -224,7 +246,7 @@ namespace VantaMP::SDK {
         gPatterns.Alloc__Pad1        = Resolve("6A 02 68 34 01 00 00 68 58 34 B7 00 E8 25"); // 0x0084E1FA
         gPatterns.Alloc__Pad2        = Resolve("6A 02 68 34 01 00 00 68 58 34 B7 00 E8 8C"); // 0x00856465
 
-        gPatterns.CPad__Pads = OperandAt(hook::get_pattern("00 B9 ? ? ? ? E9 C0"), 2); // site 0x0040380C -> 0x00B73458
+        gPatterns.CPad__Pads = ResolveOperand("00 B9 ? ? ? ? E9 C0", 2); // site 0x0040380C -> 0x00B73458
 
         // --- Remote players ----------------------------------------------------
 
@@ -238,7 +260,7 @@ namespace VantaMP::SDK {
         // CGame::Process: sub esp,0xC / push ebx,esi,edi / call UpdatePads
         gPatterns.CPad__UpdatePadsCall = Resolve("83 EC 0C 53 56 57 E8") + 6; // call at 0x0053BEE6 -> 0x00541DD0
 
-        gPatterns.CPad__NewMouseState = OperandAt(hook::get_pattern("FF A0 ? ? ? ? 83 C4 0C 3A"), 2); // site 0x0057E51E -> 0x00B73418
+        gPatterns.CPad__NewMouseState = ResolveOperand("FF A0 ? ? ? ? 83 C4 0C 3A", 2); // site 0x0057E51E -> 0x00B73418
 
         // Tasks allocate from their own pool, not the ped one - the signature
         // differs from CPed::operator new only in the pool it loads.
@@ -263,8 +285,8 @@ namespace VantaMP::SDK {
         gPatterns.CTaskComplexInWater__Constructor = Resolve("56 8B F1 E8 D8 52"); // 0x006350D0
         gPatterns.CTaskManager__SetTask            = Resolve("53 8B 5C 24 08 85 DB 56 57 8B 7C"); // 0x00681AF0
 
-        gPatterns.CCamera__Rotation  = OperandAt(hook::get_pattern("FF D8 25 ? ? ? ? D9 5C 24 20"), 3); // site 0x00688FA6 -> 0x00B6F178
-        gPatterns.CCamera__MouseLook = OperandAt(hook::get_pattern("50 A0 ? ? ? ? 64 89 25 00 00 00 00 83 EC 74"), 2); // site 0x0060B65D -> 0x00B6EC2E
+        gPatterns.CCamera__Rotation  = ResolveOperand("FF D8 25 ? ? ? ? D9 5C 24 20", 3); // site 0x00688FA6 -> 0x00B6F178
+        gPatterns.CCamera__MouseLook = ResolveOperand("50 A0 ? ? ? ? 64 89 25 00 00 00 00 83 EC 74", 2); // site 0x0060B65D -> 0x00B6EC2E
 
         // --- Game methods called directly --------------------------------------
 
@@ -273,7 +295,7 @@ namespace VantaMP::SDK {
         // Its matching delete has no unique signature of its own - the body is
         // too short and too ordinary - so it is reached through a call to it,
         // which get_opcode_address follows to the target.
-        gPatterns.CPed__operator_delete = static_cast<uintptr_t>(hook::get_opcode_address("E8 ? ? ? ? 83 C4 04 8B C6 5E C2 04 00 90 90 83 EC 20 53 55 56 57")); // call at 0x0060A9B0 -> 0x005E4760
+        gPatterns.CPed__operator_delete = ResolveOpcode("E8 ? ? ? ? 83 C4 04 8B C6 5E C2 04 00 90 90 83 EC 20 53 55 56 57"); // call at 0x0060A9B0 -> 0x005E4760
         gPatterns.CPlayerPed__Constructor            = Resolve("6A FF 68 58 ED 83"); // 0x0060D5B0
         gPatterns.CPed__SetModelIndex                = Resolve("56 8B F1 81 4E 1C"); // 0x005E4880
         gPatterns.CPlaceable__SetOrientation         = Resolve("83 EC 0C 56 8B F1 8B 4E 14"); // 0x00439A80
@@ -298,7 +320,7 @@ namespace VantaMP::SDK {
         gPatterns.CStreaming__HasModelLoaded         = Resolve("8B 44 24 04 8D 04 80 8A 14 85 D0"); // 0x004044C0
 
         // mov ecx, [CGame::currArea]; test ecx, ecx
-        gPatterns.CGame__CurrArea = OperandAt(hook::get_pattern("8B 0D ? ? ? ? 85 C9 8B 54"), 2); // site 0x0040471F -> 0x00B72914
+        gPatterns.CGame__CurrArea = ResolveOperand("8B 0D ? ? ? ? 85 C9 8B 54", 2); // site 0x0040471F -> 0x00B72914
         gPatterns.CStreaming__RemoveBuildingsNotInArea = Resolve("53 55 8B 6C 24 0C 56 57 8B 3D"); // 0x004094B0
 
         gPatterns.CWeaponInfo__GetWeaponInfo = Resolve("8A 4C 24 08 84 C9 E9"); // 0x00743C60
@@ -329,7 +351,7 @@ namespace VantaMP::SDK {
 
         gPatterns.CCamera__Find3rdPersonCamTargetVector = Resolve("83 EC 10 0F B6 41"); // 0x00514970
 
-        gPatterns.CWorld__pIgnoreEntity = OperandAt(hook::get_pattern("39 35 ? ? ? ? 0F 84 C8"), 2); // site 0x004153B4 -> 0x00B7CD68
+        gPatterns.CWorld__pIgnoreEntity = ResolveOperand("39 35 ? ? ? ? 0F 84 C8", 2); // site 0x004153B4 -> 0x00B7CD68
 
         gPatterns.CPed__DoGunFlash                       = Resolve("56 8B F1 8B 86 F4 04"); // 0x005DF340
         gPatterns.CPed__GetTransformedBonePosition       = Resolve("8A 44 24 0C 83 EC 0C 56 8B F1 84 C0 8B 86 74 04 00 00 57 74 50"); // 0x005E01C0
@@ -337,7 +359,7 @@ namespace VantaMP::SDK {
         gPatterns.CWeapon__AddGunshell                   = Resolve("83 EC 28 56 8B 74 24 30"); // 0x0073A3E0
         gPatterns.CAEPedWeaponAudioEntity__AddAudioEvent = Resolve("8A 81 A0 00 00 00"); // 0x004E69F0
         gPatterns.CPointLights__AddLight                 = Resolve("8B 0D 3C F0 B6 00 83 EC 10"); // 0x007000E0
-        gPatterns.g_fx                                   = OperandAt(hook::get_pattern("52 B9 ? ? ? ? E8 D4 92"), 2); // site 0x00475D61 -> 0x00A9AE00
+        gPatterns.g_fx                                   = ResolveOperand("52 B9 ? ? ? ? E8 D4 92", 2); // site 0x00475D61 -> 0x00A9AE00
 
         gPatterns.CPed__GetBonePosition    = Resolve("8A 44 24 0C 83 EC 0C 56 8B F1 84 C0 8B 86 74 04 00 00 57 74 51"); // 0x005E4280
         gPatterns.CSprite__CalcScreenCoors = Resolve("83 EC 14 A1 A0 EF"); // 0x0070CE30
@@ -353,7 +375,7 @@ namespace VantaMP::SDK {
 
         gPatterns.MultiInstanceCheckCall = Resolve("E8 ? ? ? ? 85 C0 75 0F 53"); // 0x0074872D
         gPatterns.IsAlreadyRunning       = Resolve("A1 24 62 8D 00 50"); // 0x007468E0
-        gPatterns.CdStreamSemaphoreName  = OperandAt(hook::get_pattern("00 68 ? ? ? ? A3 EC"), 2); // site 0x00406944 -> 0x00858AD4
+        gPatterns.CdStreamSemaphoreName  = ResolveOperand("00 68 ? ? ? ? A3 EC", 2); // site 0x00406944 -> 0x00858AD4
 
         // --- Population ------------------------------------------------------
 
@@ -370,12 +392,12 @@ namespace VantaMP::SDK {
         gPatterns.CVehicle__SetupRender          = Resolve("56 8B F1 0F BF 46 22 8B 0D"); // 0x006D64F0
         // mov cl, [esi*4+table]; mov [edx], cl; mov dl, [esi*4+table+1]
         gPatterns.CVehicleModelInfo__ms_vehicleColourTable =
-            OperandAt(hook::get_pattern("8A 0C B5 ? ? ? ? 88 0A 8A 14 B5"), 3); // site 0x004C838D -> 0x00B4E480
+            ResolveOperand("8A 0C B5 ? ? ? ? 88 0A 8A 14 B5", 3); // site 0x004C838D -> 0x00B4E480
         // MTA VAR_CVehicle_Variation1. Adjacent byte is Variation2.
         gPatterns.CVehicleModelInfo__ms_compsToUse =
-            OperandAt(hook::get_pattern("08 A2 ? ? ? ? 88 0D 59"), 2); // site 0x004470A7 -> 0x008A6458
+            ResolveOperand("08 A2 ? ? ? ? 88 0D 59", 2); // site 0x004470A7 -> 0x008A6458
         gPatterns.CModelInfo__ms_modelInfoPtrs =
-            OperandAt(hook::get_pattern("FF FF 0F BF 4E 22 8B 14 8D ? ? ? ? 8B 42 14 5E"), 9); // site 0x005344D2 -> 0x00A9B0C8
+            ResolveOperand("FF FF 0F BF 4E 22 8B 14 8D ? ? ? ? 8B 42 14 5E", 9); // site 0x005344D2 -> 0x00A9B0C8
         gPatterns.CVehicle__CustomCarPlate_TextureCreate  = Resolve("56 8B 74 24 08 57 8B F9 C7"); // 0x006D10E0
         gPatterns.CVehicle__CustomCarPlate_TextureDestroy = Resolve("56 8B F1 8B 86 88 05"); // 0x006D1150
 
@@ -390,7 +412,7 @@ namespace VantaMP::SDK {
         gPatterns.CCoronas__RegisterCorona      = Resolve("0F B6 54 24 28 8B"); // 0x006FC580
         gPatterns.CShadows__StoreCarLightShadow = Resolve("8B 0D 3C F0 B6 00 83 EC 0C"); // 0x0070C500
 
-        gPatterns.CPools__ms_pVehiclePool        = OperandAt(hook::get_pattern("8D FA FF 83 C4 08 8B 0D"), 8); // site 0x0045FABB -> 0x00B74494
+        gPatterns.CPools__ms_pVehiclePool        = ResolveOperand("8D FA FF 83 C4 08 8B 0D", 8); // site 0x0045FABB -> 0x00B74494
 
         gPatterns.CTaskComplexEnterCarAsDriver__Constructor    = Resolve("8B 44 24 04 56 6A 00 6A 00 6A 00"); // 0x006402F0
         gPatterns.CTaskComplexEnterCarAsPassenger__Constructor = Resolve("8B 44 24 0C 56 50 6A"); // 0x00640340
@@ -416,7 +438,7 @@ namespace VantaMP::SDK {
         gPatterns.CAutomobile__SetPanelDamage  = Resolve("53 55 56 57 8B 7C 24 14 8B F1 57 8D"); // 0x006B1480
         gPatterns.CAutomobile__SetDoorDamage   = Resolve("6A FF 68 78 81 84"); // 0x006B1600
 
-        gPatterns.gFireManager = OperandAt(hook::get_pattern("50 B9 ? ? ? ? E8 FD 93"), 2); // site 0x0042FB38 -> 0x00B71F80
+        gPatterns.gFireManager = ResolveOperand("50 B9 ? ? ? ? E8 FD 93", 2); // site 0x0042FB38 -> 0x00B71F80
         gPatterns.CFireManager__StartFire = Resolve("56 57 8B 7C 24 0C 8A 47 36 24 07 3C 03 8B F1 75 1C"); // 0x0053A050
         gPatterns.CFireManager__ExtinguishPoint = Resolve("56 57 8B F1 BF 3C 00 00 00 8D A4 24 00 00 00 00 8A"); // 0x00539450
         gPatterns.CVehicle__ExtinguishCarFire = Resolve("56 8B F1 8A 46 36 24 F8 3C 28"); // 0x006D2460
@@ -429,5 +451,7 @@ namespace VantaMP::SDK {
         gPatterns.CGangWars__Update              = Resolve("83 EC 34 53 E8 37"); // 0x00446610
         gPatterns.CPedType__InterestingEvents    = Resolve("55 8B EC 83 E4 F8 83 EC 28 F6"); // 0x00605A30
         gPatterns.CPed__PlayerConversations      = Resolve("64 A1 00 00 00 00 6A FF 68 BC 76"); // 0x0043B0F0
+
+        Framework::Logging::GetLogger("SDK")->info("Resolved {} patterns", gPatternScanCount);
     }
 } // namespace VantaMP::SDK

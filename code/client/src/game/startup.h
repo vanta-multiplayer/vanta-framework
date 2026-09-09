@@ -1,5 +1,7 @@
 #pragma once
 
+#include <logging/logger.h>
+
 namespace VantaMP::Game {
     // Identifies the host executable, then applies every patch and hook the
     // client needs before WinMain continues.

@@ -62,7 +62,7 @@ namespace VantaMP::SDK {
         // Said at info either way. An unrecognised build is not an error - the
         // scans decide that - but it is the first thing worth knowing when one
         // of them later fails to resolve.
-        Framework::Logging::GetLogger("Game")->info("Host game: {} (base {:#010x}, stamp {:#010x}, size {:#010x})", info.Name(), info.imageBase, info.timeDateStamp, info.sizeOfImage);
+        // Framework::Logging::GetLogger("Game")->info("Host game: {} (base {:#010x}, stamp {:#010x}, size {:#010x})", info.Name(), info.imageBase, info.timeDateStamp, info.sizeOfImage);
 
         return info;
     }

@@ -147,8 +147,6 @@ namespace VantaMP::Game {
 
             VirtualProtect(reinterpret_cast<void *>(code.start), code.end - code.start, previous, &previous);
         });
-
-        Framework::Logging::GetLogger("Players")->info("Player slots expanded to {}: {} references rewritten in {} ms", kMaxPlayers, rewritten, GetTickCount64() - started);
     }
 
     bool ArePlayerSlotsExpanded() {

@@ -263,12 +263,6 @@ namespace VantaMP::Game {
 
             SetDisplaySettings({width, height, false, false});
             Core::SaveDisplaySettings(width, height, false, false, adapter);
-
-            Framework::Logging::GetLogger("Display")->info(
-                "First-setup device selection: adapter {} windowed {}x{}",
-                adapter,
-                mode.width,
-                mode.height);
         }
 
         void __cdecl DecideSelectDevice() {
@@ -278,12 +272,10 @@ namespace VantaMP::Game {
                 // device that is still null (crash at eip 0x3C). Vanta
                 // applies the saved size later, in CreateDevice.
                 gSelectResume = gSelectSingle;
-                Framework::Logging::GetLogger("Display")->info("Device selection skipped; using saved display settings");
                 return;
             }
 
             gSelectResume = gSelectShow;
-            Framework::Logging::GetLogger("Display")->info("First setup: showing GTA device selection");
         }
 
         INT_PTR CALLBACK DeviceSelectDlg(HWND window, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -440,7 +432,6 @@ namespace VantaMP::Game {
 
         SetWindowPos(window, nullptr, x, y, outerWidth, outerHeight, flags);
 
-        Framework::Logging::GetLogger("Display")->info("Window {} at {}x{}, origin {},{}", borderless ? "borderless" : "windowed", size.cx, size.cy, x, y);
         return false;
     }
 
@@ -537,7 +528,6 @@ namespace VantaMP::Game {
             gHoldRasters        = false;
             gSkipHoodlumRestore = false;
             gAwaitingReset      = false;
-            Framework::Logging::GetLogger("Display")->error("Live display apply timed out waiting for RW to reset");
         }
     }
 
@@ -555,7 +545,6 @@ namespace VantaMP::Game {
         RebuildCameraAndPostFx();
         gSkipHoodlumRestore = false;
 
-        Framework::Logging::GetLogger("Display")->info("Camera and post-FX rasters rebuilt after RW reset");
         return true;
     }
 
@@ -662,8 +651,6 @@ namespace VantaMP::Game {
         // runs is overwritten before anyone sees it - which looks like the fix
         // working and then reverting.
         hook::return_function(p.CDraw__CalculateAspect);
-
-        Framework::Logging::GetLogger("Display")->info("Widescreen modes unlocked");
     }
 
     void ApplyAspectRatio(HWND window) {
@@ -707,8 +694,6 @@ namespace VantaMP::Game {
         constexpr float kShippedCrosshairScale = 192.0f;
 
         hook::put<float>(p.CCamera__CrosshairScale, kShippedCrosshairScale * kFourThirds / ratio);
-
-        Framework::Logging::GetLogger("Display")->info("Aspect ratio {:.4f} for {}x{}; HUD and crosshair rescaled", ratio, size.cx, size.cy);
     }
 
     void InstallDeviceSelectionHook() {
@@ -759,8 +744,5 @@ namespace VantaMP::Game {
         std::memcpy(stub + 14, &resumePtr, sizeof(resumePtr));
 
         hook::jump(site, stub);
-
-        Framework::Logging::GetLogger("Display")->info(
-            Core::IsDisplaySetupDone() ? "Device selection will be skipped this launch" : "Device selection will run once for first setup");
     }
 } // namespace VantaMP::Game

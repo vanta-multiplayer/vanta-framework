@@ -64,8 +64,6 @@ namespace VantaMP::Game {
         hook::return_function(p.CGangWars__Update);
         hook::return_function(p.CPedType__InterestingEvents);
         hook::return_function(p.CPed__PlayerConversations);
-
-        Framework::Logging::GetLogger("Game")->info("Autonomous population disabled; streaming, paths and pools remain available");
     }
 
     bool IsAutonomousPopulationDisabled() {

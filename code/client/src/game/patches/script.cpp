@@ -119,8 +119,6 @@ namespace VantaMP::Game {
         // that there are none - calling it would be asking a disabled
         // interpreter to interpret a script that was never loaded.
         hook::call(p.CRunningScript__ProcessCall, ScriptProcess_Hook);
-
-        Framework::Logging::GetLogger("Script")->info("Mission script disabled; its per-frame call now drives the client");
     }
 
     void SetFrameCallback(void (*callback)()) {

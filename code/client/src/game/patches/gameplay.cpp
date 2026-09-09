@@ -123,7 +123,5 @@ namespace VantaMP::Game {
         hook::return_function(p.CReplay__TriggerPlayback);
         hook::return_function(p.CReplay__Update);
         hook::return_function(p.CReplay__PlayFromHD);
-
-        Framework::Logging::GetLogger("Gameplay")->info("Single-player gameplay disabled; the server owns stats, deaths and world state");
     }
 } // namespace VantaMP::Game

@@ -48,7 +48,5 @@ namespace VantaMP::Game {
         Shared::RPC::PlayerDeath death;
         death.FromParameters(0, gLastKillerId, gLastWeapon);
         net->BroadcastRPC(death);
-
-        Framework::Logging::GetLogger("Death")->info("local player died; killer {} weapon {}", gLastKillerId, gLastWeapon);
     }
 } // namespace VantaMP::Game

@@ -41,14 +41,10 @@ namespace VantaMP::Game {
         // resetting it to black would be indistinguishable from a fade that
         // never ran on the frames where alpha is still high.
         Fade(durationSeconds, kFadeIn);
-
-        Framework::Logging::GetLogger("Camera")->info("Revealing the world over {:.2f}s", durationSeconds);
     }
 
     void FadeOut(float durationSeconds) {
         reinterpret_cast<SetFadeColourFn>(SDK::gPatterns.CCamera__SetFadeColour)(Camera(), 0, 0, 0);
         Fade(durationSeconds, kFadeOut);
-
-        Framework::Logging::GetLogger("Camera")->info("Hiding the world over {:.2f}s", durationSeconds);
     }
 } // namespace VantaMP::Game

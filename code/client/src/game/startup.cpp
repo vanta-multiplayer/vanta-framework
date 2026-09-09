@@ -22,6 +22,7 @@
 namespace VantaMP::Game {
     namespace {
         void Apply(const char *name, void (*fn)()) {
+            Framework::Logging::GetLogger("Game")->info("Applying patch: {}", name);
             Diagnostics::Breadcrumbs::SetLastPatch(name);
             fn();
         }

@@ -53,8 +53,6 @@ namespace VantaMP::Game {
         void __cdecl Init3_Hook(const char *dataFile) {
             Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::StartingGame);
 
-            Framework::Logging::GetLogger("Boot")->info("Initialising the game engine from {}", dataFile ? dataFile : "(null)");
-
             gOriginalInit3(dataFile);
 
             gEngineInitialised.store(true, std::memory_order_release);
@@ -65,7 +63,7 @@ namespace VantaMP::Game {
             // top-left of a larger window.
             RefreshGameView();
 
-            Framework::Logging::GetLogger("Boot")->info("Game engine initialised; the world exists");
+            Framework::Logging::GetLogger("Boot")->info("Game engine initialized");
         }
 
         // CLoadingScreen::Draw, replaced wholesale.
@@ -115,8 +113,6 @@ namespace VantaMP::Game {
                 ApplyGameVolumes();
 
                 Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::FrontendReady);
-
-            Framework::Logging::GetLogger("Boot")->info("Frontend bypassed; the game is playing");
             }
 
             if (gOriginalMenuProcess) {
@@ -207,8 +203,6 @@ namespace VantaMP::Game {
 
         hook::nop(p.Print__AspectRatio, 5);
         hook::nop(p.Print__SoundManager, 5);
-
-        Framework::Logging::GetLogger("Boot")->info("Boot patches applied; the frontend will be bypassed on its first frame");
     }
 
     bool IsEngineInitialised() {
@@ -243,7 +237,5 @@ namespace VantaMP::Game {
         for (std::size_t i = 0; i < sizeof(name); ++i) {
             hook::putVP<char>(p.CdStreamSemaphoreName + i, name[i]);
         }
-
-        Framework::Logging::GetLogger("Boot")->info("Single-instance guard removed; cdstream semaphore is '{}'", name);
     }
 } // namespace VantaMP::Game
