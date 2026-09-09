@@ -63,6 +63,21 @@ was a warp onto a ped still climbing, and it crashed.
 
 Only the driver writes pose. Remotes interpolate.
 
+**Authority is the driver seat, not being in the car.** MTA gates every
+vehicle read and write behind `uiSeat == 0`, and so do we. A passenger
+must never push pose, momentum, steer or pedals. Three places enforce it:
+
+- The server revokes ownership when the owner takes a non-driver seat, and
+  hands it to the actual driver (`HandleEnter`). Ownership surviving an
+  exit is deliberate; ownership surviving into a *passenger* seat was the
+  bug that let someone drive from the back seat.
+- `PushOwnedVehicle` checks GTA's own `m_pDriver` before writing anything,
+  and warns (rate-limited) if the replica handed it authority as a passenger.
+- The `ProcessControl` pad swap neutralises the local pad when the local
+  player is a passenger and the driver has no Vanta slot (mid-jack, driver
+  streaming in). Otherwise GTA falls through to the raw local pad and the
+  passenger physically steers the car, below any packet we send.
+
 - Delay range 100–400 ms. Position compensation can go to 1.5.
 - Error = target − current, scaled by `lerp(0.25, 1, unlerp(100, delay, 400))`.
 - Extrapolate about 5 ms of GTA velocity so the car does not sit still
@@ -71,8 +86,41 @@ Only the driver writes pose. Remotes interpolate.
   moving car every packet, and a car that warps while someone is punching
   it launches them.
 - Do not interpolate the local driver's (or syncer's) car.
-- After the pose correction, write move speed back. `SetPosn` and collision
-  from the correction can kill the speed the game just integrated.
+- After the pose correction, write move speed back — **on the packet, not
+  every frame**. `SetPosn` and collision from the correction can kill the
+  speed the game just integrated, so it goes back on the frame a packet
+  arrived. Re-injecting turn speed every frame is what over-leans a bike:
+  `CBike::ProcessControl` derives lean from turn speed and damps it as it
+  integrates, and a stale value written 60x/s cancels that damping. MTA
+  writes `SetMoveSpeed` / `SetTurnSpeed` once per puresync packet.
+
+### Writing a pose
+
+A pose write is three steps, not one. `CMatrix::right/up/at` is the
+**physics** matrix; the renderer draws from the attached `RwMatrix` and the
+frame hanging off it. So after writing the axes and the position, push both:
+
+```
+CEntity::UpdateRwMatrix   // 0x446F90
+CEntity::UpdateRwFrame    // 0x532B00
+```
+
+That is the tail of MTA's `CEntitySA::SetMatrix`, and it is not optional.
+A car mostly hides a missed update — `CAutomobile::ProcessControl` rebuilds
+the RW matrix from its own suspension work every frame. **A bike does not.**
+`CBike` caches its render transform in `m_mLeanMatrix` behind
+`m_bLeanMatrixCalculated`, rebuilt from the entity matrix plus GTA's own
+lean, so a matrix written and never published is read back a frame later,
+half-applied — the bike renders crooked and the error accumulates.
+
+Reading the matrix back re-orthonormalises first (Gram-Schmidt on forward
+and up, the same thing `CMatrix::Reorthogonalise` does). `glm::quat_cast`
+assumes a pure rotation and a GTA vehicle matrix is not reliably one; a
+bike's is the worst case. Feeding shear into a quat that is then
+interpolated and written back is roll drift.
+
+We never reconstruct lean. GTA computes it; we replicate the resulting
+orientation and interpolate towards it.
 
 Health, engine, siren and packed damage ride the replica. Status is
 worse-wins **per GTA field** (doors/wheels per byte, panels per nibble,

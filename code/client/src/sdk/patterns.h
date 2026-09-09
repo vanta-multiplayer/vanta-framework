@@ -142,6 +142,12 @@ namespace VantaMP::SDK {
         uintptr_t FindPlayerPed              = 0;
         uintptr_t CStreaming__LoadScene      = 0;
         uintptr_t CPlaceable__SetPosn        = 0;
+
+        // Pushes a written CMatrix out to the RwMatrix the renderer draws
+        // from, and then to the frame hierarchy. A pose write that skips
+        // these moves the collision but not (reliably) the mesh.
+        uintptr_t CEntity__UpdateRwMatrix    = 0;
+        uintptr_t CEntity__UpdateRwFrame     = 0;
         uintptr_t CWorld__PlayerInFocus      = 0;
 
         // The camera's fade, used to hide the world until the server has said

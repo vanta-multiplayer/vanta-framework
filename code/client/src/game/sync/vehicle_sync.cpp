@@ -324,8 +324,52 @@ namespace VantaMP::Game {
             }
         }
 
+        // MTA's rule, and the one that matters: `if (uiSeat == 0)`.
+        //
+        // CNetAPI::WriteVehiclePuresync writes rotation, move speed, turn
+        // speed, health and the vehicle-specific block ONLY for seat 0, and
+        // ReadVehiclePuresync applies them only for seat 0. Being inside a
+        // car is not authority over it.
+        //
+        // GTA's own m_pDriver is the source of truth here rather than the
+        // replica's owner flag: a passenger who used to drive this car can
+        // still be holding a stale ownerGUID (the server keeps it across an
+        // exit so an empty car still rolls), and that is exactly the case
+        // that let a passenger steer the driver's bike.
+        [[nodiscard]] bool LocalPlayerOwnsVehicleInput(void *handle) {
+            if (SDK::IsLocalPlayerDriving(handle)) {
+                return true;
+            }
+
+            const auto occupancy = SDK::QueryPedOccupancy(0);
+
+            // Seated somewhere in this car, but not at the wheel. Loud,
+            // because reaching here means the replica handed us authority we
+            // must not act on - a passenger about to write the driver's pose.
+            if (occupancy.vehicle == handle && occupancy.seated && occupancy.seat != SDK::kDriverSeat) {
+                static std::uint32_t lastWarnMs = 0;
+                const std::uint32_t  now        = GetTickCount();
+
+                if (lastWarnMs == 0 || (now - lastWarnMs) > 1000u) {
+                    lastWarnMs = now;
+                    Framework::Logging::GetLogger("Vehicle")
+                        ->warn("Refusing driver authority: local player is a passenger in seat {} of vehicle {}", occupancy.seat,
+                               VehicleNetworkIdOf(handle));
+                }
+            }
+
+            return false;
+        }
+
         void PushOwnedVehicle(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
             if (!remote.handle) {
+                return;
+            }
+
+            // A PASSENGER NEVER WRITES THE CAR. Pose, momentum, steer and
+            // pedals below are all driver-only state; letting a passenger
+            // push them is the authority bug, not a cosmetic one.
+            if (!LocalPlayerOwnsVehicleInput(remote.handle)) {
                 return;
             }
 
@@ -762,14 +806,34 @@ namespace VantaMP::Game {
             remote.heldRatios       = entity->doorRatiosPacked;
         }
 
-        void ApplyStoredMotion(void *handle, const RemoteVehicle &remote) {
-            SDK::VehicleState motion;
-            motion.vx       = remote.velocity.x;
-            motion.vy       = remote.velocity.y;
-            motion.vz       = remote.velocity.z;
-            motion.avx      = remote.angular.x;
-            motion.avy      = remote.angular.y;
-            motion.avz      = remote.angular.z;
+        // MOMENTUM IS A PER-PACKET FACT, NOT A PER-FRAME ONE.
+        //
+        // MTA writes SetMoveSpeed / SetTurnSpeed once, where the puresync
+        // packet is read (CNetAPI ReadVehiclePuresync, inside `uiSeat == 0`),
+        // and then leaves the vehicle to GTA until the next packet.
+        //
+        // Writing turn speed every frame instead is what over-leans a bike.
+        // CBike::ProcessControl derives lean from turn speed and then damps
+        // it as part of integrating a frame; re-injecting the same 100ms-old
+        // turn speed sixty times a second cancels that damping, so the roll
+        // the owner reached once is re-driven every frame and the remote bike
+        // ends up dragging a knee. A car hides it because its roll is pinned
+        // by four wheels on the ground - a bike's is free.
+        //
+        // Health / engine / siren stay per-frame: those are states, not
+        // momentum, and nothing in GTA integrates them away.
+        void ApplyStoredMotion(void *handle, const RemoteVehicle &remote, bool withMomentum) {
+            auto motion = SDK::ReadVehicle(handle);
+
+            if (withMomentum) {
+                motion.vx  = remote.velocity.x;
+                motion.vy  = remote.velocity.y;
+                motion.vz  = remote.velocity.z;
+                motion.avx = remote.angular.x;
+                motion.avy = remote.angular.y;
+                motion.avz = remote.angular.z;
+            }
+
             motion.health   = remote.health;
             motion.engineOn = remote.engineOn;
             motion.sirenOn  = remote.sirenOn;
@@ -872,10 +936,11 @@ namespace VantaMP::Game {
             }
 
             // AFTER THE POSE. SetPosn and collision from the correction
-            // can kill the speed the game just integrated. MTA writes
-            // SetMoveSpeed on the packet and leaves it on the vehicle;
-            // we put it back every frame so physics coasts between ticks.
-            ApplyStoredMotion(remote.handle, remote);
+            // can kill the speed the game just integrated, so momentum goes
+            // back on the frame a packet arrived - but only on that frame.
+            // See ApplyStoredMotion: re-writing turn speed every frame is
+            // what over-leaned a synchronised bike.
+            ApplyStoredMotion(remote.handle, remote, changed);
 
             // STEER IS AN OUTPUT. ProcessControl rebuilds m_fSteerAngle
             // from the swapped pad. Writing the last packet's quantized

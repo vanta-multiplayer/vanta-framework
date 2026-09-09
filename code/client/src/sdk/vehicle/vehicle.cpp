@@ -30,6 +30,8 @@ namespace VantaMP::SDK {
     namespace {
         using CreateCarFn      = CVehicle *(__cdecl *)(int, CVector, unsigned char);
         using SetPosnFn        = void(__thiscall *)(void *, float, float, float);
+        using UpdateRwMatrixFn = void(__thiscall *)(void *);
+        using UpdateRwFrameFn  = void(__thiscall *)(void *);
         using SetOrientationFn = void(__thiscall *)(void *, float, float, float);
         using WorldRemoveFn    = void(__cdecl *)(void *);
 
@@ -77,10 +79,43 @@ namespace VantaMP::SDK {
 
         // GTA names `up` as forward and `at` as up. A quat built from the
         // English names would land a car on its roof the first time it pitched.
+        //
+        // RE-ORTHONORMALISED FIRST. glm::quat_cast assumes a pure rotation,
+        // and a GTA vehicle matrix is not reliably one: the game lets small
+        // scale and shear accumulate (a bike's is rebuilt through the lean
+        // matrix every frame, which is the worst case). Feeding that in
+        // directly yields a quaternion that is not quite the orientation the
+        // car has, and once that quat is interpolated and written back the
+        // error compounds - the tilt the driver never had, drifting.
+        //
+        // Gram-Schmidt against forward and up, which is what the game's own
+        // CMatrix::Reorthogonalise does.
         glm::quat QuatFromMatrix(const CMatrix &matrix) {
-            const glm::mat3 axes(glm::vec3(matrix.right.x, matrix.right.y, matrix.right.z), glm::vec3(matrix.up.x, matrix.up.y, matrix.up.z), glm::vec3(matrix.at.x, matrix.at.y, matrix.at.z));
+            const glm::vec3 forward(matrix.up.x, matrix.up.y, matrix.up.z);
+            const glm::vec3 up(matrix.at.x, matrix.at.y, matrix.at.z);
 
-            return glm::normalize(glm::quat_cast(axes));
+            const float forwardLength = glm::length(forward);
+            const float upLength      = glm::length(up);
+
+            if (forwardLength < 1e-6f || upLength < 1e-6f) {
+                return glm::identity<glm::quat>();
+            }
+
+            const glm::vec3 f = forward / forwardLength;
+            glm::vec3       r = glm::cross(f, up / upLength);
+            const float     rLength = glm::length(r);
+
+            // Forward and up parallel: degenerate, nothing to build a basis
+            // from. Keep what the car already has rather than inventing a roll.
+            if (rLength < 1e-6f) {
+                return glm::identity<glm::quat>();
+            }
+
+            r /= rLength;
+
+            const glm::vec3 u = glm::cross(r, f);
+
+            return glm::normalize(glm::quat_cast(glm::mat3(r, f, u)));
         }
 
         void ApplyQuatToMatrix(CMatrix &matrix, const glm::quat &rotation) {
@@ -386,6 +421,29 @@ namespace VantaMP::SDK {
             }
         }
 
+        // Seated in this car, in any seat that is not the wheel. Used to
+        // decide whether the local pad has to be neutralised before GTA
+        // processes a car somebody else is driving.
+        bool LocalPedIsPassengerOf(CVehicle *vehicle) {
+            if (!vehicle) {
+                return false;
+            }
+
+            const auto *local = Internal::LocalPed();
+
+            if (!local || vehicle->m_pDriver == local) {
+                return false;
+            }
+
+            for (const auto *passenger : vehicle->m_apPassengers) {
+                if (passenger == local) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         int SlotOfRemoteDriver(CPed *driver) {
             if (!driver || driver == Internal::LocalPed()) {
                 return -1;
@@ -410,9 +468,27 @@ namespace VantaMP::SDK {
 
             const int slot = vehicle ? SlotOfRemoteDriver(vehicle->m_pDriver) : -1;
 
+            // THE PAD THIS CAR IS PROCESSED AGAINST IS THE DRIVER'S, OR NONE.
+            //
+            // ProcessControl reads GetPad(0). Swapping in the remote driver's
+            // pad is how a remote car steers - but when the driver is NOT a
+            // ped we own a slot for (mid-jack, a driver still streaming in, a
+            // driver who just left), slot is -1 and the game would fall
+            // through to the raw local pad. If the local player is sitting in
+            // that same car as a PASSENGER, their own steering and pedals are
+            // then what GTA drives the car with: the passenger steers the
+            // driver's vehicle. That is the authority bug, and it is a
+            // physical one - it happens inside GTA, below any packet we send.
+            //
+            // A neutral pad is the fix: the car keeps its physics and its
+            // momentum, and simply receives no input this frame, which is
+            // what "somebody else is driving" should look like locally.
+            const bool localIsNotDriver = vehicle && vehicle->m_pDriver != Internal::LocalPed();
+
             void *localPad  = nullptr;
             void *remotePad = nullptr;
             std::array<std::uint8_t, Game::kPadSize> saved {};
+            bool neutralised = false;
 
             if (slot >= 0) {
                 localPad  = reinterpret_cast<Internal::GetPadFn>(gPatterns.CPad__GetPad)(0);
@@ -423,11 +499,23 @@ namespace VantaMP::SDK {
                     std::memcpy(localPad, remotePad, Game::kPadSize);
                 }
             }
+            else if (localIsNotDriver && LocalPedIsPassengerOf(vehicle)) {
+                localPad = reinterpret_cast<Internal::GetPadFn>(gPatterns.CPad__GetPad)(0);
+
+                if (localPad) {
+                    std::memcpy(saved.data(), localPad, Game::kPadSize);
+                    std::memset(localPad, 0, Game::kPadSize);
+                    neutralised = true;
+                }
+            }
 
             found->second(vehicle);
 
             if (localPad && remotePad) {
                 std::memcpy(remotePad, localPad, Game::kPadSize);
+                std::memcpy(localPad, saved.data(), Game::kPadSize);
+            }
+            else if (neutralised && localPad) {
                 std::memcpy(localPad, saved.data(), Game::kPadSize);
             }
         }
@@ -745,6 +833,29 @@ namespace VantaMP::SDK {
 
         if (auto *matrix = MatrixOf(vehicle)) {
             ApplyQuatToMatrix(*matrix, rotation);
+
+            reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(vehicle, x, y, z);
+
+            // THE MESH IS NOT DRAWN FROM THE MATRIX WE JUST WROTE.
+            //
+            // CMatrix::right/up/at is the physics matrix. The renderer draws
+            // from the attached RwMatrix, and the frame hierarchy hangs off
+            // that - so a pose write that stops here moves the collision
+            // while the visible model follows whatever RenderWare still
+            // holds. MTA never writes a matrix without these two calls; they
+            // are the tail of CEntitySA::SetMatrix.
+            //
+            // A car mostly hides it: CAutomobile::ProcessControl rebuilds the
+            // RW matrix from its own suspension work every frame, so the
+            // stale frame is refreshed for us. A BIKE does not. CBike caches
+            // its render transform in m_mLeanMatrix behind
+            // m_bLeanMatrixCalculated, rebuilt from the entity matrix plus
+            // GTA's own lean - so a matrix we wrote but never published is
+            // read back a frame later, half-applied, and the bike renders
+            // crooked and drifts as the error accumulates.
+            reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
+            reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
+            return;
         }
 
         reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(vehicle, x, y, z);

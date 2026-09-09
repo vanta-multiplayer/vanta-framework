@@ -137,6 +137,14 @@ namespace VantaMP::SDK {
         gPatterns.FindPlayerPed                     = Resolve("8B 44 24 04 85 C0 7D 07 0F B6 05 74 CD B7 00 69 C0 90 01 00 00 8B 80 98 CD B7 00 C3"); // 0x0056E210
         gPatterns.CStreaming__LoadScene             = Resolve("83 EC 1C 55 8B 6C"); // 0x0040EB70
         gPatterns.CPlaceable__SetPosn               = Resolve("E9 ? ? ? ? 7A 4E"); // 0x00420B80
+
+        // CEntity::UpdateRwMatrix / CEntity::UpdateRwFrame. Writing
+        // CMatrix::right/up/at changes the physics matrix only; the renderer
+        // draws from the attached RwMatrix and the frame hierarchy, and both
+        // have to be pushed after a pose write. MTA calls exactly these two,
+        // in this order, at the end of CEntitySA::SetMatrix.
+        gPatterns.CEntity__UpdateRwMatrix           = Resolve("E9 ? ? ? ? 55 72"); // 0x00446F90
+        gPatterns.CEntity__UpdateRwFrame            = Resolve("8B 41 18 85 C0 74 0A"); // 0x00532B00
         gPatterns.CCamera__Fade                     = Resolve("E9 ? ? ? ? 53 8A 59"); // 0x0050AC20
         gPatterns.CCamera__SetFadeColour            = Resolve("8A 44 24 04 3C 02"); // 0x0050BF00
 

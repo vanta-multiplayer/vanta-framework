@@ -222,8 +222,26 @@ namespace VantaMP::Game {
         player.vehicleNetworkId = vehicleId;
         player.vehicleSeat      = assigned;
 
+        // AUTHORITY IS THE DRIVER SEAT, NOT "BEING IN THE CAR".
+        //
+        // Seat 0 claims the car. Any other seat must not - and, more than
+        // that, taking a passenger seat has to REVOKE authority this player
+        // still held from having driven this same car earlier. The owner
+        // survives an exit on purpose (an empty car still rolls), so without
+        // this a player who drove, got out, and climbed back into a
+        // passenger seat kept ownership: their client stayed the one pushing
+        // pose, rotation and pad, and they drove the car from the back seat
+        // while the real driver fought them for it.
         if (assigned == 0) {
             vehicle->SetOwner(player.ownerGUID);
+        }
+        else if (vehicle->ownerGUID == player.ownerGUID) {
+            auto *driver = FindOccupant(vehicleId, 0, playerId);
+
+            vehicle->SetOwner(driver ? driver->ownerGUID : MafiaNet::UNASSIGNED_PEER_GUID);
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)
+                ->debug("Player {} took seat {} on vehicle {}; authority revoked and handed to {}", playerId, assigned, vehicleId,
+                        driver ? static_cast<std::uint64_t>(driver->GetNetworkID()) : 0);
         }
 
         Shared::RPC::PlayerEnterVehicle enter;
