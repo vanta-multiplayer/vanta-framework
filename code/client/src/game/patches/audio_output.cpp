@@ -100,10 +100,6 @@ namespace VantaMP::Game {
         gHasOutput = have;
         if (have) {
             gOutput = guid;
-            Framework::Logging::GetLogger("Audio")->info("Game output will use {} on the next DirectSound open", deviceId);
-        }
-        else {
-            Framework::Logging::GetLogger("Audio")->info("Game output uses the system default");
         }
     }
 

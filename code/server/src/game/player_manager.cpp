@@ -40,9 +40,9 @@ namespace VantaMP::Game {
 
         _players[guid] = player;
 
-        const std::string name = nickname.empty() ? "A player" : nickname;
+        const std::string name = nickname.empty() ? "unknown" : nickname;
 
-        logger->info("{} connected as network id {}", name, static_cast<std::uint64_t>(player->GetNetworkID()));
+        logger->info("Player {} connected as network id {}", name, static_cast<std::uint64_t>(player->GetNetworkID()));
 
         return true;
     }
@@ -64,7 +64,7 @@ namespace VantaMP::Game {
 
         _players.erase(found);
 
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("A player disconnected; {} remain", _players.size());
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("Player {} disconnected", found->second->nickname.empty() ? "unknown" : found->second->nickname);
     }
 
     bool PlayerManager::Spawn(MafiaNet::PeerGuid guid, float x, float y, float z, float heading, std::uint32_t modelId, float health, float armour,
@@ -89,7 +89,7 @@ namespace VantaMP::Game {
                 player->modelId = modelId;
             }
             else {
-                Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing ped model {} — not in the catalog", modelId);
+                Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing ped model {}; not in the catalog", modelId);
             }
         }
 
@@ -104,7 +104,7 @@ namespace VantaMP::Game {
 
         net->SendRPC(message, MafiaNet::ToGuid(guid));
 
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("Spawned {} at {:.1f}, {:.1f}, {:.1f}", static_cast<std::uint64_t>(player->GetNetworkID()), x, y, z);
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("Spawned player {} at {:.1f}, {:.1f}, {:.1f}", player->nickname.empty() ? "unknown" : player->nickname, x, y, z);
 
         return true;
     }

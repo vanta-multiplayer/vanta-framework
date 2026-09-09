@@ -179,8 +179,6 @@ namespace {
         MH_CreateHook(VTableEntry(device, kResetSlot), reinterpret_cast<LPVOID>(&Reset_Hook), reinterpret_cast<void **>(&gReset));
         MH_EnableHook(MH_ALL_HOOKS);
 
-        Framework::Logging::GetLogger("RenderDevice")->info("Hooked the game's D3D9 device {} on window {}", static_cast<void *>(device), static_cast<void *>(window));
-
         VantaMP::Core::BringUpApplication(device, window);
     }
 

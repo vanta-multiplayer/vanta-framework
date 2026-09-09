@@ -760,9 +760,6 @@ namespace VantaMP::Game {
             remote.lastRatios       = entity->doorRatiosPacked;
             remote.lastEntityRatios = entity->doorRatiosPacked;
             remote.heldRatios       = entity->doorRatiosPacked;
-
-            // debug
-            // Framework::Logging::GetLogger("Vehicle")->info("Vehicle {} (model {}) spawned", static_cast<std::uint64_t>(entity->GetNetworkID()), model);
         }
 
         void ApplyStoredMotion(void *handle, const RemoteVehicle &remote) {
@@ -977,8 +974,6 @@ namespace VantaMP::Game {
                 continue;
             }
 
-            // debug
-            // Framework::Logging::GetLogger("Vehicle")->info("Vehicle {} streamed out", it->first);
             DestroyHandle(it->second);
             it = gVehicles.erase(it);
         }
@@ -1244,16 +1239,12 @@ namespace VantaMP::Game {
         }
 
         if (!nearest) {
-            // debug
-            // Framework::Logging::GetLogger("Vehicle")->info("No vehicle within reach to board as passenger");
             return;
         }
 
         const auto seat = SDK::FreePassengerSeat(nearest);
 
         if (seat == 0) {
-            // debug
-            // Framework::Logging::GetLogger("Vehicle")->info("Nearest vehicle has no free passenger seat");
             return;
         }
 

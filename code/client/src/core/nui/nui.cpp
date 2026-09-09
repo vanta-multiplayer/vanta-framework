@@ -68,7 +68,6 @@ namespace VantaMP::Nui {
         view->SetAutoResize(true);
         view->Display(false);
 
-        Framework::Logging::GetLogger("NUI")->info("Interface up at {}x{} ({})", width, height, kEmbeddedUiUrl);
     }
 
     void ResizeInterface(int width, int height) {

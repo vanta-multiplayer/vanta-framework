@@ -36,7 +36,7 @@ namespace VantaMP {
         // call. Broadcast is a no-op with zero peers.
         _world.SetTime(12, 0);
 
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("VantaMP server ready");
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("Server ready");
     }
 
     void Server::PostUpdate() {
@@ -45,7 +45,7 @@ namespace VantaMP {
 
     void Server::PreShutdown() {
         Eac::Shutdown();
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("VantaMP server shutting down");
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("Server shutting down");
     }
 
     void Server::ModuleRegister(Framework::Scripting::Engine *engine) {

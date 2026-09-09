@@ -229,8 +229,6 @@ namespace VantaMP::Game {
         // the context switch puts the remote player's input into the pad the
         // game already reads, so every existing call site resolves correctly
         // with no redirection. Hooking it recursed and broke startup.
-
-        Framework::Logging::GetLogger("Players")->info("Remote player hooks installed; up to {} players can be processed", kMaxPlayers);
     }
 
     bool AreRemotePlayerHooksInstalled() {

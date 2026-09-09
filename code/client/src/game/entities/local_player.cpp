@@ -88,14 +88,13 @@ namespace VantaMP::Game {
         const auto player = FindLocalPed();
 
         if (!player) {
-            Framework::Logging::GetLogger("Player")->error("The local player was not created; FindPlayerPed returned nothing");
+            Framework::Logging::GetLogger("Player")->error("FindPlayerPed returned nothing");
             return;
         }
 
         PlaceLocalPed(player, gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z);
         ClaimLocalPed(player);
 
-        Framework::Logging::GetLogger("Player")->info("Local player created at {:.1f}, {:.1f}, {:.1f} behind a black screen", gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z);
     }
 
     void DestroyLocalPlayer() {
@@ -118,7 +117,6 @@ namespace VantaMP::Game {
 
         UnregisterRemotePlayer(kLocalPlayerSlot);
 
-        Framework::Logging::GetLogger("Player")->info("Local player session ended; the GTA ped stays");
     }
 
     bool IsPlayerSpawned() {
@@ -167,8 +165,6 @@ namespace VantaMP::Game {
             gWorldConcealed = false;
             FadeIn();
         }
-
-        Framework::Logging::GetLogger("Player")->info("Spawned by the server at {:.1f}, {:.1f}, {:.1f}", x, y, z);
     }
 
     void ConcealWorld() {

@@ -147,9 +147,7 @@ namespace VantaMP::Core {
                 // still usable, and a typo in the port is not worth a dead end.
             }
         }
-
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("{} asked to join {}:{}", nickname, host, port);
-
+        
         gApplication->RequestConnectTo(host, port, nickname);
     }
 } // namespace VantaMP::Core

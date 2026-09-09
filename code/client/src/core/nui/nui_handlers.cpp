@@ -64,7 +64,6 @@ namespace VantaMP::Nui::Internal {
             const auto args    = ParseArgs(payload);
             const auto command = !args.empty() && args[0].is_string() ? args[0].get<std::string>() : "";
 
-            Framework::Logging::GetLogger("Console")->info("{}", command);
             ExecuteClientCommand(command);
         });
 

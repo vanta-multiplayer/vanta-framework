@@ -37,7 +37,7 @@ namespace VantaMP::Core {
         (void)Eos::GetManager().Initialize(gProjectPath, GetClientConfig().nickname);
         Eac::Init();
 
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client initialized");
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("initialized");
         ApplyVoiceSettings();
     }
 
@@ -237,7 +237,7 @@ namespace VantaMP::Core {
         Nui::ReportMicTest(false);
         SetTalkLatched(false);
         Nui::ShutdownInterface();
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("VantaMP client shutting down");
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_CLIENT)->info("client shutting down");
     }
 
     void Application::ModuleRegister(Framework::Scripting::Engine *engine) {

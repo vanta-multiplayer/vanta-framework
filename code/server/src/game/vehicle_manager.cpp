@@ -46,7 +46,7 @@ namespace VantaMP::Game {
     std::uint64_t VehicleManager::Create(std::uint32_t modelId, float x, float y, float z, const glm::quat &rotation, std::uint8_t primaryColour,
                                          std::uint8_t secondaryColour, std::uint8_t interior, std::uint16_t dimension) {
         if (!Shared::ModelCatalog::IsVehicle(modelId)) {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle model {} — not in the catalog", modelId);
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle model {}; not in the catalog", modelId);
             return 0;
         }
 
@@ -394,7 +394,7 @@ namespace VantaMP::Game {
 
     bool VehicleManager::AddUpgrade(Shared::VehicleEntity &vehicle, std::uint16_t upgradeId) {
         if (!Shared::ModelCatalog::IsUpgrade(upgradeId)) {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle upgrade {} — not in the catalog", upgradeId);
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Refusing vehicle upgrade {}; not in the catalog", upgradeId);
             return false;
         }
 

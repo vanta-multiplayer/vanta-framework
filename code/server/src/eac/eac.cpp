@@ -250,13 +250,8 @@ namespace VantaMP::Eac {
     }
 
     void Init() {
-        if (!Shared::Eos::CredentialsFilled()) {
-            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("EAC disabled — fill Shared::Eos credentials placeholders");
-            return;
-        }
-
 #if !defined(VANTAMP_HAS_EOS)
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("EAC credentials set but EOSSDK was not linked (missing Win64 lib)");
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("EOSSDK not linked (missing Win64 lib)");
         return;
 #else
         EOS_InitializeOptions initOptions {};
@@ -390,7 +385,7 @@ namespace VantaMP::Eac {
                 // Soft for now: launcher inject / non-Steam clients often cannot
                 // complete EAC yet. Log and drop the deadline instead of kicking.
                 Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)
-                    ->info("EAC register still pending for {} (not kicking; bootstrapper/Steam path incomplete)", it->first);
+                    ->info("EAC register still pending for {}", it->first);
                 gPendingOpaque.erase(it->first);
                 it = gRegisterDeadline.erase(it);
             }

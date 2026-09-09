@@ -531,7 +531,7 @@ namespace VantaMP::Scripting {
 
         resources->GetEvents().EmitReserved(isolate, context, "playerReady", args);
 
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("playerReady handed to resources for {}", networkId);
+        // Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("playerReady handed to resources for {}", networkId);
 
         return true;
     }
@@ -568,7 +568,7 @@ namespace VantaMP::Scripting {
 
         resources->GetEvents().EmitReserved(isolate, context, "playerDeath", args);
 
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("playerDeath handed to resources for {} (killer {} weapon {})", networkId, killerId, weaponType);
+        // Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("playerDeath handed to resources for {} (killer {} weapon {})", networkId, killerId, weaponType);
 
         return true;
     }

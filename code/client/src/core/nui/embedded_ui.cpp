@@ -56,6 +56,5 @@ namespace VantaMP::Nui {
             return CefRefPtr<CefResourceHandler>(new Framework::GUI::Resources::ResourceHandler(pages, "vanta", path));
         });
 
-        Framework::Logging::GetLogger("NUI")->info("Serving the interface from the DLL at {}", kEmbeddedUiUrl);
     }
 } // namespace VantaMP::Nui

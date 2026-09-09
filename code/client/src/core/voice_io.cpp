@@ -211,12 +211,10 @@ namespace VantaMP::Core {
 
             if (copy.capture.pDeviceID == nullptr && gHaveCapture && (copy.deviceType == ma_device_type_capture || copy.deviceType == ma_device_type_duplex)) {
                 copy.capture.pDeviceID = &gCaptureId;
-                Framework::Logging::GetLogger("Voice")->info("Voice capture using the configured device");
             }
 
             if (copy.playback.pDeviceID == nullptr && gHavePlayback && (copy.deviceType == ma_device_type_playback || copy.deviceType == ma_device_type_duplex)) {
                 copy.playback.pDeviceID = &gPlaybackId;
-                Framework::Logging::GetLogger("Voice")->info("Voice playback using the configured device");
             }
 
             return gMaDeviceInit(context, &copy, device);
@@ -247,7 +245,6 @@ namespace VantaMP::Core {
             }
 
             gHooked = true;
-            logger->info("Voice device hook installed");
         }
 
         void WantDevice(bool capture, const std::string &id) {
@@ -440,7 +437,6 @@ namespace VantaMP::Core {
             voice.SetEnabled(true);
         }
 
-        Framework::Logging::GetLogger("Voice")->info("Voice input {} output {}", config.voiceInputDevice, config.voiceOutputDevice);
     }
 
     void InstallVoiceDeviceHook() {

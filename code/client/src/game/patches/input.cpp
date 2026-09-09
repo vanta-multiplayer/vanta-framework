@@ -77,8 +77,6 @@ namespace VantaMP::Game {
 
         gOriginalUpdatePads = reinterpret_cast<UpdatePadsFn>(hook::get_call(site));
         hook::call(site, &UpdatePads_Hook);
-
-        Framework::Logging::GetLogger("Input")->info("Pad suppress hooked after UpdatePads");
     }
 
     void MarkGameForeground(bool foreground) {

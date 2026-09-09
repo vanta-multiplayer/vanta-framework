@@ -118,7 +118,6 @@ namespace VantaMP::UI {
         // API makes CHAR UTF-16, which is what CEF (and MTA's CEGUI) want.
         SetWindowLongW(window, GWL_WNDPROC, GetWindowLongW(window, GWL_WNDPROC));
 
-        Framework::Logging::GetLogger("NUI")->info("Window input is being forwarded to the interface");
     }
 
     void UpdateCursorClip(HWND window) {

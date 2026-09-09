@@ -85,12 +85,8 @@ namespace VantaMP::Launcher {
     }
 
     bool EnsureEacProtectedProcess() {
-        auto log              = Framework::Logging::GetLogger("EAC");
         const auto clientRoot = LauncherDirectory();
         const auto eacRoot    = clientRoot / "EasyAntiCheat";
-
-        log->info("Client runtime: {}", clientRoot.string());
-        log->info("EAC runtime: {}", eacRoot.string());
 
         if (ParentIsStartProtectedGame()) {
             (void)PinWorkingDirectoryToLauncher();
