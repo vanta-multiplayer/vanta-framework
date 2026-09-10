@@ -863,12 +863,28 @@ namespace VantaMP::SDK {
             return false;
         }
 
-        auto *primary = PrimaryTask(ped);
+        // EVERY PRIMARY SLOT, NOT JUST TASK_PRIMARY_PRIMARY.
+        //
+        // This is why the stand-up did not always play. An event's response
+        // task does NOT go into the primary slot: CEventHandler::
+        // SetEventResponseTask (EventHandler.cpp:448-455) installs it via
+        // AddTaskEventResponseTemp / AddTaskEventResponseNonTemp, i.e.
+        // TASK_PRIMARY_EVENT_RESPONSE_TEMP (1) or _NONTEMP (2). Checking only
+        // slot 3 missed the fall entirely, so the network kept correcting
+        // position and heading right through it - which is exactly what
+        // stopped the get-up from playing out.
+        //
+        // Scanning all four costs nothing and cannot miss whichever slot the
+        // handler chose.
+        for (auto *task : ped->m_pIntelligence->m_TaskMgr.m_aPrimaryTasks) {
+            if (!task) {
+                continue;
+            }
 
-        if (primary) {
-            switch (TaskIdOf(primary)) {
+            switch (TaskIdOf(task)) {
             case TASK_SIMPLE_FALL:
             case TASK_COMPLEX_FALL_AND_GET_UP:
+            case TASK_COMPLEX_FALL_AND_STAY_DOWN:
             case TASK_SIMPLE_GET_UP:
             case TASK_COMPLEX_GET_UP_AND_STAND_STILL:
                 return true;

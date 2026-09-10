@@ -1127,6 +1127,14 @@ namespace VantaMP::Game {
             return;
         }
 
+        // STILL GETTING UP. A warp into the seat here flushes the tasks
+        // (EnterVehicle -> PrepareForTransition) and the stand-up animation
+        // vanishes mid-play. The owner will still be reporting the seat next
+        // packet, so this costs a tick, not the seat.
+        if (SDK::PedIsFallingOffBike(slot)) {
+            return;
+        }
+
         // MTA puresync never seats anyone. A live climb is PlayerEnterVehicle
         // with the door. Starting a walk from this snapshot - before that
         // RPC, and without a door - is the frozen walk-to-car: they path
