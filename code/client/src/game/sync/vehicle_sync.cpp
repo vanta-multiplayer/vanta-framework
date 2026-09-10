@@ -410,6 +410,24 @@ namespace VantaMP::Game {
                 }
             }
 
+            // NOBODY IS DRIVING IT, AND THE SERVER STILL SAYS IT IS OURS.
+            //
+            // This is the knock-off desync. The server keeps vehicle
+            // ownership across an exit on purpose - an empty car still rolls,
+            // and somebody has to simulate it - but this gate only ever
+            // returned true for the ped in the driver's seat. The moment
+            // CEventKnockOffBike ejects the rider, m_pDriver goes null, so
+            // their client stopped pushing the bike while the server went on
+            // naming them its owner. Nobody simulated it, and the bike sat
+            // wherever each client had last put it.
+            //
+            // The exception is narrow on purpose: the vehicle must have NO
+            // driver at all. A passenger still refuses (the case the warning
+            // above is about), and a car someone else is driving is theirs.
+            if (occupancy.vehicle != handle && !SDK::VehicleHasDriver(handle)) {
+                return true;
+            }
+
             return false;
         }
 
