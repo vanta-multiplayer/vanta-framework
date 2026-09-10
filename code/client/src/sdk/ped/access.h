@@ -48,6 +48,11 @@ namespace VantaMP::SDK::Internal {
     // files this build does not compile, so `task->GetId()` would want a
     // definition to link against. The vtable is where the answer lives in any
     // case, and the slot is the one plugin-sdk itself uses.
+    // CTask::GetSubTask - after the destructor (0) and Clone (1). A complex
+    // task runs its work through the simple task underneath it, so following
+    // this is how you find what a ped is ACTUALLY doing.
+    inline constexpr std::size_t kTaskGetSubTaskSlot = 2;
+
     inline constexpr std::size_t kTaskGetIdSlot = 4;
 
     // Where the in-water task sits. plugin-sdk names the primary task array but

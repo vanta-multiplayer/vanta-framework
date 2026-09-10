@@ -40,6 +40,7 @@ namespace VantaMP::SDK {
         using SetOutCtorFn         = void *(__thiscall *)(void *, CVehicle *, int, bool);
         using KnockOffCtorFn       = void *(__thiscall *)(void *, CVehicle *, const CVector *, const CVector *, float, float, unsigned char, unsigned char, int, CPed *, bool, bool);
         using EventGroupAddFn      = void *(__thiscall *)(void *, void *, bool);
+        using GetSubTaskFn         = void *(__thiscall *)(void *);
 
         constexpr std::size_t kProcessPedSlot = 7;
 
@@ -67,6 +68,37 @@ namespace VantaMP::SDK {
         CPed *PedFor(int slot) {
             return slot <= 0 ? Internal::LocalPed() : PedAt(slot);
         }
+
+        // WHEN WE RAISED CEventKnockOffBike FOR THIS PED, PER SLOT.
+        //
+        // CEventGroup::Add only QUEUES the event (EventGroup.cpp:36-85 clones
+        // it into m_events); the response task is not built until the ped's
+        // next ProcessEvents. So for at least one frame after the knock-off
+        // there is no fall task in any slot, and a guard that only looks at
+        // the slots sees nothing and lets the network correct the ped - which
+        // kills the fall before it starts.
+        //
+        // This bridges exactly that gap. It is a short grace window, not a
+        // latch: once it expires the task slots are authoritative, so a ped
+        // whose event never produced a task cannot be stranded.
+        std::uint32_t &KnockOffRaisedMsFor(int slot) {
+            static std::uint32_t raised[Game::kMaxPlayers] {};
+            static std::uint32_t discard = 0;
+
+            const int index = slot <= 0 ? 0 : slot;
+
+            if (index < 0 || index >= Game::kMaxPlayers) {
+                discard = 0;
+                return discard;
+            }
+
+            return raised[index];
+        }
+
+        // Long enough for the event to be picked up and turned into a task
+        // (next ProcessEvents, so a frame or two), short enough that a ped who
+        // never got one is corrected almost immediately.
+        constexpr std::uint32_t kKnockOffGraceMs = 400;
 
         // WHICH ENTER TASK WE HAVE ALREADY ASKED TO UNWIND, PER PED.
         //
@@ -663,8 +695,22 @@ namespace VantaMP::SDK {
                 vehicle->m_pDriver == ped,   // isVictimDriver
                 true);                       // forceKnockOff - see above
 
-            reinterpret_cast<EventGroupAddFn>(gPatterns.CEventGroup__Add)(&ped->m_pIntelligence->m_eventGroup, event, false);
-            return;
+            // Add returns the CLONE it stored, or nullptr when the event was
+            // refused. CEventKnockOffBike::AffectsPed (0x4AFEE0) refuses a
+            // dead ped, a STATUS_GHOST vehicle, or a ped that is not actually
+            // in this vehicle. If it refused, nothing will eject the rider and
+            // they would sit welded to the bike - so fall through to the plain
+            // warp below rather than leaving them there.
+            const bool accepted =
+                reinterpret_cast<EventGroupAddFn>(gPatterns.CEventGroup__Add)(&ped->m_pIntelligence->m_eventGroup, event, false) != nullptr;
+
+            if (accepted) {
+                // The response task does not exist yet - Add only queues. Mark
+                // the moment so PedIsFallingOffBike can hold the network off
+                // until it does.
+                KnockOffRaisedMsFor(slot) = GetTickCount();
+                return;
+            }
         }
 
         if (warp) {
@@ -875,20 +921,49 @@ namespace VantaMP::SDK {
         //
         // Scanning all four costs nothing and cannot miss whichever slot the
         // handler chose.
-        for (auto *task : ped->m_pIntelligence->m_TaskMgr.m_aPrimaryTasks) {
-            if (!task) {
-                continue;
-            }
+        // ROOT *AND* SUBTASKS, WHICH IS HOW MTA TESTS IT.
+        //
+        // CClientPed::ClearNativeAmbientWanderResponse (CClientPed.cpp:7194)
+        // looks at BOTH ends of the chain to recognise a vehicle-impact fall:
+        //
+        //   physicalRoot = GetTask(TASK_PRIORITY_PHYSICAL_RESPONSE)
+        //   physicalLeaf = GetSimplestTask(TASK_PRIORITY_PHYSICAL_RESPONSE)
+        //   ... physicalRoot->GetTaskType() == TASK_COMPLEX_FALL_AND_GET_UP
+        //       && (physicalLeaf == TASK_SIMPLE_FALL || TASK_SIMPLE_GET_UP)
+        //
+        // The response really is a chain: CEventHandler installs a
+        // CTaskComplexFallAndGetUp (EventHandler.cpp:1101, 1114) which runs a
+        // simple fall and then a simple get-up underneath itself. Testing only
+        // the root works while the root is one of ours, but walking down costs
+        // nothing and cannot miss a fall nested under some other complex task.
+        //
+        // Note the slot MTA reads: PHYSICAL_RESPONSE is index 0, which is why
+        // scanning every primary slot rather than just TASK_PRIMARY_PRIMARY
+        // matters here.
+        constexpr int kMaxSubTaskDepth = 8;
 
-            switch (TaskIdOf(task)) {
-            case TASK_SIMPLE_FALL:
-            case TASK_COMPLEX_FALL_AND_GET_UP:
-            case TASK_COMPLEX_FALL_AND_STAY_DOWN:
-            case TASK_SIMPLE_GET_UP:
-            case TASK_COMPLEX_GET_UP_AND_STAND_STILL:
+        for (auto *task : ped->m_pIntelligence->m_TaskMgr.m_aPrimaryTasks) {
+            for (int depth = 0; task && depth < kMaxSubTaskDepth; ++depth) {
+                switch (TaskIdOf(task)) {
+                case TASK_SIMPLE_FALL:
+                case TASK_COMPLEX_FALL_AND_GET_UP:
+                case TASK_COMPLEX_FALL_AND_STAY_DOWN:
+                case TASK_SIMPLE_GET_UP:
+                case TASK_COMPLEX_GET_UP_AND_STAND_STILL:
+                    return true;
+                default:
+                    break;
+                }
+
+                task = static_cast<CTask *>(reinterpret_cast<GetSubTaskFn>(TaskVirtual(task, Internal::kTaskGetSubTaskSlot))(task));
+            }
+        }
+
+        // STILL INSIDE THE GRACE WINDOW after we raised the event, before the
+        // response task exists. See KnockOffRaisedMsFor.
+        if (const std::uint32_t raised = KnockOffRaisedMsFor(slot); raised != 0) {
+            if ((GetTickCount() - raised) < kKnockOffGraceMs) {
                 return true;
-            default:
-                break;
             }
         }
 
@@ -899,7 +974,8 @@ namespace VantaMP::SDK {
         // position correction FOREVER after their first fall - a far worse
         // desync than the one this guard exists to prevent. The task slots
         // above are self-limiting: they disappear when the ped is back on
-        // their feet, which is exactly the window we want.
+        // their feet, and the grace window above covers the frames before
+        // they appear.
         return false;
     }
 
