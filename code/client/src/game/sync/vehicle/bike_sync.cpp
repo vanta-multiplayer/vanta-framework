@@ -160,9 +160,12 @@ namespace VantaMP::Game::VehicleSync::Bike {
                 lastMs = now;
 
                 Framework::Logging::GetLogger("BikeDbg")
-                    ->info("BIKE TRAIL  trail{: .3f}m lateral{: .3f}m | speed{:.2f} | packetAge{}ms | gtaSpeed{:.2f}", trail,
+                    ->info("BIKE TRAIL  trail{: .3f}m lateral{: .3f}m | speed{:.2f} | packetAge{}ms | gtaSpeed{:.2f} | wireFwdZ{: .3f} gtaFwdZ{: .3f} wheelieAng{: .3f} dRoll{: .2f} dPitch{: .2f}", trail,
                            glm::length(delta - (wireVelXY / speed) * trail), speed * 50.0f, ageMs,
-                           glm::length(glm::vec2(here.vx, here.vy)) * 50.0f);
+                           glm::length(glm::vec2(here.vx, here.vy)) * 50.0f, glm::mat3_cast(glm::normalize(frame.entity->rotation))[1].z,
+                           SDK::BikeForwardZ(frame.handle), SDK::BikeWheelieAngle(frame.handle),
+                           AngleDelta(RollOf(frame.entity->rotation), RollOf(here.rotation)),
+                           AngleDelta(PitchOf(frame.entity->rotation), PitchOf(here.rotation)));
             }
         }
 
@@ -184,10 +187,22 @@ namespace VantaMP::Game::VehicleSync::Bike {
 
     void OnSnapshot(Frame &frame) {
         // Position is still aimed for the driverless case, which uses the
-        // smoothed path. A ridden bike ignores the interpolator entirely, but
-        // aiming it costs nothing and keeps the state coherent for the frame
-        // a rider steps off.
+        // smoothed path. A ridden bike drives XY itself by dead reckoning,
+        // but aiming it costs nothing and keeps the state coherent for the
+        // frame a rider steps off.
         AimPosition(frame);
+
+        // ROTATION IS AIMED FROM THE LIVE MATRIX.
+        //
+        // This is what makes the wheelie path an interpolation rather than a
+        // per-frame chase. The error between where GTA has the chassis RIGHT
+        // NOW and where the owner says it is gets captured here, once, and is
+        // then spent over exactly one packet window.
+        //
+        // Aiming it every packet also matters for the grounded case even
+        // though nothing consumes it there: without it, the first frame of a
+        // wheelie would inherit a stale error captured from whenever the
+        // interpolator was last aimed, and jump.
         AimRotation(frame);
     }
 
@@ -309,12 +324,98 @@ namespace VantaMP::Game::VehicleSync::Bike {
 
             LogTrail(frame);
 
-            if (frame.packetArrived) {
+            // ROLL, BUT ONLY WHEN THE BIKE IS NOT ON BOTH WHEELS.
+            //
+            // On two wheels, roll is suspension output and the network must
+            // not touch it - that is the finding the whole policy rests on.
+            //
+            // A WHEELIE breaks that assumption. The front wheel lifts, and
+            // GTA's roll stabilisation for exactly this case
+            // (m_fWheelieStabMult / m_fStoppieStabMult in tBikeHandlingData)
+            // is applied inside CBike::ProcessControl - which never runs for
+            // a remote bike. So nothing stabilises the remote copy and
+            // nothing corrects it either: it rolls away and lies over
+            // sideways while the owner is balanced on the rear wheel.
+            //
+            // CBike::GetAllWheelsOffGround (Bike.cpp:532) is
+            // `m_nNoOfContactWheels == 0`, and the count is what gates the
+            // stabilisation, so it is the right thing to test. Below two
+            // wheels of contact, roll goes back to being network
+            // authoritative - eased, not snapped, so it does not fight
+            // whatever contact response remains.
+            //
+            // Pitch stays GTA's throughout: that is the wheelie angle
+            // itself, legitimately different on each machine.
+            // WHEELIE DETECTION, THE WAY GTA ACTUALLY DOES IT.
+            //
+            // Two earlier gates were dead code because I invented the test
+            // instead of reading it. GTA does not count wheels and does not
+            // convert to an angle - CQuadBike::ProcessControl
+            // (QuadBike.cpp:222, the reversed analogue of the bike code)
+            // reads the FORWARD VECTOR'S Z directly:
+            //
+            //   if (AreFrontWheelsNotTouchingGround())
+            //       if (... && m_matrix->GetForward().z > 0.0f)
+            //           fabs(m_pHandling->m_fWheelieAng - GetForward().z)
+            //
+            // and m_fWheelieAng is stored as sin(angle)
+            // (cHandlingDataMgr.cpp:359), i.e. the same space as forward.z,
+            // so the two are directly comparable. Positive is nose-up.
+            //
+            // The OWNER'S forward.z is what we test, because the owner's
+            // physics is the correct one; ours is the copy that has no
+            // wheelie stabilisation (m_fWheelieStabMult lives in
+            // CBike::ProcessControl, which never runs for a remote bike).
+            //
+            // Blend ramps in across the run up to the bike's own wheelie
+            // angle, so entering and leaving does not step.
+            const glm::mat3 wireBasis = glm::mat3_cast(glm::normalize(frame.entity->rotation));
 
-                // Yaw only, on the packet edge. Pitch and roll are left
-                // exactly as GTA resolved them - see the 6-7 degree standing
-                // disagreement above, which is legitimate physics on both
-                // machines and must not be reconciled.
+            const float wireForwardZ = wireBasis[1].z;
+            const float wheelieAng   = SDK::BikeWheelieAngle(frame.handle);
+
+            // A small floor so a level bike's noise (forward.z ~ -0.05 in
+            // normal riding) never trips this, and a sane fallback if the
+            // handling data is missing.
+            const float trigger = std::max(0.10f, wheelieAng * 0.35f);
+
+            const bool wheelie = std::fabs(wireForwardZ) > trigger;
+
+            if (wheelie) {
+                // INTERPOLATED, NOT BLENDED PER FRAME.
+                //
+                // The previous attempt slerped the live matrix a fixed
+                // fraction toward frame.entity->rotation every frame. That is
+                // not interpolation, it is an exponential filter chasing a
+                // target that is CONSTANT for the ~100ms until the next
+                // packet - the same mistake the XY path already had and that
+                // dead reckoning fixed there. It has two failure modes and
+                // the log showed both: early in the packet window it moves
+                // the chassis far too fast (0.35 of an 80-degree error in one
+                // frame), and late in the window it is still pulling toward a
+                // pose the owner left long ago.
+                //
+                // Framework's Interpolator is the right tool and is already
+                // in the Frame. It captures the error ONCE when the packet
+                // lands, spends it across exactly the packet window, and then
+                // stops (interpolator.cpp:110 clears _finishTime at
+                // alpha == factor). So the correction is finished, not
+                // asymptotic, and the rate is derived from the tick rather
+                // than from a constant I picked.
+                //
+                // Aimed in OnSnapshot from the bike's live matrix; consumed
+                // here. UpdateTargetValue returns current * compensation, so
+                // feeding it the live orientation each frame applies only
+                // this frame's share of the error.
+                const glm::quat next = frame.interpolator->GetRotation()->UpdateTargetValue(SDK::BikeOrientation(frame.handle));
+
+                SDK::SetBikeOrientation(frame.handle, next);
+            }
+            else if (frame.packetArrived) {
+                // GROUNDED: yaw only, on the packet edge. Pitch and roll are
+                // left exactly as GTA resolved them - see the 6-7 degree
+                // standing disagreement above, which is legitimate physics on
+                // both machines and is the chassis hop if forced.
                 SDK::SetBikeHeading(frame.handle, frame.entity->rotation);
             }
         }
@@ -326,6 +427,6 @@ namespace VantaMP::Game::VehicleSync::Bike {
         // ProcessControlInputs is the only writer of m_fSteerAngle and the
         // only thing that clears the constructor's default handbrake, and it
         // does not run for a remote bike.
-        SDK::ApplyBikeDriverOutputs(frame.handle, frame.entity->steer, frame.entity->handbrake);
+        SDK::ApplyBikeDriverOutputs(frame.handle, frame.entity->steer, frame.entity->handbrake, frame.entity->gasPedal, frame.entity->brakePedal);
     }
 } // namespace VantaMP::Game::VehicleSync::Bike

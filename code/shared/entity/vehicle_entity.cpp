@@ -72,6 +72,12 @@ namespace VantaMP::Shared {
         // for itself because its ProcessControlInputs never runs. Must stay
         // last: order is the wire format.
         fields.Field(handbrake);
+
+        // APPENDED. Signed pedals, so reverse survives the wire - the
+        // unsigned `accelerator`/`brake` above clamp at zero. Must stay last:
+        // order is the wire format.
+        fields.Field(gasPedal);
+        fields.Field(brakePedal);
     }
 
     void VehicleEntity::OnStateForced() {

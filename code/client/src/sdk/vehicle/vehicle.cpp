@@ -279,6 +279,15 @@ namespace VantaMP::SDK {
             return static_cast<std::uint8_t>(std::clamp(pedal / kPedalScale, 0.0f, 255.0f));
         }
 
+        // SIGNED, BECAUSE m_fGasPedal IS.
+        //
+        // It runs -1..1 with negative meaning reverse (PostEffects.cpp:968
+        // biases it as `m_GasPedal + 1.0f` to get 0..2). PedalToWire above
+        // clamps the low end to zero, which throws reverse away entirely.
+        std::int8_t SignedPedalToWire(float pedal) {
+            return static_cast<std::int8_t>(std::clamp(pedal * 127.0f, -127.0f, 127.0f));
+        }
+
         void ExtinguishFire(CFire *fire) {
             if (!fire || !gPatterns.CFire__Extinguish) {
                 return;
@@ -778,6 +787,12 @@ namespace VantaMP::SDK {
         state.steer       = SteerToWire(vehicle->m_fSteerAngle);
         state.accelerator = PedalToWire(vehicle->m_fGasPedal);
         state.brake       = PedalToWire(vehicle->m_fBreakPedal);
+
+        // The signed copies. Kept alongside the unsigned pair rather than
+        // replacing it, so the existing car path and its wire layout are
+        // untouched.
+        state.gasPedal   = SignedPedalToWire(vehicle->m_fGasPedal);
+        state.brakePedal = SignedPedalToWire(vehicle->m_fBreakPedal);
         state.handbrake   = vehicle->bIsHandbrakeOn;
 
         if (auto *damage = DamageManagerOf(const_cast<CVehicle *>(vehicle))) {
@@ -951,12 +966,26 @@ namespace VantaMP::SDK {
     // CVehicle's constructor sets true (Vehicle.cpp:253) - which is why the
     // handbrake never lets go either. One missing call, both symptoms.
     //
-    // So the two values it would have produced are taken from the owner,
-    // who computed them in the only place GTA computes them - their own
-    // ProcessControlInputs - and already sends both. Steer drives the front
+    // So the values it would have produced are taken from the owner, who
+    // computed them in the only place GTA computes them - their own
+    // ProcessControlInputs - and already sends them. Steer drives the front
     // fork and wheel visuals; the handbrake flag gates braking behaviour.
-    // Pedals are left to the pad, which does reach the engine.
-    void ApplyBikeDriverOutputs(void *handle, std::int8_t steer, bool handbrake) {
+    //
+    // THE PEDALS BELONG IN HERE TOO, AND USED NOT TO BE.
+    //
+    // The old comment said "pedals are left to the pad, which does reach the
+    // engine". That is the same mistake steer was: the pad reaches the
+    // engine, but it does NOT reach m_fGasPedal, because the only function
+    // that converts pad buttons into that field is the one established above
+    // as never running. Measured with reverse plainly held on the owner:
+    //
+    //   PAD AT PROCESSCTRL  ... cross0 square255 ...   (reverse, arriving)
+    //   m_fGasPedal         0.00                       (never written)
+    //
+    // The rider's animation is selected from the pedal, so a remote rider
+    // stayed in the idle pose while reversing instead of looking back over
+    // their shoulder.
+    void ApplyBikeDriverOutputs(void *handle, std::int8_t steer, bool handbrake, std::int8_t gasPedal, std::int8_t brakePedal) {
         auto *vehicle = AsVehicle(handle);
 
         // ONLY WHILE SOMEBODY IS ACTUALLY RIDING IT.
@@ -979,6 +1008,12 @@ namespace VantaMP::SDK {
         // remote copy - a bug this fix would have introduced.
         vehicle->bIsHandbrakeOn = handbrake;
 
+        // Signed, so reverse survives. kSignedPedalScale is the inverse of
+        // the 127 the sender scaled by.
+        constexpr float kSignedPedalScale = 1.0f / 127.0f;
+
+        vehicle->m_fGasPedal   = static_cast<float>(gasPedal) * kSignedPedalScale;
+        vehicle->m_fBreakPedal = static_cast<float>(brakePedal) * kSignedPedalScale;
     }
 
     // POSITION ONLY, LEAVING THE MATRIX BASIS ALONE.
@@ -1121,6 +1156,70 @@ namespace VantaMP::SDK {
         matrix.right = CVector(right.x, right.y, right.z);
         matrix.up    = CVector(gtaForward.x, gtaForward.y, gtaForward.z);
         matrix.at    = CVector(up.x, up.y, up.z);
+
+        reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
+        reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
+    }
+
+    // THE BIKE'S CURRENT ORIENTATION, AS A QUATERNION.
+    //
+    // The read half of the wheelie path. The interpolator needs a "current"
+    // to aim FROM when a packet lands, and it has to be the live matrix
+    // rather than anything cached, because GTA has integrated the chassis
+    // since the last packet.
+    glm::quat BikeOrientation(const void *handle) {
+        auto *vehicle = AsVehicle(const_cast<void *>(handle));
+
+        if (!vehicle || !vehicle->m_matrix) {
+            return glm::identity<glm::quat>();
+        }
+
+        return QuatFromMatrix(*vehicle->m_matrix);
+    }
+
+    // WRITES AN ORIENTATION THE CALLER HAS ALREADY DECIDED ON.
+    //
+    // No blending of its own - deliberately. The wheelie path drives this
+    // from Framework's Interpolator, which consumes a fixed error across the
+    // packet window and stops when it is spent. Easing again in here would
+    // put a second, unsynchronised filter in series with that one and the
+    // pair would never converge.
+    void SetBikeOrientation(void *handle, const glm::quat &rotation) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !vehicle->m_matrix) {
+            return;
+        }
+
+        ApplyQuatToMatrix(*vehicle->m_matrix, glm::normalize(rotation));
+
+        reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
+        reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
+    }
+
+    // EASES THE WHOLE BASIS TOWARD THE OWNER'S, KEEPING POSITION.
+    //
+    // For a GROUNDED bike this would be wrong - pitch and roll are that
+    // machine's own suspension output and forcing them is the chassis hop.
+    // During a WHEELIE it is the only correct thing: the remote bike is not
+    // doing the wheelie at all (measured forward.z ~0.1 against the owner's
+    // ~0.99, an 80-degree pitch disagreement), because the wheelie is
+    // produced by CBike::ProcessControl, which never runs for a remote bike.
+    //
+    // Eased rather than snapped so the entry and exit do not step.
+    void BlendBikeOrientation(void *handle, const glm::quat &rotation, float alpha) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !vehicle->m_matrix) {
+            return;
+        }
+
+        auto &matrix = *vehicle->m_matrix;
+
+        const glm::quat current = QuatFromMatrix(matrix);
+        const glm::quat blended = glm::slerp(current, glm::normalize(rotation), glm::clamp(alpha, 0.0f, 1.0f));
+
+        ApplyQuatToMatrix(matrix, blended);
 
         reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
         reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
@@ -1492,9 +1591,11 @@ namespace VantaMP::SDK {
         return vehicle && vehicle->bOnSolidSurface;
     }
 
-    // CBike::m_nNumContactWheels. How many of the two wheels GTA currently
-    // believes are touching ground - the suspension state a per-frame
-    // position write disturbs.
+    // CBike::m_nNumContactWheels, counted over FOUR suspension lines.
+    //
+    // A bike has two wheels but NUM_SUSP_LINES == 4 (Bike.h), so a normal
+    // grounded bike reports 4 here, not 2. Reading this as "wheels on the
+    // ground" and testing `< 2` is why an earlier wheelie gate never fired.
     int VehicleContactWheels(const void *handle) {
         const auto *vehicle = AsVehicle(handle);
 
@@ -1503,6 +1604,87 @@ namespace VantaMP::SDK {
         }
 
         return static_cast<int>(static_cast<const CBike *>(vehicle)->m_nNumContactWheels);
+    }
+
+    // GTA'S OWN WHEELIE MEASURE: THE FORWARD VECTOR'S Z COMPONENT.
+    //
+    // From CQuadBike::ProcessControl (QuadBike.cpp:222), which is the
+    // reversed analogue of the bike code:
+    //
+    //   if (AreFrontWheelsNotTouchingGround())
+    //       if (... && m_matrix->GetForward().z > 0.0f)
+    //           ... fabs(m_pHandling->m_fWheelieAng - m_matrix->GetForward().z) ...
+    //   else if (... m_matrix->GetForward().z < 0.0f)
+    //           ... fabs(m_pHandling->m_fStoppieAng - m_matrix->GetForward().z) ...
+    //
+    // So the game does NOT count wheels or convert to an angle. It reads
+    // forward.z directly and compares it against m_fWheelieAng, which
+    // cHandlingDataMgr stores as sin(angle) (cHandlingDataMgr.cpp:359,
+    // `m_fWheelieAng = sin(DegreesToRadians(m_fWheelieAng))`) - the same
+    // space as forward.z. Positive is nose-up, negative nose-down.
+    //
+    // Returns forward.z, so 0 is level, positive a wheelie, negative a
+    // stoppie. Callers compare against BikeWheelieAngle() below.
+    float BikeForwardZ(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !vehicle->m_matrix) {
+            return 0.0f;
+        }
+
+        // GTA's m_forward is plugin-sdk's `up`.
+        return vehicle->m_matrix->up.z;
+    }
+
+    // m_fWheelieAng for this bike, in the same sin() space as forward.z.
+    // The angle at which GTA considers the bike to be in a full wheelie.
+    float BikeWheelieAngle(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !IsBikeHandle(vehicle)) {
+            return 0.0f;
+        }
+
+        const auto *bike = static_cast<const CBike *>(vehicle);
+
+        if (!bike->m_pBikeHandlingData) {
+            return 0.0f;
+        }
+
+        return bike->m_pBikeHandlingData->m_fWheelieAng;
+    }
+
+    // IS THE BIKE OFF ITS SUSPENSION - WHEELIE, STOPPIE OR AIRBORNE?
+    //
+    // gta-reversed spells out the test (Bike.h):
+    //
+    //   IsAnyWheelNotMakingContactWithGround()
+    //       any_of(m_aWheelRatios, [](r) { return r == 1.0f; })
+    //
+    // A ratio of exactly 1.0 is a fully extended suspension line, i.e. that
+    // line found no ground. This is the honest signal; the contact COUNT is
+    // over four lines and stays at 4 far longer than the bike is level.
+    //
+    // Returns how many of the four lines are off the ground: 0 grounded,
+    // 4 fully airborne, in between a wheelie or stoppie.
+    int BikeWheelsOffGround(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !IsBikeHandle(vehicle)) {
+            return -1;
+        }
+
+        const auto *bike = static_cast<const CBike *>(vehicle);
+
+        int off = 0;
+
+        for (const float ratio : bike->m_aWheelRatios) {
+            if (ratio >= 1.0f) {
+                ++off;
+            }
+        }
+
+        return off;
     }
 
     float VehicleSteerAngle(const void *handle) {

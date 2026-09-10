@@ -47,6 +47,11 @@ namespace VantaMP::SDK {
         std::uint8_t brake       = 0;
         bool         handbrake   = false;
 
+        // Signed copies of the two pedals. m_fGasPedal is -1..1 with negative
+        // meaning reverse, which the unsigned pair above cannot represent.
+        std::int8_t  gasPedal    = 0;
+        std::int8_t  brakePedal  = 0;
+
         std::uint8_t  damageEngine     = 0;
         std::uint64_t doorsPacked      = 0;
         std::uint32_t wheelsPacked     = 0;
@@ -85,7 +90,7 @@ namespace VantaMP::SDK {
     // CBike::ProcessControlInputs (0x6BE310) - the only writer of
     // m_fSteerAngle and the only thing that clears the constructor's default
     // handbrake - does not run for a remote bike, so both are copied instead.
-    void ApplyBikeDriverOutputs(void *vehicle, std::int8_t steer, bool handbrake);
+    void ApplyBikeDriverOutputs(void *vehicle, std::int8_t steer, bool handbrake, std::int8_t gasPedal, std::int8_t brakePedal);
 
     void SetVehiclePose(void *vehicle, float x, float y, float z, const glm::quat &rotation);
 
@@ -106,7 +111,30 @@ namespace VantaMP::SDK {
     // stabilisation does not run on a remote bike.
     void BlendBikeRoll(void *vehicle, const glm::quat &rotation, float alpha);
 
+    // Eases the whole basis toward the owner's, keeping position. For the
+    // wheelie case, where the remote bike is not performing the manoeuvre at
+    // all and pitch must be taken from the owner too.
+    void BlendBikeOrientation(void *vehicle, const glm::quat &rotation, float alpha);
+
+    // The bike's live orientation. The "current" an interpolator aims from.
+    [[nodiscard]] glm::quat BikeOrientation(const void *vehicle);
+
+    // Writes an orientation the caller has already decided on, with no
+    // blending of its own - the caller's interpolator owns the easing.
+    void SetBikeOrientation(void *vehicle, const glm::quat &rotation);
+
     [[nodiscard]] int   VehicleContactWheels(const void *vehicle);
+
+    // How many of a bike's four suspension lines found no ground: 0 grounded,
+    // 4 airborne, in between a wheelie or stoppie. Use this, not the contact
+    // count - a grounded bike reports 4 contacts, not 2.
+    [[nodiscard]] int   BikeWheelsOffGround(const void *vehicle);
+
+    // GTA's own wheelie measure: the forward vector's Z. 0 level, positive
+    // nose-up (wheelie), negative nose-down (stoppie). Compare against
+    // BikeWheelieAngle, which is m_fWheelieAng in the same sin() space.
+    [[nodiscard]] float BikeForwardZ(const void *vehicle);
+    [[nodiscard]] float BikeWheelieAngle(const void *vehicle);
     [[nodiscard]] float VehicleSteerAngle(const void *vehicle);
     [[nodiscard]] bool  VehicleHandbrakeOn(const void *vehicle);
 

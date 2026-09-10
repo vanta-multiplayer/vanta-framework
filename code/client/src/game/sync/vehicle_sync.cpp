@@ -54,6 +54,8 @@ namespace VantaMP::Game {
             std::uint8_t accelerator = 0;
             std::uint8_t brake       = 0;
             bool         handbrake   = false;
+            std::int8_t  gasPedal    = 0;
+            std::int8_t  brakePedal  = 0;
 
             std::uint8_t  lastEngine  = 0;
             std::uint64_t lastDoors   = 0;
@@ -393,6 +395,8 @@ namespace VantaMP::Game {
             entity->accelerator     = state.accelerator;
             entity->brake           = state.brake;
             entity->handbrake       = state.handbrake;
+            entity->gasPedal        = state.gasPedal;
+            entity->brakePedal      = state.brakePedal;
 
             if (state.hasDamage) {
                 entity->damageEngine     = state.damageEngine;
@@ -842,6 +846,8 @@ namespace VantaMP::Game {
             remote.accelerator = entity->accelerator;
             remote.brake       = entity->brake;
             remote.handbrake   = entity->handbrake;
+            remote.gasPedal    = entity->gasPedal;
+            remote.brakePedal  = entity->brakePedal;
 
             const bool partsChanged = !remote.haveDamage || remote.lastEngine != entity->damageEngine || remote.lastDoors != entity->doorsPacked ||
                 remote.lastWheels != entity->wheelsPacked || remote.lastPanels != entity->panels || remote.lastLights != entity->lights;
