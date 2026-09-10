@@ -84,6 +84,10 @@ namespace VantaMP::SDK {
     // OpenDoor over a climb is what slammed the passenger door shut.
     void ApplyVehicleDoorRatios(void *vehicle, std::uint64_t doorRatiosPacked, std::uint8_t skipMask = 0);
 
+    // One door, forced past the occupancy mask. For the authoritative angle
+    // that arrives with an aborted entry.
+    void ForceVehicleDoorRatio(void *vehicle, std::uint8_t doorIndex, std::uint8_t ratio);
+
     void ApplyVehicleControls(void *vehicle, std::int8_t steer, std::uint8_t accelerator, std::uint8_t brake);
 
     // Steer angle and handbrake for a remote BIKE, straight from the owner.

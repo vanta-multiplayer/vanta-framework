@@ -916,7 +916,7 @@ namespace VantaMP::Game {
             if (auto *handle = VehicleHandleOf(static_cast<std::uint64_t>(vehicle->GetNetworkID()))) {
                 SDK::SetVehiclePose(handle, vehicle->position.x, vehicle->position.y, vehicle->position.z, vehicle->rotation);
                 SDK::ApplyVehicleDamage(handle, vehicle->damageEngine, vehicle->doorsPacked, vehicle->wheelsPacked, vehicle->panels, vehicle->lights);
-                SDK::ApplyVehicleDoorRatios(handle, vehicle->doorRatiosPacked);
+                SDK::ApplyVehicleDoorRatios(handle, vehicle->doorRatiosPacked, SDK::OccupiedDoorMask(handle));
                 SDK::ApplyVehicleScriptState(handle, vehicle->engineOn, vehicle->sirenOn, vehicle->overrideLights, vehicle->locked);
                 SDK::ApplyVehicleExtras(handle, vehicle->dirtLevel, vehicle->taxiLight, vehicle->headlightColor, vehicle->frozen, vehicle->damageProof,
                                         vehicle->collisions, vehicle->landingGearDown, vehicle->lightsOn, vehicle->engineBroken, vehicle->wheelsCanBurst,

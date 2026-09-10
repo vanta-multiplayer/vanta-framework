@@ -933,6 +933,46 @@ namespace VantaMP::SDK {
         OpenPackedDoors(vehicle, doorRatiosPacked, skipMask);
     }
 
+    // FORCES ONE DOOR TO AN ANGLE, IGNORING THE OCCUPANCY MASK.
+    //
+    // The mask exists to stop per-packet ratio writes fighting an animation
+    // that owns the door. This is the opposite case: an authoritative,
+    // one-shot angle that arrives with the abort itself, for a door that is
+    // no longer being animated by anyone. MTA does the same thing in the same
+    // situation - AllowDoorRatioSetting(door, true) immediately followed by
+    // SetDoorOpenRatio(door, ratio, 0, true), the `true` being its forced
+    // flag (CPacketHandler.cpp:1972-1974).
+    void ForceVehicleDoorRatio(void *handle, std::uint8_t doorIndex, std::uint8_t ratio) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || doorIndex >= kDoorCount) {
+            return;
+        }
+
+        auto *vtable = *reinterpret_cast<OpenDoorFn **>(vehicle);
+        auto *car    = AsAutomobile(vehicle);
+
+        if (!vtable || !car) {
+            return;
+        }
+
+        auto *damage = DamageManagerOf(vehicle);
+
+        // Still respect a door GTA's own physics owns - swinging or missing.
+        // Forcing those is the stutter the ratio path already avoids.
+        if (damage && DoorRatioIsOwnedByGame(damage->m_anDoorsStatus[doorIndex])) {
+            return;
+        }
+
+        const float wanted = static_cast<float>(ratio) / 255.0f;
+
+        if (std::fabs(DoorOpenRatioOf(car->m_doors[doorIndex]) - wanted) < (2.0f / 255.0f)) {
+            return;
+        }
+
+        vtable[kOpenDoorSlot](vehicle, nullptr, kDoorNodeIndex[doorIndex], doorIndex, wanted, false);
+    }
+
     void ApplyVehicleControls(void *handle, std::int8_t steer, std::uint8_t accelerator, std::uint8_t brake) {
         auto *vehicle = AsVehicle(handle);
 

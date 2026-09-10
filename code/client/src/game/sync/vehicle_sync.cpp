@@ -75,6 +75,11 @@ namespace VantaMP::Game {
             std::uint32_t lastRatioReportMs  = 0;
             std::uint64_t lastSentRatios     = 0;
 
+            // GetTickCount() when the local ped stopped using a door on this
+            // vehicle. Reporting continues for a short while afterwards - see
+            // ReportOccupantDoorRatios.
+            std::uint32_t doorReleasedMs = 0;
+
             std::uint8_t  lastPaintjob  = 255;
             std::array<std::uint32_t, Shared::kVehicleColorCount> lastColours {};
             bool haveColours = false;
@@ -137,8 +142,6 @@ namespace VantaMP::Game {
         // Stick held when the climb started must not cancel it — that is
         // just walking up to the door. A new press, a jump, or a release
         // then press is the player changing their mind.
-        bool gEnterStickHeld         = false;
-        bool gEnterJumpHeld          = false;
         bool gBlockEnterUntilRelease = false;
         bool gBlockExitUntilRelease  = false;
 
@@ -151,38 +154,25 @@ namespace VantaMP::Game {
             return std::sqrt(x * x + y * y);
         }
 
-        void RememberEnterInput() {
-            const auto input = SDK::ReadLocalInput();
-
-            gEnterStickHeld = StickMagnitude(input) > kAbortStick;
-            gEnterJumpHeld  = (input.buttons & SDK::Button::Jump) != 0;
-        }
-
-        [[nodiscard]] bool LocalWantsToAbortEnter() {
-            const auto input    = SDK::ReadLocalInput();
-            const bool jump     = (input.buttons & SDK::Button::Jump) != 0;
-            const bool jumpEdge = jump && !gEnterJumpHeld;
-
-            gEnterJumpHeld = jump;
-
-            if (jumpEdge) {
-                return true;
-            }
-
-            if (StickMagnitude(input) > kAbortStick) {
-                return !gEnterStickHeld;
-            }
-
-            gEnterStickHeld = false;
-            return false;
-        }
-
         [[nodiscard]] bool OccupancyInputIdle() {
             const auto input = SDK::ReadLocalInput();
 
             return (input.buttons & SDK::Button::EnterExit) == 0 && (input.buttons & SDK::Button::Jump) == 0 && StickMagnitude(input) <= kAbortStick;
         }
 
+        // ONLY REACHED AFTER THE SERVER REFUSED AN ENTRY OR EXIT.
+        //
+        // The local cancel path no longer aborts anything - see the Entering
+        // case below - so the only thing that sets these flags now is
+        // ApplyOccupancyAbort, i.e. the server saying "you may not have that
+        // seat". Re-issuing the abort while the player keeps the key held is
+        // correct there: GTA will happily start a fresh enter task the moment
+        // the old one dies, and the server has already said no.
+        //
+        // SDK::AbortVehicleEnter latches on the task pointer, so a task that
+        // is already unwinding is not asked twice; a genuinely new task -
+        // which is exactly what this is guarding against - still gets one
+        // abort of its own.
         void PulseOccupancyBlocks(const SDK::PedOccupancy &occupancy) {
             if (gBlockEnterUntilRelease) {
                 if (occupancy.entering) {
@@ -225,15 +215,32 @@ namespace VantaMP::Game {
             Framework::Logging::GetLogger("Vehicle")->debug("local enter vehicle {} seat {} door {} warp {}", vehicleId, seat, door, warp);
         }
 
-        void SendLocalExit(bool warp, std::uint8_t door, bool abortEnter = false) {
+        void SendLocalExit(bool warp, std::uint8_t door, bool abortEnter = false, void *vehicle = nullptr) {
             auto *net = Framework::CoreModules::GetNetworkPeer();
 
             if (!net) {
                 return;
             }
 
+            // MTA writes GetDoorOpenRatio(enteringDoor) into the notify-abort
+            // (CClientPed.cpp:10443) so the receiver has an authoritative
+            // angle for a door nobody else can observe. Same idea here: this
+            // is the angle at the moment the entry ended. The settle window in
+            // ReportOccupantDoorRatios then reports the swing that follows.
+            std::uint8_t ratio = 0;
+
+            if (abortEnter && vehicle) {
+                const auto index = SDK::DoorRatioIndexForTarget(door);
+
+                if (index != SDK::kInvalidDoor) {
+                    const auto state = SDK::ReadVehicle(vehicle);
+
+                    ratio = static_cast<std::uint8_t>((state.doorRatiosPacked >> (index * 8)) & 0xFFu);
+                }
+            }
+
             Shared::RPC::PlayerExitVehicle exit;
-            exit.FromParameters(0, warp, door, abortEnter);
+            exit.FromParameters(0, warp, door, abortEnter, ratio);
             net->BroadcastRPC(exit);
 
             Framework::Logging::GetLogger("Vehicle")->debug("local exit door {} warp {} abortEnter {}", door, warp, abortEnter);
@@ -264,7 +271,6 @@ namespace VantaMP::Game {
                     }
 
                     gAwaitEnterDoor = false;
-                    RememberEnterInput();
                     SendLocalEnter(vehicleId, occupancy.seat, false, occupancy.door);
                     gLocalRide = LocalRide::Entering;
                 }
@@ -287,14 +293,32 @@ namespace VantaMP::Game {
                     gLocalRide = LocalRide::Seated;
                 }
                 else if (!occupancy.entering) {
-                    SendLocalExit(false, occupancy.door, true);
+                    // THE ONLY WAY AN ENTRY ENDS. WE OBSERVE IT, WE DO NOT
+                    // CAUSE IT.
+                    //
+                    // There used to be a second branch here that watched for
+                    // jump / stick input, called AbortVehicleEnter and forced
+                    // the state to OnFoot. That was a duplicate of something
+                    // GTA already does: CPlayerPed's enter task ends itself
+                    // when the player jumps or steers away - that is what
+                    // bHasDisplayedPlayerQuitEnterCarHelpText in the save
+                    // structure is the help text FOR. So on the cancel frame
+                    // two mechanisms tore at the same task: GTA unwinding it
+                    // normally, and our MakeAbortable restarting the unwind.
+                    // That is the glitching, and no amount of latching the
+                    // abort fixes it, because the abort should not be there.
+                    //
+                    // MTA does exactly what is left here. It never intercepts
+                    // the cancel key at all - there is no abort call anywhere
+                    // in its local enter path. It polls IsEnteringVehicle()
+                    // (CClientPed.cpp:8272) and, the frame the task is gone,
+                    // asks GetRealOccupiedVehicle() whether the ped ended up
+                    // in a seat or on the pavement (10336-10420). Seat means
+                    // notify-in; no seat means notify-abort. The cancel is
+                    // GTA's business; the network's business is reporting
+                    // which of the two happened.
+                    SendLocalExit(false, occupancy.door, true, occupancy.vehicle);
                     gLocalRide = LocalRide::OnFoot;
-                }
-                else if (LocalWantsToAbortEnter()) {
-                    SDK::AbortVehicleEnter(0);
-                    SendLocalExit(false, occupancy.door, true);
-                    gBlockEnterUntilRelease = true;
-                    gLocalRide              = LocalRide::OnFoot;
                 }
                 break;
 
@@ -521,7 +545,7 @@ namespace VantaMP::Game {
             SDK::ApplyVehicleDamage(handle, entity.damageEngine, entity.doorsPacked, entity.wheelsPacked, entity.panels, entity.lights, spawnFlying);
 
             if (applyRatios) {
-                SDK::ApplyVehicleDoorRatios(handle, entity.doorRatiosPacked);
+                SDK::ApplyVehicleDoorRatios(handle, entity.doorRatiosPacked, SDK::OccupiedDoorMask(handle));
                 remote.lastRatios = entity.doorRatiosPacked;
             }
 
@@ -616,38 +640,19 @@ namespace VantaMP::Game {
             remote.lastDamageReportMs = now;
         }
 
-        // GTA eTargetDoor -> CDoor index. Hood/boot are 0/1; the climb
-        // uses 2-5. 10 is the same front-left as 0; MTA maps both.
-        std::uint8_t DoorIndexFromTarget(std::uint8_t target) {
-            switch (target) {
-            case 0:
-            case 10:
-                return 2;
-            case 8:
-                return 3;
-            case 11:
-                return 4;
-            case 9:
-                return 5;
-            default:
-                return SDK::kInvalidDoor;
-            }
-        }
-
-        std::uint8_t LocalOccupyingDoorMask(void *vehicle) {
-            const auto occupancy = SDK::QueryPedOccupancy(0);
-
-            if (occupancy.vehicle != vehicle || (!occupancy.entering && !occupancy.leaving)) {
-                return 0;
-            }
-
-            const auto index = DoorIndexFromTarget(occupancy.door);
-
-            if (index == SDK::kInvalidDoor) {
-                return 0;
-            }
-
-            return static_cast<std::uint8_t>(1u << index);
+        // WAS LOCAL-ONLY, AND THAT WAS THE DOOR SPAM.
+        //
+        // This used to ask QueryPedOccupancy(0) - slot 0, the local player -
+        // so only OUR door was protected from network ratio writes. A remote
+        // player climbing in or out had their door written over on every
+        // packet, and CVehicle::OpenDoor re-plays the swing sound each time
+        // it is called with a changed ratio.
+        //
+        // SDK::OccupiedDoorMask walks the local ped, the vehicle's occupants
+        // and anyone entering it, so the same protection MTA gives every
+        // occupied door (CClientVehicle::SetDoorOpenRatio) now applies here.
+        std::uint8_t OccupyingDoorMask(void *vehicle) {
+            return SDK::OccupiedDoorMask(vehicle);
         }
 
         void ReportOccupantDoorRatios(std::uint64_t vehicleId, Shared::VehicleEntity *entity, RemoteVehicle &remote) {
@@ -662,9 +667,36 @@ namespace VantaMP::Game {
                 return;
             }
 
-            const auto occupancy = SDK::QueryPedOccupancy(0);
+            // KEEP REPORTING AFTER THE TASK ENDS. THIS IS THE ABORT DOOR BUG.
+            //
+            // The window used to be exactly "while entering or leaving", which
+            // closes the frame the enter task dies. But GTA swings the door
+            // shut AFTER that - the close is part of the ped returning to
+            // foot, not part of the enter task - so the last ratio anyone else
+            // heard was a stale half-open angle from mid-climb.
+            //
+            // The other clients then had no way to correct it. Their own
+            // OccupiedDoorMask stops masking the door the moment our ped stops
+            // using it, but the only authority for its angle is us, and we had
+            // stopped talking. So the aborting player saw the door shut and
+            // everyone else kept it hanging open.
+            //
+            // MTA's answer is to put the ratio in the abort packet
+            // (CClientPed.cpp:10443). That is one sample at abort time, which
+            // is a fix for the packet but not for the swing that follows it.
+            // Holding the window open for a beat afterwards reports the whole
+            // close, and costs nothing when the door was already shut because
+            // the unchanged-ratio check below drops those.
+            constexpr std::uint32_t kDoorSettleMs = 1200;
 
-            if (occupancy.vehicle != remote.handle || (!occupancy.entering && !occupancy.leaving)) {
+            const auto          occupancy = SDK::QueryPedOccupancy(0);
+            const std::uint32_t now       = GetTickCount();
+            const bool          usingDoor = occupancy.vehicle == remote.handle && (occupancy.entering || occupancy.leaving);
+
+            if (usingDoor) {
+                remote.doorReleasedMs = now;
+            }
+            else if (remote.doorReleasedMs == 0 || (now - remote.doorReleasedMs) > kDoorSettleMs) {
                 return;
             }
 
@@ -673,8 +705,6 @@ namespace VantaMP::Game {
             if (local.doorRatiosPacked == remote.lastSentRatios) {
                 return;
             }
-
-            const std::uint32_t now = GetTickCount();
 
             if (remote.lastRatioReportMs != 0 && (now - remote.lastRatioReportMs) < Shared::SyncRate::kVehicleMs) {
                 return;
@@ -698,7 +728,7 @@ namespace VantaMP::Game {
             // MTA SetDoorOpenRatio(..., TICK_RATE): lerp over the send
             // interval, then stop. Holding OpenDoor every frame fights
             // GTA on a swinging or damaged door and is the stutter.
-            const auto skip = LocalOccupyingDoorMask(handle);
+            const auto skip = OccupyingDoorMask(handle);
 
             if (!remote.doorInterp) {
                 const auto current = SDK::ReadVehicle(handle);
@@ -780,7 +810,7 @@ namespace VantaMP::Game {
 
             SDK::ApplyVehicleMotion(remote.handle, state);
             SDK::ApplyVehicleDamage(remote.handle, entity->damageEngine, entity->doorsPacked, entity->wheelsPacked, entity->panels, entity->lights);
-            SDK::ApplyVehicleDoorRatios(remote.handle, entity->doorRatiosPacked);
+            SDK::ApplyVehicleDoorRatios(remote.handle, entity->doorRatiosPacked, SDK::OccupiedDoorMask(remote.handle));
             SDK::BindRemoteVehicleProcessControl(remote.handle);
 
             if (entity->IsBlown()) {
@@ -1136,7 +1166,7 @@ namespace VantaMP::Game {
         }
     }
 
-    void ApplyRemoteExitVehicle(std::uint64_t networkId, bool warp, std::uint8_t door) {
+    void ApplyRemoteExitVehicle(std::uint64_t networkId, bool warp, std::uint8_t door, bool abortEnter, std::uint8_t doorRatio) {
         if (networkId == 0 || networkId == LocalNetworkId()) {
             if (networkId == LocalNetworkId() && warp) {
                 SDK::ExitVehicle(0, true, door);
@@ -1153,6 +1183,28 @@ namespace VantaMP::Game {
         }
 
         ForgetLateJoin(slot);
+
+        // THE DOOR THEY LEFT BEHIND.
+        //
+        // An aborted entry is the one case where the door's angle cannot be
+        // derived locally: the remote ped stops using it, so our occupancy
+        // mask stops protecting it, but the owner is the only one who knows
+        // how far it swung. They send it with the abort; we force it, exactly
+        // as MTA does on notify-abort (CPacketHandler.cpp:1972-1974).
+        if (abortEnter) {
+            const auto index = SDK::DoorRatioIndexForTarget(door);
+
+            if (index != SDK::kInvalidDoor) {
+                // Read BEFORE ExitVehicle below, while the ped's enter task
+                // still names the vehicle it was climbing into.
+                const auto occupancy = SDK::QueryPedOccupancy(slot);
+
+                if (occupancy.vehicle) {
+                    SDK::ForceVehicleDoorRatio(occupancy.vehicle, index, doorRatio);
+                }
+            }
+        }
+
         SDK::ExitVehicle(slot, warp, door);
 
         if (!SDK::IsPedInVehicle(slot)) {

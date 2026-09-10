@@ -103,7 +103,7 @@ namespace VantaMP::Net {
                 return;
             }
 
-            server.Vehicles().HandleExit(*player, incoming.warp, incoming.door, incoming.abortEnter);
+            server.Vehicles().HandleExit(*player, incoming.warp, incoming.door, incoming.abortEnter, incoming.doorRatio);
         });
 
         net->RegisterRPC<Shared::RPC::VehicleDamageReport>([&server](const Shared::RPC::VehicleDamageReport &incoming, MafiaNet::Packet *packet) {

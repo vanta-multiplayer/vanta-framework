@@ -255,7 +255,7 @@ namespace VantaMP::Game {
         Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->debug("Player {} entered vehicle {} seat {} (asked {})", playerId, vehicleId, assigned, seat);
     }
 
-    void VehicleManager::HandleExit(Shared::PlayerEntity &player, bool warp, std::uint8_t door, bool abortEnter) {
+    void VehicleManager::HandleExit(Shared::PlayerEntity &player, bool warp, std::uint8_t door, bool abortEnter, std::uint8_t doorRatio) {
         const auto playerId  = static_cast<std::uint64_t>(player.GetNetworkID());
         const auto vehicleId = player.vehicleNetworkId;
         const auto seat      = player.vehicleSeat;
@@ -279,7 +279,7 @@ namespace VantaMP::Game {
         // Broadcast even when they were not seated. A jack walk never
         // took the seat; remotes still have to abort the enter task.
         Shared::RPC::PlayerExitVehicle exit;
-        exit.FromParameters(playerId, warp, door, abortEnter);
+        exit.FromParameters(playerId, warp, door, abortEnter, doorRatio);
         net->BroadcastRPC(exit, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
 
         if (!abortEnter && vehicleId != 0) {

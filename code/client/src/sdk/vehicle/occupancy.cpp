@@ -57,6 +57,23 @@ namespace VantaMP::SDK {
             return slot <= 0 ? Internal::LocalPed() : PedAt(slot);
         }
 
+        // WHICH ENTER TASK WE HAVE ALREADY ASKED TO UNWIND, PER PED.
+        //
+        // See AbortVehicleEnter. Indexed by slot; slot <= 0 is the local ped.
+        const void *&AbortLatchFor(int slot) {
+            static const void *latches[Game::kMaxPlayers] {};
+            static const void *discard = nullptr;
+
+            const int index = slot <= 0 ? 0 : slot;
+
+            if (index < 0 || index >= Game::kMaxPlayers) {
+                discard = nullptr;
+                return discard;
+            }
+
+            return latches[index];
+        }
+
         CTask *PrimaryTask(CPed *ped) {
             if (!ped || !ped->m_pIntelligence) {
                 return nullptr;
@@ -248,6 +265,26 @@ namespace VantaMP::SDK {
             }
 
             return static_cast<std::uint8_t>(door);
+        }
+
+        // GTA's door TARGET ids are not the CDoor array indices the damage
+        // and ratio code uses. Enter/leave tasks speak 0/8/9/10/11; the
+        // m_doors array is 2-5 for the four passenger doors. 10 is the same
+        // front-left as 0 - MTA maps both the same way.
+        std::uint8_t DoorRatioIndexFromTarget(std::uint8_t target) {
+            switch (target) {
+            case 0:
+            case 10:
+                return 2;
+            case 8:
+                return 3;
+            case 11:
+                return 4;
+            case 9:
+                return 5;
+            default:
+                return kInvalidDoor;
+            }
         }
 
         std::uint8_t DoorOfLeaveTask(CPed *ped) {
@@ -495,11 +532,25 @@ namespace VantaMP::SDK {
         auto *vehicle = OccupiedVehicleOf(ped);
 
         if (!vehicle) {
-            if (PedIsEntering(ped) || PedIsShuffling(ped)) {
-                ClearPrimaryTask(ped);
-                GiveDefaultPrimary(ped);
-            }
-
+            // NOT SEATED, SO THERE IS NOTHING TO GET OUT OF.
+            //
+            // This is the abort case: the ped is still walking to the door or
+            // part way through the climb. It used to ClearPrimaryTask +
+            // GiveDefaultPrimary, which is the same pair that froze the local
+            // player - slot 3 emptied, the replacement installed into slot 4,
+            // and the event handler flushed along the way
+            // (PedIntelligence.cpp:479-481, 511-524).
+            //
+            // It also caused the second symptom. Nulling the enter task skips
+            // its unwind, and the unwind is what plays the door SHUTTING. The
+            // remote copy was left with the door hanging open wherever the
+            // animation happened to be, because the animation never finished -
+            // it was deleted.
+            //
+            // Asking the task to unwind instead fixes both: the ped returns to
+            // foot through GTA's own path, and closes the door on the way, the
+            // same as it does on the owner's machine.
+            AbortVehicleEnter(slot);
             return;
         }
 
@@ -556,6 +607,28 @@ namespace VantaMP::SDK {
     // every abort site). CTaskComplexEnterCar's own abort path puts the ped
     // back on foot properly, restoring the walk it interrupted - which is
     // exactly the behaviour we want and were destroying by hand.
+    namespace {
+        // Ask a ped's enter/leave task to unwind. The one correct way to end
+        // one of these: it plays the step-back AND the door close, and hands
+        // the ped back to foot through GTA's own path. Nulling the slot skips
+        // all of that - see AbortVehicleEnter below for the full story.
+        void UnwindPrimaryTask(CPed *ped) {
+            if (!ped || !ped->m_pIntelligence) {
+                return;
+            }
+
+            auto *task = PrimaryTask(ped);
+
+            if (!task) {
+                return;
+            }
+
+            using MakeAbortableFn = bool(__thiscall *)(void *, CPed *, int, void *);
+
+            reinterpret_cast<MakeAbortableFn>(TaskVirtual(task, Internal::kTaskMakeAbortableSlot))(task, ped, ABORT_PRIORITY_IMMEDIATE, nullptr);
+        }
+    } // namespace
+
     void AbortVehicleEnter(int slot) {
         auto *ped = PedFor(slot);
 
@@ -564,14 +637,50 @@ namespace VantaMP::SDK {
         }
 
         if (!PedIsEntering(ped) && !PedIsShuffling(ped)) {
+            // The unwind finished. Drop the latch so a genuinely new entry -
+            // which may well land on the same freed address - can be aborted.
+            AbortLatchFor(slot) = nullptr;
             return;
         }
 
         auto *task = PrimaryTask(ped);
 
         if (!task) {
+            AbortLatchFor(slot) = nullptr;
             return;
         }
+
+        // ABORT EACH TASK ONCE. THIS IS WHY THE ABORT LOOKED GLITCHY.
+        //
+        // MakeAbortable does not remove the task - it asks it to unwind, and
+        // CTaskComplexEnterCar takes several frames to play the step-back and
+        // hand the ped to its replacement. For all of those frames the ped is
+        // still "entering", so every caller that polls that condition called
+        // straight back in.
+        //
+        // PulseOccupancyBlocks does exactly that: while gBlockEnterUntilRelease
+        // is set it re-aborts every frame for as long as occupancy.entering
+        // reads true. Each call restarts the unwind from the top, so the ped
+        // replayed the first frames of the exit animation over and over and
+        // never got far enough through it to finish - the stutter.
+        //
+        // MTA never re-issues an abort either. It fires once and then WATCHES
+        // for the task to disappear (CClientPed.cpp:10336-10341, "if we aren't
+        // working on entering the car... "), reacting to the result instead of
+        // pushing again.
+        //
+        // Keyed on the task pointer, not a bool: if the ped starts a genuinely
+        // new entry later, that is a different allocation and must be
+        // abortable. The latch is cleared as soon as the ped stops entering
+        // (see AbortLatchFor's callers), so an address reused by a later task
+        // cannot inherit it.
+        auto &latch = AbortLatchFor(slot);
+
+        if (latch == task) {
+            return;
+        }
+
+        latch = task;
 
         using MakeAbortableFn = bool(__thiscall *)(void *, CPed *, int, void *);
 
@@ -580,6 +689,8 @@ namespace VantaMP::SDK {
         // that the player pressed a key to get out NOW.
         reinterpret_cast<MakeAbortableFn>(TaskVirtual(task, Internal::kTaskMakeAbortableSlot))(task, ped, ABORT_PRIORITY_IMMEDIATE, nullptr);
     }
+
+
 
     void AbortVehicleExit(int slot, void *handle, std::uint8_t seat) {
         auto *ped     = PedFor(slot);
@@ -590,8 +701,32 @@ namespace VantaMP::SDK {
         }
 
         if (OccupiedVehicleOf(ped) == vehicle && vehicle) {
+            // SAME TWO BUGS AS THE ENTER ABORT, SAME TWO FIXES.
+            //
+            // ClearPrimaryTask nulled slot 3 outright, leaving the ped with
+            // no primary task while still in the seat. And PulseOccupancyBlocks
+            // calls this every frame for as long as the ped reads as leaving,
+            // so the leave task was being torn out repeatedly - the animation
+            // restarting each time.
+            //
+            // Ask it to unwind once and let it finish, exactly as MTA does.
             if (PedIsLeaving(ped)) {
-                ClearPrimaryTask(ped);
+                auto *task = PrimaryTask(ped);
+
+                if (task) {
+                    auto &latch = AbortLatchFor(slot);
+
+                    if (latch != task) {
+                        latch = task;
+
+                        using MakeAbortableFn = bool(__thiscall *)(void *, CPed *, int, void *);
+
+                        reinterpret_cast<MakeAbortableFn>(TaskVirtual(task, Internal::kTaskMakeAbortableSlot))(task, ped, ABORT_PRIORITY_IMMEDIATE, nullptr);
+                    }
+                }
+            }
+            else {
+                AbortLatchFor(slot) = nullptr;
             }
 
             return;
@@ -600,6 +735,88 @@ namespace VantaMP::SDK {
         if (vehicle) {
             EnterVehicle(slot, vehicle, seat, true);
         }
+    }
+
+    std::uint8_t DoorRatioIndexForTarget(std::uint8_t target) {
+        return DoorRatioIndexFromTarget(target);
+    }
+
+    // EVERY DOOR CURRENTLY BEING USED BY A PED, LOCAL OR REMOTE.
+    //
+    // MTA blocks door-ratio writes for exactly this case. SetDoorOpenRatio
+    // (CClientVehicle.cpp:709-747) refuses a non-forced write when the door
+    // belongs to an occupying ped, and AllowDoorRatioSetting is cleared the
+    // moment a ped is paired with a door (CClientVehicle.cpp:4380) and
+    // restored when they finish (4322-4324).
+    //
+    // The reason is the sound. CVehicle::OpenDoor plays the swing/slam even
+    // with playSound false, so writing a ratio to a door that the enter or
+    // leave animation is already driving re-triggers it - and since the wire
+    // ratio and the animation disagree for the whole climb, that is once per
+    // packet for as long as it lasts. That is the door spam.
+    //
+    // We already skipped the LOCAL player's door, via QueryPedOccupancy(0).
+    // A remote player entering or leaving was never masked at all, so their
+    // door was written over on every packet. This covers both.
+    std::uint8_t OccupiedDoorMask(void *handle) {
+        auto *vehicle = static_cast<CVehicle *>(handle);
+
+        if (!vehicle) {
+            return 0;
+        }
+
+        std::uint8_t mask = 0;
+
+        auto add = [vehicle, &mask](CPed *ped) {
+            if (!ped || !ped->m_pIntelligence) {
+                return;
+            }
+
+            const bool entering = PedIsEntering(ped) || PedIsShuffling(ped);
+            const bool leaving  = PedIsLeaving(ped);
+
+            if (!entering && !leaving) {
+                return;
+            }
+
+            // Only this vehicle's doors. A ped climbing into the car parked
+            // next to it must not freeze ours.
+            if (EnterTargetOf(ped) != vehicle && OccupiedVehicleOf(ped) != vehicle) {
+                return;
+            }
+
+            const std::uint8_t door = entering ? DoorOfEnterTask(ped) : DoorOfLeaveTask(ped);
+            const std::uint8_t index = DoorRatioIndexFromTarget(door);
+
+            if (index == kInvalidDoor) {
+                return;
+            }
+
+            mask |= static_cast<std::uint8_t>(1u << index);
+        };
+
+        add(Internal::LocalPed());
+
+        // The occupants first - cheap, and covers the common case of someone
+        // getting out of a car we can see.
+        if (vehicle->m_pDriver) {
+            add(vehicle->m_pDriver);
+        }
+
+        for (auto *passenger : vehicle->m_apPassengers) {
+            add(passenger);
+        }
+
+        // Then anyone walking TOWARD it, who is not an occupant yet.
+        for (int slot = 2; slot < Game::kMaxPlayers; ++slot) {
+            auto *ped = PedAt(slot);
+
+            if (ped && EnterTargetOf(ped) == vehicle) {
+                add(ped);
+            }
+        }
+
+        return mask;
     }
 
     void CancelEntriesInto(void *handle) {
@@ -624,8 +841,10 @@ namespace VantaMP::SDK {
                 return;
             }
 
-            ClearPrimaryTask(ped);
-            GiveDefaultPrimary(ped);
+            // Unwind, do not delete. Deleting the task skips the door
+            // close that is part of it - the remote copy was left with a
+            // door hanging open wherever the animation stopped.
+            UnwindPrimaryTask(ped);
         };
 
         cancel(Internal::LocalPed());
@@ -646,8 +865,7 @@ namespace VantaMP::SDK {
 
         if (!vehicle) {
             if (PedIsEntering(ped)) {
-                ClearPrimaryTask(ped);
-                GiveDefaultPrimary(ped);
+                UnwindPrimaryTask(ped);
             }
 
             return;

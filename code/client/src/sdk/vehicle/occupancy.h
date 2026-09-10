@@ -60,6 +60,16 @@ namespace VantaMP::SDK {
     [[nodiscard]] bool IsAnyoneEnteringVehicleAsDriver(const void *vehicle);
 
     // CTaskComplexEnterCar holds a raw CVehicle*. Cancel before delete.
+    // GTA's enter/leave door target id (0/8/9/10/11) -> the CDoor array index
+    // (2-5) that damage and ratio code uses. kInvalidDoor if it is not one of
+    // the four climb-through doors.
+    [[nodiscard]] std::uint8_t DoorRatioIndexForTarget(std::uint8_t target);
+
+    // Bit i set = CDoor i is being driven by a ped's enter/leave animation
+    // right now, so the network must not write a ratio to it. Covers the
+    // local player and every remote ped, which is the half that was missing.
+    [[nodiscard]] std::uint8_t OccupiedDoorMask(void *vehicle);
+
     void CancelEntriesInto(void *vehicle);
 
     // Pointer detach only. SetPedOut re-enters the car; a wreck, a
