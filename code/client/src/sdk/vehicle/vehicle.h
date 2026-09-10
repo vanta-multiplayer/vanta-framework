@@ -45,6 +45,7 @@ namespace VantaMP::SDK {
         std::int8_t  steer       = 0;
         std::uint8_t accelerator = 0;
         std::uint8_t brake       = 0;
+        bool         handbrake   = false;
 
         std::uint8_t  damageEngine     = 0;
         std::uint64_t doorsPacked      = 0;
@@ -62,6 +63,11 @@ namespace VantaMP::SDK {
     // here snaps a remote turn every packet.
     void ApplyVehicleMotion(void *vehicle, const VehicleState &state);
 
+    // Health / engine / siren without touching move or turn speed. Use this
+    // rather than a read-modify-write of ApplyVehicleMotion, which would
+    // re-impose a one-frame-old velocity - see the comment on the definition.
+    void ApplyVehicleStates(void *vehicle, float health, bool engineOn, bool sirenOn);
+
     // Per door/panel, the way MTA's damage sync does it. A full
     // SetupDamageAfterLoad on every packet respawns flying parts and
     // slams the ratios. spawnFlying is SetDoorDamage's visual; leave
@@ -75,9 +81,45 @@ namespace VantaMP::SDK {
 
     void ApplyVehicleControls(void *vehicle, std::int8_t steer, std::uint8_t accelerator, std::uint8_t brake);
 
+    // Steer angle and handbrake for a remote BIKE, straight from the owner.
+    // CBike::ProcessControlInputs (0x6BE310) - the only writer of
+    // m_fSteerAngle and the only thing that clears the constructor's default
+    // handbrake - does not run for a remote bike, so both are copied instead.
+    void ApplyBikeDriverOutputs(void *vehicle, std::int8_t steer, bool handbrake);
+
     void SetVehiclePose(void *vehicle, float x, float y, float z, const glm::quat &rotation);
 
+    // Moves a vehicle without touching its orientation. For a ridden remote
+    // bike, whose matrix basis belongs to GTA between packets.
+    void SetVehiclePosition(void *vehicle, float x, float y, float z);
+
+    // Corrects where a bike is on the map without touching Z or the basis -
+    // both of which are suspension output on a grounded bike.
+    void SetBikeHorizontalPosition(void *vehicle, float x, float y);
+
+    // Turns a bike to a network heading while preserving GTA's own pitch and
+    // roll. Yaw is navigation; pitch/roll are suspension and lean.
+    void SetBikeHeading(void *vehicle, const glm::quat &rotation);
+
+    // Eases a bike's ROLL toward the owner's, keeping GTA's pitch and
+    // heading. For the wheelie/airborne case, where GTA's own roll
+    // stabilisation does not run on a remote bike.
+    void BlendBikeRoll(void *vehicle, const glm::quat &rotation, float alpha);
+
+    [[nodiscard]] int   VehicleContactWheels(const void *vehicle);
+    [[nodiscard]] float VehicleSteerAngle(const void *vehicle);
+    [[nodiscard]] bool  VehicleHandbrakeOn(const void *vehicle);
+
+    // TEMPORARY BIKE DIAGNOSTIC. Remove with LogBikeBasis.
+    [[nodiscard]] bool IsBikeHandle(const void *vehicle);
+
     // CEntity::m_nAreaCode on the car. Same visibility rule as peds.
+    // Keeps GTA's simulation status in step with who is actually driving.
+    // STATUS_PLAYER is what gates ProcessControlInputs (steer, lean, and the
+    // clearing of the constructor's default handbrake) and the strong
+    // knock-off-bike resistance. Call it every frame for a remote vehicle.
+    void SyncVehicleSimulationStatus(void *vehicle);
+
     void SetVehicleInterior(void *vehicle, std::uint8_t interior);
     [[nodiscard]] std::uint8_t VehicleInterior(const void *vehicle);
 

@@ -11,7 +11,10 @@
 
 #include <MinHook.h>
 
+#include <logging/logger.h>
+
 #include <CAutomobile.h>
+#include <CBike.h>
 #include <CDamageManager.h>
 #include <CDoor.h>
 #include <CFireManager.h>
@@ -23,6 +26,7 @@
 #include <cmath>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -34,6 +38,7 @@ namespace VantaMP::SDK {
         using UpdateRwFrameFn  = void(__thiscall *)(void *);
         using SetOrientationFn = void(__thiscall *)(void *, float, float, float);
         using WorldRemoveFn    = void(__cdecl *)(void *);
+        using WorldAddFn       = void(__cdecl *)(void *);
 
         // CVehicle::OpenDoor. MTA's 3-arg wrapper hits this with the node
         // table below; writing CDoor::m_fAngle alone does not move the mesh.
@@ -331,6 +336,57 @@ namespace VantaMP::SDK {
             pool->Delete(vehicle);
         }
 
+        // TEMPORARY BIKE DIAGNOSTIC. Remove once remote bike roll is solved.
+        //
+        // Prints the physical basis around GTA's own processing so we can see
+        // WHERE the roll enters: if up.z is ~1 going into ProcessControl and
+        // ~0 coming out, GTA is rolling it locally; if it is already wrong on
+        // the way in, the state we applied (or the packet) is the problem.
+        void LogBikeBasis(const char *stage, CVehicle *vehicle) {
+            if (!vehicle || !vehicle->m_matrix) {
+                return;
+            }
+
+            // BIKES ONLY, AND ONLY ONES BEING RIDDEN BY SOMEBODY ELSE.
+            // A parked bike produced ~40 lines a second of identity matrices
+            // that buried the case under test.
+            if (vehicle->m_nVehicleSubClass != VEHICLE_BIKE && vehicle->m_nVehicleSubClass != VEHICLE_BMX) {
+                return;
+            }
+
+            if (!vehicle->m_pDriver || vehicle->m_pDriver == Internal::LocalPed()) {
+                return;
+            }
+
+            // PER-VEHICLE, PER-STAGE BUDGET. One shared timer let the first
+            // stage each window swallow the other three, which is why only
+            // "BEFORE VANTA POSE" ever appeared; keying on the vehicle too
+            // means two bikes cannot silence each other.
+            static std::unordered_map<std::uintptr_t, std::uint32_t> lastMs;
+
+            const auto key = reinterpret_cast<std::uintptr_t>(vehicle) ^ (std::hash<std::string_view>{}(stage) << 1);
+
+            const std::uint32_t now  = GetTickCount();
+            auto               &slot = lastMs[key];
+
+            if (now - slot < 500u) {
+                return;
+            }
+
+            slot = now;
+
+            const auto &m = *vehicle->m_matrix;
+
+            Framework::Logging::GetLogger("BikeDbg")
+                ->info("{:<24} veh{:#x} model{} cls{}/{} R({: .2f},{: .2f},{: .2f}) F({: .2f},{: .2f},{: .2f}) U({: .2f},{: .2f},{: .2f}) mv({: .2f},{: .2f},{: .2f}) ts({: .4f},{: .4f},{: .4f}) steer{: .2f} hb{} drv{:#x} drvIsPlayer{} pedType{} status{}",
+                       stage, reinterpret_cast<std::uintptr_t>(vehicle), vehicle->m_nModelIndex, static_cast<int>(vehicle->m_nVehicleClass), static_cast<int>(vehicle->m_nVehicleSubClass), m.right.x,
+                       m.right.y, m.right.z, m.up.x, m.up.y, m.up.z, m.at.x, m.at.y, m.at.z, vehicle->m_vecMoveSpeed.x, vehicle->m_vecMoveSpeed.y,
+                       vehicle->m_vecMoveSpeed.z, vehicle->m_vecTurnSpeed.x, vehicle->m_vecTurnSpeed.y, vehicle->m_vecTurnSpeed.z, vehicle->m_fSteerAngle,
+                       static_cast<int>(vehicle->bIsHandbrakeOn), reinterpret_cast<std::uintptr_t>(vehicle->m_pDriver),
+                       vehicle->m_pDriver ? static_cast<int>(vehicle->m_pDriver->m_nPedType == PED_TYPE_PLAYER1 || vehicle->m_pDriver->m_nPedType == PED_TYPE_PLAYER2) : -1,
+                       vehicle->m_pDriver ? static_cast<int>(vehicle->m_pDriver->m_nPedType) : -1, static_cast<int>(vehicle->m_nStatus));
+        }
+
         // CEntity::ProcessControl. plugin-sdk lists it after GetBoundRect;
         // the live vtable slot is 10, which is what old Vanta and
         // CoopAndreas hook for the same pad swap.
@@ -509,7 +565,32 @@ namespace VantaMP::SDK {
                 }
             }
 
+            LogBikeBasis("BEFORE GTA PROCESSCTRL", vehicle);
+
+            // TEMPORARY. Is the pad swap actually in effect for this call,
+            // and what will CPad::GetHandBrake / GetExitVehicle read out of
+            // it? Those are RightShoulder1 and ButtonTriangle in pad modes
+            // 0/1, and either one sets bIsHandbrakeOn for the whole frame.
+            if (vehicle && (vehicle->m_nVehicleSubClass == VEHICLE_BIKE || vehicle->m_nVehicleSubClass == VEHICLE_BMX)) {
+                static std::uint32_t lastPadMs = 0;
+
+                if (const std::uint32_t nowPad = GetTickCount(); nowPad - lastPadMs >= 500u) {
+                    lastPadMs = nowPad;
+
+                    const auto *cs = localPad ? reinterpret_cast<const CControllerState *>(localPad) : nullptr;
+
+                    Framework::Logging::GetLogger("BikeDbg")
+                        ->info("PAD AT PROCESSCTRL       slot{} swapped{} neutral{} stickX{} stickY{} cross{} square{} RS1(handbrake){} triangle(exit){} mode{} disableCtrl{}", slot,
+                               (localPad && remotePad) ? 1 : 0, neutralised ? 1 : 0, cs ? cs->LeftStickX : -999, cs ? cs->LeftStickY : -999,
+                               cs ? cs->ButtonCross : -999, cs ? cs->ButtonSquare : -999, cs ? cs->RightShoulder1 : -999, cs ? cs->ButtonTriangle : -999,
+                               localPad ? static_cast<int>(reinterpret_cast<const CPad *>(localPad)->Mode) : -999,
+                               localPad ? static_cast<int>(reinterpret_cast<const CPad *>(localPad)->DisablePlayerControls) : -999);
+                }
+            }
+
             found->second(vehicle);
+
+            LogBikeBasis("AFTER  GTA PROCESSCTRL", vehicle);
 
             if (localPad && remotePad) {
                 std::memcpy(remotePad, localPad, Game::kPadSize);
@@ -697,6 +778,7 @@ namespace VantaMP::SDK {
         state.steer       = SteerToWire(vehicle->m_fSteerAngle);
         state.accelerator = PedalToWire(vehicle->m_fGasPedal);
         state.brake       = PedalToWire(vehicle->m_fBreakPedal);
+        state.handbrake   = vehicle->bIsHandbrakeOn;
 
         if (auto *damage = DamageManagerOf(const_cast<CVehicle *>(vehicle))) {
             state.damageEngine = damage->m_nEngineStatus;
@@ -724,6 +806,30 @@ namespace VantaMP::SDK {
         vehicle->m_fHealth      = state.health;
         vehicle->bEngineOn      = state.engineOn;
         vehicle->bSirenOrAlarm  = state.sirenOn;
+    }
+
+    // STATES ONLY. NO MOMENTUM.
+    //
+    // ApplyVehicleMotion above always writes m_vecMoveSpeed and
+    // m_vecTurnSpeed, so the read-modify-write idiom - read the vehicle,
+    // change health, write it all back - silently re-imposes momentum too.
+    // The values read came from the TOP of the sync tick, before GTA ran its
+    // physics for this frame, so writing them back hands the vehicle a
+    // one-frame-old velocity every frame. A car absorbs that; a bike
+    // integrating two suspension points against it does not.
+    //
+    // Anything that only wants to change health / engine / siren must use
+    // this instead.
+    void ApplyVehicleStates(void *handle, float health, bool engineOn, bool sirenOn) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle) {
+            return;
+        }
+
+        vehicle->m_fHealth     = health;
+        vehicle->bEngineOn     = engineOn;
+        vehicle->bSirenOrAlarm = sirenOn;
     }
 
     void ApplyVehicleDamage(void *handle, std::uint8_t engine, std::uint64_t doorsPacked, std::uint32_t wheelsPacked, std::uint32_t panels, std::uint32_t lights,
@@ -824,6 +930,202 @@ namespace VantaMP::SDK {
         vehicle->m_fBreakPedal = static_cast<float>(brake) * kPedalScale;
     }
 
+    // A REMOTE BIKE NEVER RUNS ProcessControlInputs, SO ITS OUTPUTS MUST BE
+    // COPIED FROM THE WIRE.
+    //
+    // For a car the steer angle really is an output: GTA rebuilds it from
+    // GetPad(0) every frame, which is why writing it used to be pointless.
+    // A ridden remote BIKE does not get that far. Runtime trace, pad clearly
+    // live and the owner clearly steering:
+    //
+    //   PAD AT PROCESSCTRL  stickX128 ... RS1(handbrake)0 triangle(exit)0
+    //   AFTER GTA PROCESSCTRL  steer 0.00  hb1
+    //   WIRE PACKET            steer60
+    //
+    // m_fSteerAngle is assigned in exactly one place - inside
+    // ProcessControlInputs (CAutomobile.cpp:2037,
+    // `m_fSteerAngle = SteeringLock * signedSquare(m_fRawSteerAngle)`), and
+    // CBike's copy of that function is 0x6BE310. It plainly is not running
+    // for this vehicle: the stick is at full lock and the angle stays 0.00.
+    // The same function is the only thing that clears bIsHandbrakeOn, which
+    // CVehicle's constructor sets true (Vehicle.cpp:253) - which is why the
+    // handbrake never lets go either. One missing call, both symptoms.
+    //
+    // So the two values it would have produced are taken from the owner,
+    // who computed them in the only place GTA computes them - their own
+    // ProcessControlInputs - and already sends both. Steer drives the front
+    // fork and wheel visuals; the handbrake flag gates braking behaviour.
+    // Pedals are left to the pad, which does reach the engine.
+    void ApplyBikeDriverOutputs(void *handle, std::int8_t steer, bool handbrake) {
+        auto *vehicle = AsVehicle(handle);
+
+        // ONLY WHILE SOMEBODY IS ACTUALLY RIDING IT.
+        //
+        // A driverless bike is GTA's business: it wants the handbrake ON (the
+        // parked branch of ProcessControl sets it, and the constructor
+        // defaults it true), and clearing it from here just fought the game
+        // every frame - hb went 1 -> 0 -> 1 sixty times a second on a bike
+        // nobody was sitting on, which is churn we do not want and had no
+        // authoritative brake state behind it anyway.
+        if (!vehicle || IsLocalPlayerDriving(vehicle) || !IsBikeHandle(vehicle) || !vehicle->m_pDriver) {
+            return;
+        }
+
+        vehicle->m_fSteerAngle = -static_cast<float>(steer) * kSteerScale;
+
+        // Straight from the owner's own bIsHandbrakeOn. It was WRONG to
+        // derive this from `brake`: that field is m_fBreakPedal, the foot
+        // brake, so ordinary braking would have engaged the handbrake on the
+        // remote copy - a bug this fix would have introduced.
+        vehicle->bIsHandbrakeOn = handbrake;
+
+    }
+
+    // POSITION ONLY, LEAVING THE MATRIX BASIS ALONE.
+    //
+    // For a ridden remote bike the orientation is GTA's between packets, so
+    // the full pose write would re-stamp the identical basis and drag a
+    // CWorld::Remove/Add plus an RW frame rebuild through every frame for no
+    // change at all. That churn is visible as jitter. CPlaceable::SetPosn
+    // moves the entity without touching right/forward/up, and the sector
+    // re-registration still happens because the position is what changed.
+    void SetVehiclePosition(void *handle, float x, float y, float z) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !vehicle->m_matrix) {
+            return;
+        }
+
+        reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(vehicle);
+        reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(vehicle, x, y, z);
+        reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
+        reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
+        reinterpret_cast<WorldAddFn>(gPatterns.CWorld__Add)(vehicle);
+    }
+
+    // HORIZONTAL POSITION ONLY, LEAVING Z AND THE WHOLE BASIS ALONE.
+    //
+    // For a grounded ridden bike, Z and the pitch/roll of the basis are
+    // suspension output - GTA resolved them against the road this frame and
+    // they are more correct than a ~100ms-old snapshot from another machine.
+    // This corrects where the bike is on the map without touching how it is
+    // sitting on its wheels.
+    void SetBikeHorizontalPosition(void *handle, float x, float y) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !vehicle->m_matrix) {
+            return;
+        }
+
+        const float z = vehicle->m_matrix->pos.z;
+
+        reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(vehicle);
+        reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(vehicle, x, y, z);
+        reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
+        reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
+        reinterpret_cast<WorldAddFn>(gPatterns.CWorld__Add)(vehicle);
+    }
+
+    // HEADING ONLY, PRESERVING GTA'S PITCH AND ROLL.
+    //
+    // Yaw is navigation - where the rider pointed the bike - and is
+    // legitimately network-authoritative. Pitch and roll are suspension and
+    // lean, which this machine's physics resolved for itself. Rebuilding the
+    // basis around the current Up vector keeps those intact while turning the
+    // bike to the heading the owner reports.
+    void SetBikeHeading(void *handle, const glm::quat &rotation) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !vehicle->m_matrix) {
+            return;
+        }
+
+        auto &matrix = *vehicle->m_matrix;
+
+        const glm::vec3 up(matrix.at.x, matrix.at.y, matrix.at.z);
+        const glm::vec3 wantedForward = glm::mat3_cast(glm::normalize(rotation))[1];
+
+        // Project the wanted heading onto the plane GTA's own Up defines, so
+        // only the yaw component of the packet is taken.
+        glm::vec3 forward = wantedForward - up * glm::dot(wantedForward, up);
+
+        if (glm::length(forward) < 1e-4f) {
+            return;
+        }
+
+        forward = glm::normalize(forward);
+
+        const glm::vec3 right = glm::normalize(glm::cross(forward, up));
+
+        matrix.right = CVector(right.x, right.y, right.z);
+        matrix.up    = CVector(forward.x, forward.y, forward.z);
+        // matrix.at (GTA's up) deliberately untouched.
+
+        reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
+        reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
+    }
+
+    // ROLL, EASED TOWARD THE OWNER'S, KEEPING GTA'S PITCH AND HEADING.
+    //
+    // For a bike ON BOTH WHEELS, roll is suspension output and the network
+    // must not touch it - that was the whole finding behind the current
+    // policy. But during a WHEELIE the front wheel leaves the ground and
+    // GTA's own roll stabilisation (m_fWheelieStabMult, tBikeHandlingData)
+    // lives inside CBike::ProcessControl - which never runs for a remote
+    // bike. With nothing stabilising it and nothing correcting it, the
+    // remote copy is free to roll away and lie over sideways while the owner
+    // is balanced on the rear wheel.
+    //
+    // So when contact is reduced, roll becomes network-authoritative again,
+    // eased rather than snapped so it does not fight what little suspension
+    // response remains. Pitch stays GTA's - that is the wheelie angle
+    // itself, and it is legitimately different on each machine.
+    void BlendBikeRoll(void *handle, const glm::quat &rotation, float alpha) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !vehicle->m_matrix) {
+            return;
+        }
+
+        auto &matrix = *vehicle->m_matrix;
+
+        const glm::vec3 gtaForward(matrix.up.x, matrix.up.y, matrix.up.z);
+        const glm::vec3 gtaUp(matrix.at.x, matrix.at.y, matrix.at.z);
+
+        const glm::mat3 wire      = glm::mat3_cast(glm::normalize(rotation));
+        const glm::vec3 wantedUp  = wire[2];
+
+        // Only the component of the owner's Up that is perpendicular to our
+        // own forward axis is roll; the rest is pitch, which stays ours.
+        glm::vec3 targetUp = wantedUp - gtaForward * glm::dot(wantedUp, gtaForward);
+
+        if (glm::length(targetUp) < 1e-4f) {
+            return;
+        }
+
+        targetUp = glm::normalize(targetUp);
+
+        glm::vec3 blended = glm::normalize(glm::mix(gtaUp, targetUp, glm::clamp(alpha, 0.0f, 1.0f)));
+
+        // Rebuild an orthonormal basis around our forward and the blended up.
+        glm::vec3 right = glm::cross(gtaForward, blended);
+
+        if (glm::length(right) < 1e-4f) {
+            return;
+        }
+
+        right = glm::normalize(right);
+
+        const glm::vec3 up = glm::normalize(glm::cross(right, gtaForward));
+
+        matrix.right = CVector(right.x, right.y, right.z);
+        matrix.up    = CVector(gtaForward.x, gtaForward.y, gtaForward.z);
+        matrix.at    = CVector(up.x, up.y, up.z);
+
+        reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
+        reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
+    }
+
     void SetVehiclePose(void *handle, float x, float y, float z, const glm::quat &rotation) {
         auto *vehicle = AsVehicle(handle);
 
@@ -831,7 +1133,62 @@ namespace VantaMP::SDK {
             return;
         }
 
+        // TEMPORARY: WHO IS MOVING A RIDDEN REMOTE BIKE, AND HOW OFTEN?
+        //
+        // The bike still bounces, so something is writing its transform on
+        // frames the bike handler deliberately skips. This counts every write
+        // that reaches a bike GTA is simulating with a rider, so the rate
+        // itself is the evidence: ~10/s is the packet edge working as
+        // intended, ~60/s means another path is still driving the chassis.
+        if (IsBikeHandle(vehicle) && vehicle->m_pDriver && vehicle->m_pDriver != Internal::LocalPed()) {
+            static std::uint32_t windowMs = 0;
+            static int           writes   = 0;
+
+            const std::uint32_t now = GetTickCount();
+
+            ++writes;
+
+            if (windowMs == 0) {
+                windowMs = now;
+            }
+            else if (now - windowMs >= 1000u) {
+                Framework::Logging::GetLogger("BikeDbg")->info("POSE WRITES ON RIDDEN BIKE: {}/s", writes);
+
+                writes   = 0;
+                windowMs = now;
+            }
+        }
+
         if (auto *matrix = MatrixOf(vehicle)) {
+            LogBikeBasis("BEFORE VANTA POSE", vehicle);
+
+            // OUT OF THE WORLD BEFORE THE WRITE, BACK IN AFTER.
+            //
+            // GTA indexes every entity into the world SECTOR LISTS by the
+            // position it had when it was added, and CPhysical walks those
+            // lists to decide what a moving entity can collide with. Writing
+            // a new matrix in place moves the bike but leaves it registered
+            // in the sector it used to be in, so its collision is tested
+            // against the wrong neighbourhood - including, crucially, the
+            // wrong piece of road surface.
+            //
+            // That is why this hits a BIKE hardest. A car rests on four
+            // suspension lines and CAutomobile re-derives them every frame;
+            // it can survive a frame of bad neighbours. A bike is balanced on
+            // two contact points, and CBike has no roll stability of its own
+            // beyond those points - lose the ground under them and the only
+            // thing left acting on it is gravity plus whatever turn speed it
+            // carries, so it falls over and keeps falling, which is exactly
+            // the "lying on its side while the owner rides upright" picture.
+            //
+            // MTA does this in CEntitySA::SetMatrix and never writes a matrix
+            // without it: CWorld::Remove -> write -> UpdateRwMatrix ->
+            // UpdateRwFrame -> CWorld::Add. CWorld::Add re-registers the
+            // entity in the sector for its NEW position and puts a non-static
+            // physical back on the moving list; CWorld::Remove takes it off
+            // both. We already resolve both patterns.
+            reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(vehicle);
+
             ApplyQuatToMatrix(*matrix, rotation);
 
             reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(vehicle, x, y, z);
@@ -855,10 +1212,78 @@ namespace VantaMP::SDK {
             // crooked and drifts as the error accumulates.
             reinterpret_cast<UpdateRwMatrixFn>(gPatterns.CEntity__UpdateRwMatrix)(vehicle);
             reinterpret_cast<UpdateRwFrameFn>(gPatterns.CEntity__UpdateRwFrame)(vehicle);
+
+            // Back into the sector lists for where it now is. CWorld::Add
+            // calls UpdateRwMatrix/UpdateRwFrame itself, but they are left
+            // above so the ordering is explicit and matches MTA.
+            reinterpret_cast<WorldAddFn>(gPatterns.CWorld__Add)(vehicle);
+
+            LogBikeBasis("AFTER  VANTA POSE", vehicle);
             return;
         }
 
         reinterpret_cast<SetPosnFn>(gPatterns.CPlaceable__SetPosn)(vehicle, x, y, z);
+    }
+
+    // GTA DECIDES HOW MUCH OF A VEHICLE TO SIMULATE FROM ITS STATUS, AND WE
+    // NEVER SET IT.
+    //
+    // The bike-specific consequences, from gta-reversed:
+    //
+    //  - CQuadBike::ProcessAI (0x6CE460, reversed) opens with
+    //      if (GetStatus() != STATUS_PLAYER)
+    //          return CAutomobile::ProcessAI(...);
+    //    so a bike that is not STATUS_PLAYER never reaches the
+    //    `m_pDriver && m_pDriver->IsPlayer()` branch that calls
+    //    ProcessControlInputs - which is the ONLY thing that clears
+    //    vehicleFlags.bIsHandbrakeOn (CVehicle's constructor sets it true,
+    //    Vehicle.cpp:253) and the only thing that applies steer and lean.
+    //    CBike::ProcessControl (0x6B9250) is not reversed, but it is the same
+    //    shape and consumes the same fields.
+    //
+    //  - CBike::DamageKnockOffRider (Bike.cpp:181) takes a different, much
+    //    weaker resistance path when status is not STATUS_PLAYER, so a remote
+    //    rider comes off the bike far too easily.
+    //
+    //  - CPhysical::ProcessCollision returns early for STATUS_SIMPLE after
+    //    SetIsInSafePosition(true), and CWorld::Process only calls
+    //    ProcessCollision when !GetIsInSafePosition() - so a STATUS_SIMPLE
+    //    vehicle skips collision, suspension and shift entirely.
+    //
+    // A car mostly survives the wrong status: its roll is pinned by four
+    // suspension points and CAutomobile rebuilds them every frame. A bike
+    // balances on two contact points and has no roll stability beyond them.
+    //
+    // GTA's own rule, from CAutomobile::BreakTowLink (Automobile.cpp:3369):
+    // a driver that IsPlayer() means STATUS_PLAYER, any other driver means
+    // STATUS_PHYSICS, and no driver means STATUS_ABANDONED. MTA manages
+    // status explicitly for the same reason (CClientVehicle/CVehicleSA);
+    // we were leaving whatever CreateCarForScript happened to produce.
+    void SyncVehicleSimulationStatus(void *handle) {
+        auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle) {
+            return;
+        }
+
+        // A wreck has its own status and must keep it, or the game stops
+        // treating it as a wreck.
+        if (vehicle->m_nStatus == STATUS_WRECKED) {
+            return;
+        }
+
+        const auto *driver = vehicle->m_pDriver;
+
+        const bool driverIsPlayer =
+            driver && (driver->m_nPedType == PED_TYPE_PLAYER1 || driver->m_nPedType == PED_TYPE_PLAYER2);
+
+        const eEntityStatus wanted = driverIsPlayer  ? STATUS_PLAYER
+                                     : driver        ? STATUS_PHYSICS
+                                                     : STATUS_ABANDONED;
+
+        if (vehicle->m_nStatus != wanted) {
+            vehicle->m_nStatus = wanted;
+        }
     }
 
     void SetVehicleInterior(void *handle, std::uint8_t interior) {
@@ -1065,6 +1490,38 @@ namespace VantaMP::SDK {
         const auto *vehicle = AsVehicle(handle);
 
         return vehicle && vehicle->bOnSolidSurface;
+    }
+
+    // CBike::m_nNumContactWheels. How many of the two wheels GTA currently
+    // believes are touching ground - the suspension state a per-frame
+    // position write disturbs.
+    int VehicleContactWheels(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        if (!vehicle || !IsBikeHandle(vehicle)) {
+            return -1;
+        }
+
+        return static_cast<int>(static_cast<const CBike *>(vehicle)->m_nNumContactWheels);
+    }
+
+    float VehicleSteerAngle(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        return vehicle ? vehicle->m_fSteerAngle : 0.0f;
+    }
+
+    bool VehicleHandbrakeOn(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        return vehicle && vehicle->bIsHandbrakeOn;
+    }
+
+    // TEMPORARY BIKE DIAGNOSTIC. Remove with LogBikeBasis.
+    bool IsBikeHandle(const void *handle) {
+        const auto *vehicle = AsVehicle(handle);
+
+        return vehicle && (vehicle->m_nVehicleSubClass == VEHICLE_BIKE || vehicle->m_nVehicleSubClass == VEHICLE_BMX);
     }
 
     bool IsLocalPlayerDriving(const void *handle) {

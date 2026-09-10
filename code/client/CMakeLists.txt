@@ -66,6 +66,10 @@ set(VANTAMP_CLIENT_FILES
     src/game/sync/shots.cpp
     src/game/sync/death.cpp
     src/game/sync/vehicle_sync.cpp
+    src/game/sync/vehicle/handler.cpp
+    src/game/sync/vehicle/common.cpp
+    src/game/sync/vehicle/automobile_sync.cpp
+    src/game/sync/vehicle/bike_sync.cpp
     src/game/sync/world_sync.cpp
 
     # Usermode EOS Connect (Steam-free) + optional EAC.

@@ -928,10 +928,7 @@ namespace VantaMP::Game {
                     SDK::WreckVehicle(handle, true);
                 }
 
-                auto motion = SDK::ReadVehicle(handle);
-
-                motion.health = vehicle->health;
-                SDK::ApplyVehicleMotion(handle, motion);
+                SDK::ApplyVehicleStates(handle, vehicle->health, vehicle->engineOn, vehicle->sirenOn);
             }
         };
     }

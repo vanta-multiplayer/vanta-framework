@@ -1,6 +1,7 @@
 #include "game/sync/vehicle_sync.h"
 
 #include "game/sync/player_sync.h"
+#include "game/sync/vehicle/handler.h"
 #include "sdk/game.h"
 #include "sdk/input/input.h"
 #include "sdk/world/streaming.h"
@@ -52,6 +53,7 @@ namespace VantaMP::Game {
             std::int8_t  steer       = 0;
             std::uint8_t accelerator = 0;
             std::uint8_t brake       = 0;
+            bool         handbrake   = false;
 
             std::uint8_t  lastEngine  = 0;
             std::uint64_t lastDoors   = 0;
@@ -390,6 +392,7 @@ namespace VantaMP::Game {
             entity->steer           = state.steer;
             entity->accelerator     = state.accelerator;
             entity->brake           = state.brake;
+            entity->handbrake       = state.handbrake;
 
             if (state.hasDamage) {
                 entity->damageEngine     = state.damageEngine;
@@ -578,9 +581,9 @@ namespace VantaMP::Game {
             if (entity->health + 0.5f < local.health) {
                 remote.health = entity->health;
 
-                auto motion   = local;
-                motion.health = entity->health;
-                SDK::ApplyVehicleMotion(remote.handle, motion);
+                // States only - see SDK::ApplyVehicleStates. A
+                // read-modify-write here would re-impose stale momentum.
+                SDK::ApplyVehicleStates(remote.handle, entity->health, local.engineOn, local.sirenOn);
             }
         }
 
@@ -758,7 +761,6 @@ namespace VantaMP::Game {
             remote.haveVariants = true;
 
             SDK::SetVehiclePose(remote.handle, entity->position.x, entity->position.y, entity->position.z, entity->rotation);
-            SDK::ApplyVehicleMotion(remote.handle, SDK::ReadVehicle(remote.handle));
 
             auto state = SDK::ReadVehicle(remote.handle);
 
@@ -785,6 +787,7 @@ namespace VantaMP::Game {
             }
 
             SDK::KeepScriptVehicle(remote.handle);
+            SDK::SyncVehicleSimulationStatus(remote.handle);
             SDK::SetVehicleInterior(remote.handle, entity->interior);
             ApplyCosmetics(entity, remote);
             ApplyScriptState(entity, remote);
@@ -806,45 +809,23 @@ namespace VantaMP::Game {
             remote.heldRatios       = entity->doorRatiosPacked;
         }
 
-        // MOMENTUM IS A PER-PACKET FACT, NOT A PER-FRAME ONE.
+        // COMMON BOOKKEEPING, THEN DISPATCH.
         //
-        // MTA writes SetMoveSpeed / SetTurnSpeed once, where the puresync
-        // packet is read (CNetAPI ReadVehiclePuresync, inside `uiSeat == 0`),
-        // and then leaves the vehicle to GTA until the next packet.
-        //
-        // Writing turn speed every frame instead is what over-leans a bike.
-        // CBike::ProcessControl derives lean from turn speed and then damps
-        // it as part of integrating a frame; re-injecting the same 100ms-old
-        // turn speed sixty times a second cancels that damping, so the roll
-        // the owner reached once is re-driven every frame and the remote bike
-        // ends up dragging a knee. A car hides it because its roll is pinned
-        // by four wheels on the ground - a bike's is free.
-        //
-        // Health / engine / siren stay per-frame: those are states, not
-        // momentum, and nothing in GTA integrates them away.
-        void ApplyStoredMotion(void *handle, const RemoteVehicle &remote, bool withMomentum) {
-            auto motion = SDK::ReadVehicle(handle);
-
-            if (withMomentum) {
-                motion.vx  = remote.velocity.x;
-                motion.vy  = remote.velocity.y;
-                motion.vz  = remote.velocity.z;
-                motion.avx = remote.angular.x;
-                motion.avy = remote.angular.y;
-                motion.avz = remote.angular.z;
-            }
-
-            motion.health   = remote.health;
-            motion.engineOn = remote.engineOn;
-            motion.sirenOn  = remote.sirenOn;
-
-            SDK::ApplyVehicleMotion(handle, motion);
-        }
-
+        // Everything here applies to every vehicle regardless of its GTA
+        // class: cosmetics, damage, doors, wreck state, ownership. The moment
+        // physical state is involved - pose, momentum, controls - the frame
+        // goes to the handler for that vehicle's type. See
+        // game/sync/vehicle/handler.h.
         void ApplyRemoteVehicle(Shared::VehicleEntity *entity, RemoteVehicle &remote) {
             if (!remote.handle || SDK::IsLocalPlayerDriving(remote.handle)) {
                 return;
             }
+
+            // BEFORE GTA PROCESSES IT THIS FRAME. Status decides whether the
+            // game runs a vehicle's player-driving path at all - and for a
+            // bike that path is what applies steer and lean and clears the
+            // handbrake CVehicle's constructor leaves on.
+            SDK::SyncVehicleSimulationStatus(remote.handle);
 
             SDK::SetVehicleInterior(remote.handle, entity->interior);
             ApplyCosmetics(entity, remote);
@@ -860,6 +841,7 @@ namespace VantaMP::Game {
             remote.steer       = entity->steer;
             remote.accelerator = entity->accelerator;
             remote.brake       = entity->brake;
+            remote.handbrake   = entity->handbrake;
 
             const bool partsChanged = !remote.haveDamage || remote.lastEngine != entity->damageEngine || remote.lastDoors != entity->doorsPacked ||
                 remote.lastWheels != entity->wheelsPacked || remote.lastPanels != entity->panels || remote.lastLights != entity->lights;
@@ -876,10 +858,10 @@ namespace VantaMP::Game {
             }
 
             if (remote.wrecked) {
-                // GTA deletes a wreck after 60 seconds and will stream
-                // the hull out if BlowUpCar dropped the mission lock.
-                // Leave it where the boom put it - interpolating a
-                // wreck is how it falls through the map.
+                // GTA deletes a wreck after 60 seconds and will stream the
+                // hull out if BlowUpCar dropped the mission lock. Leave it
+                // where the boom put it - interpolating a wreck is how it
+                // falls through the map.
                 SDK::KeepScriptVehicle(remote.handle);
                 return;
             }
@@ -890,63 +872,52 @@ namespace VantaMP::Game {
                 BeginDoorInterp(remote, remote.handle, entity->doorRatiosPacked);
             }
 
-            if (changed) {
-                const auto current = SDK::ReadVehicle(remote.handle);
+            // The per-frame view a handler works from. Cross-frame state
+            // lives in RemoteVehicle and is copied back out below.
+            VehicleSync::Frame frame;
 
+            frame.handle       = remote.handle;
+            frame.entity       = entity;
+            frame.interpolator = &remote.interpolator;
+            frame.aimedPosition = remote.aimedPosition;
+            frame.aimedRotation = remote.aimedRotation;
+            frame.aimed         = remote.aimed;
+            frame.speed         = remote.speed;
+            frame.velocity      = remote.velocity;
+            frame.angular       = remote.angular;
+            frame.packetArrived = changed;
+            frame.packetMs      = remote.whenMs;
+            frame.hasDriver     = SDK::VehicleHasDriver(remote.handle);
+
+            const auto &handler = VehicleSync::HandlerFor(remote.handle);
+
+            if (changed) {
                 remote.velocity = entity->velocity;
                 remote.angular  = entity->angularVelocity;
 
-                // MTA SetTargetPosition: error = target - current, plus a
-                // few milliseconds of velocity (base 5ms), then scale the
-                // error by lerp(0.25, 1, unlerp(100, delay, 400)). A 100ms
-                // tick therefore applies a quarter of the gap - we had the
-                // range at 0-100 so the whole gap landed in one packet, and
-                // we aimed a full send-interval ahead, which is the stutter.
-                constexpr float kFramesPerSecond = 50.0f;
-                constexpr float kExtrapolateMs   = 5.0f;
-                const glm::vec3 target           = entity->position + entity->velocity * (kFramesPerSecond * kExtrapolateMs / 1000.0f);
+                frame.velocity = remote.velocity;
+                frame.angular  = remote.angular;
 
-                remote.interpolator.GetPosition()->SetErrorContributionDelayRange(100.0f, 400.0f);
-                remote.interpolator.GetRotation()->SetErrorContributionDelayRange(100.0f, 400.0f);
-                remote.interpolator.GetPosition()->SetCompensationFactor(1.5f);
-                remote.interpolator.GetPosition()->SetTargetValue(glm::vec3(current.x, current.y, current.z), target, static_cast<float>(Shared::SyncRate::kVehicleMs));
-                remote.interpolator.GetRotation()->SetTargetValue(current.rotation, entity->rotation, static_cast<float>(Shared::SyncRate::kVehicleMs));
+                if (handler.OnSnapshot) {
+                    handler.OnSnapshot(frame);
+                }
 
                 remote.aimedPosition = entity->position;
                 remote.aimedRotation = entity->rotation;
                 remote.speed         = glm::length(entity->velocity);
                 remote.whenMs        = now;
                 remote.aimed         = true;
+
+                frame.aimedPosition = remote.aimedPosition;
+                frame.aimedRotation = remote.aimedRotation;
+                frame.aimed         = remote.aimed;
+                frame.speed         = remote.speed;
+                frame.packetMs      = remote.whenMs;
             }
 
-            const auto here = SDK::ReadVehicle(remote.handle);
-            const glm::vec3 currentPos(here.x, here.y, here.z);
-            const float     threshold = Shared::Interpolation::VehicleWarpThresholdFor(remote.speed, Shared::SyncRate::kVehicleMs);
-
-            if (remote.aimed && glm::distance(currentPos, remote.aimedPosition) > threshold) {
-                SDK::SetVehiclePose(remote.handle, remote.aimedPosition.x, remote.aimedPosition.y, remote.aimedPosition.z, remote.aimedRotation);
-                remote.interpolator.GetPosition()->SetTargetValue(remote.aimedPosition, remote.aimedPosition, static_cast<float>(Shared::SyncRate::kVehicleMs));
-                remote.interpolator.GetRotation()->SetTargetValue(remote.aimedRotation, remote.aimedRotation, static_cast<float>(Shared::SyncRate::kVehicleMs));
+            if (handler.Apply) {
+                handler.Apply(frame);
             }
-            else {
-                const auto nextPos = remote.interpolator.GetPosition()->UpdateTargetValue(currentPos);
-                const auto nextRot = remote.interpolator.GetRotation()->UpdateTargetValue(here.rotation);
-
-                SDK::SetVehiclePose(remote.handle, nextPos.x, nextPos.y, nextPos.z, nextRot);
-            }
-
-            // AFTER THE POSE. SetPosn and collision from the correction
-            // can kill the speed the game just integrated, so momentum goes
-            // back on the frame a packet arrived - but only on that frame.
-            // See ApplyStoredMotion: re-writing turn speed every frame is
-            // what over-leaned a synchronised bike.
-            ApplyStoredMotion(remote.handle, remote, changed);
-
-            // STEER IS AN OUTPUT. ProcessControl rebuilds m_fSteerAngle
-            // from the swapped pad. Writing the last packet's quantized
-            // angle over that every frame is the cabin snap when they
-            // turn - GTA had already ramped the wheels and this put
-            // them back. Pedals come from the same pad.
 
             PulseRemoteDoorRatios(remote.handle, remote);
         }
@@ -1109,6 +1080,10 @@ namespace VantaMP::Game {
 
         if (SDK::EnterVehicle(slot, handle, seat, true)) {
             ForgetLateJoin(slot);
+
+            // The seat is what makes this a driven vehicle, so the status
+            // that follows from it is settled here rather than a frame later.
+            SDK::SyncVehicleSimulationStatus(handle);
         }
     }
 
@@ -1243,9 +1218,7 @@ namespace VantaMP::Game {
         if (health + 0.5f < local.health) {
             remote.health = health;
 
-            auto motion   = local;
-            motion.health = health;
-            SDK::ApplyVehicleMotion(remote.handle, motion);
+            SDK::ApplyVehicleStates(remote.handle, health, local.engineOn, local.sirenOn);
         }
 
         if (!remote.wrecked && health <= SDK::kWreckHealth) {

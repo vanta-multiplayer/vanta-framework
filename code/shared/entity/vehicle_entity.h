@@ -91,6 +91,13 @@ namespace VantaMP::Shared {
         std::uint8_t accelerator = 0;
         std::uint8_t brake       = 0;
 
+        // THE HANDBRAKE IS ITS OWN FACT, NOT `brake > 0`.
+        // `brake` is m_fBreakPedal, the foot brake. GTA's
+        // vehicleFlags.bIsHandbrakeOn is a separate flag set from a separate
+        // button, and a remote bike cannot derive it because its
+        // ProcessControlInputs never runs. So the owner sends it.
+        bool handbrake = false;
+
         // Packed the way GTA stores them. A late joiner must see a wreck,
         // not wait for a change that already happened.
         std::uint8_t  damageEngine     = 0;

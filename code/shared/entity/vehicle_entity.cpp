@@ -67,6 +67,11 @@ namespace VantaMP::Shared {
         fields.Field(nitroCount);
         fields.Field(variant);
         fields.Field(variant2);
+
+        // APPENDED. GTA's handbrake flag, which a remote bike cannot derive
+        // for itself because its ProcessControlInputs never runs. Must stay
+        // last: order is the wire format.
+        fields.Field(handbrake);
     }
 
     void VehicleEntity::OnStateForced() {
