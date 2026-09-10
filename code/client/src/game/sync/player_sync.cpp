@@ -528,7 +528,14 @@ namespace VantaMP::Game {
                     // BEING JACKED. GTA is dragging them out through the
                     // jacker's EnterCarAsDriver. LeaveCar here fights that
                     // and leaves them stuck on the back of the car.
-                    if (!SDK::IsAnyoneEnteringVehicleAsDriver(occupancy.vehicle)) {
+                    //
+                    // ALSO: not while they are being thrown off. The exit RPC
+                    // already raised CEventKnockOffBike, which ejects them
+                    // over the next few frames. Calling ExitVehicle here as
+                    // well is a SECOND ejection racing the first - it builds a
+                    // LeaveCar over a ped mid-tumble, which is why the fall
+                    // looked right once and wrong afterwards.
+                    if (!SDK::IsAnyoneEnteringVehicleAsDriver(occupancy.vehicle) && !SDK::PedIsFallingOffBike(slot)) {
                         SDK::ExitVehicle(slot, false);
                         SDK::SetRemotePedCollision(slot, true);
                     }
@@ -549,6 +556,7 @@ namespace VantaMP::Game {
                 if (ownerInVehicle || occupancy.entering || occupancy.leaving) {
                     return;
                 }
+
             }
             else {
                 SDK::SetRemotePedCollision(slot, true);
@@ -818,6 +826,23 @@ namespace VantaMP::Game {
         }
 
         if (SDK::IsPedOccupyingVehicle(slot)) {
+            return;
+        }
+
+        // MID-FALL: GTA OWNS THIS PED, POSITION AND HEADING BOTH.
+        //
+        // CEventKnockOffBike applies a launch force and hands the ped to a
+        // fall/get-up task. For that second or so they are tumbling under the
+        // game's own physics, and every write from here fights it: the
+        // position correction drags them back toward a target they are
+        // deliberately flying away from, and the heading lerp above stands a
+        // tumbling body upright.
+        //
+        // Standing off is safe because both machines run the SAME simulation
+        // from the same starting state - the owner fell from the bike we have
+        // synced all along. Any residual gap is paid off by the ordinary
+        // correction once they are on their feet.
+        if (SDK::PedIsFallingOffBike(slot)) {
             return;
         }
 

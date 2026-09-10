@@ -591,8 +591,18 @@ namespace VantaMP::SDK {
             return;
         }
 
-        ClearPrimaryTask(ped);
-        ped->CantBeKnockedOffBike = 2u;
+        // THE KNOCK-OFF PATH MUST REACH THE EVENT UNTOUCHED.
+        //
+        // ClearPrimaryTask nulls slot 3 with no replacement - the freeze this
+        // file has already been bitten by twice - and CEventKnockOffBike
+        // installs its own task anyway. Setting CantBeKnockedOffBike here is
+        // worse than pointless: AffectsPed reads that flag, and although
+        // m_forceKnockOff overrides it, there is no reason to set it on a ped
+        // we are about to knock off.
+        if (!knockedOff) {
+            ClearPrimaryTask(ped);
+            ped->CantBeKnockedOffBike = 2u;
+        }
 
         int chosenDoor = door == kInvalidDoor
             ? reinterpret_cast<DoorToExitFn>(gPatterns.CCarEnterExit__ComputeTargetDoorToExit)(vehicle, ped)
@@ -833,6 +843,41 @@ namespace VantaMP::SDK {
         if (vehicle) {
             EnterVehicle(slot, vehicle, seat, true);
         }
+    }
+
+    // IS GTA CURRENTLY THROWING THIS PED OFF A BIKE, OR PICKING THEM UP?
+    //
+    // The knock-off is not instantaneous: CEventKnockOffBike ejects the ped,
+    // applies a launch force, and hands them to a fall/get-up task that plays
+    // for a second or more. For that whole time the ped's position is GTA's -
+    // they are tumbling under physics from the force it applied - and the
+    // network must not correct it, or the tumble is fought frame by frame.
+    //
+    // bKnockedOffBike is set by the event itself (CalcForcesAndAnims sets
+    // ped->bKnockedOffBike). The fall/get-up task types are what it hands over
+    // to; the flag alone lingers, so both are checked.
+    bool PedIsFallingOffBike(int slot) {
+        auto *ped = PedFor(slot);
+
+        if (!ped || !ped->m_pIntelligence) {
+            return false;
+        }
+
+        auto *primary = PrimaryTask(ped);
+
+        if (primary) {
+            switch (TaskIdOf(primary)) {
+            case TASK_SIMPLE_FALL:
+            case TASK_COMPLEX_FALL_AND_GET_UP:
+            case TASK_SIMPLE_GET_UP:
+            case TASK_COMPLEX_GET_UP_AND_STAND_STILL:
+                return true;
+            default:
+                break;
+            }
+        }
+
+        return ped->bKnockedOffBike;
     }
 
     std::uint8_t DoorRatioIndexForTarget(std::uint8_t target) {

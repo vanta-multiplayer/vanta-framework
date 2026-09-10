@@ -66,6 +66,11 @@ namespace VantaMP::SDK {
     // GTA's enter/leave door target id (0/8/9/10/11) -> the CDoor array index
     // (2-5) that damage and ratio code uses. kInvalidDoor if it is not one of
     // the four climb-through doors.
+    // True while GTA is throwing this ped off a bike or standing them back up.
+    // Their position belongs to the physics of the fall for that whole time,
+    // so network position correction must stand off.
+    [[nodiscard]] bool PedIsFallingOffBike(int slot);
+
     [[nodiscard]] std::uint8_t DoorRatioIndexForTarget(std::uint8_t target);
 
     // Bit i set = CDoor i is being driven by a ped's enter/leave animation
