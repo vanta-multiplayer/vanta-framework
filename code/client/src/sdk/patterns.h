@@ -595,12 +595,17 @@ namespace VantaMP::SDK {
         uintptr_t CTaskComplexLeaveCar__Constructor            = 0;
         uintptr_t CTaskSimpleCarSetPedOut__Constructor         = 0;
 
-        // CTaskSimpleCarFallOut. The task that actually PLAYS the fall off a
-        // bike, over several frames, ending in FinishAnimFallOutCB. Distinct
-        // from CarSetPedOut above, which places a ped and is done.
-        // (vehicle, doorIndex, flag) - the layout MTA documents in
-        // CTaskSimpleCarFallOutSAInterface: pVehicle +0x10, doorIndex +0x14.
-        uintptr_t CTaskSimpleCarFallOut__Constructor           = 0;
+        // CTaskSimpleCarSetPedOut::ProcessPed. The task's own step function.
+        // CEventKnockOffBike::SetPedOutCar (0x4AFF60) builds a SetPedOut on
+        // the STACK, sets m_bKnockedOffBike, and calls exactly this - the
+        // knock-off does not use a different task at all.
+        uintptr_t CTaskSimpleCarSetPedOut__ProcessPed          = 0;
+
+        // CEventKnockOffBike, the event GTA raises when a rider is thrown.
+        // Adding it to the ped's own event group makes GTA run its whole
+        // knock-off response: eject, launch force, and the fall animation.
+        uintptr_t CEventKnockOffBike__Constructor              = 0;
+        uintptr_t CEventGroup__Add                             = 0;
         uintptr_t CCarEnterExit__ComputeTargetDoorToEnterAsPassenger = 0;
         uintptr_t CCarEnterExit__ComputeTargetDoorToExit             = 0;
         uintptr_t CCarEnterExit__ComputePassengerIndexFromCarDoor    = 0;
