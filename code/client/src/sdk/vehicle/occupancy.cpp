@@ -531,6 +531,31 @@ namespace VantaMP::SDK {
         SetPrimaryTask(ped, task);
     }
 
+    // CANCELLING AN ENTRY IS AN ABORT, NOT A SLOT WIPE.
+    //
+    // This used to be ClearPrimaryTask + GiveDefaultPrimary, and it froze the
+    // player. Both halves were wrong, for the same reason.
+    //
+    // The slots are not interchangeable (CTaskManager.h):
+    //
+    //   TASK_PRIMARY_PRIMARY = 3      TASK_PRIMARY_DEFAULT = 4
+    //
+    // ClearPrimaryTask nulls slot 3. GiveDefaultPrimary calls
+    // FlushImmediately(true), which - PedIntelligence.cpp:511-524 - installs
+    // its replacement into slot 4, NOT the slot that was just emptied. So the
+    // enter task is torn out from under a ped that is mid-animation and
+    // nothing takes over the slot that was driving it.
+    //
+    // Worse, FlushImmediately also wipes the event group and event handler
+    // (PedIntelligence.cpp:479-481). That is what leaves the player unable to
+    // move: their input is delivered as events, and the handler that would
+    // turn those into tasks has just been flushed. They stand there.
+    //
+    // MTA never nulls a live slot. It calls MakeAbortable and lets the task
+    // unwind itself (CClientPed.cpp:7798-7841 is the pattern, repeated at
+    // every abort site). CTaskComplexEnterCar's own abort path puts the ped
+    // back on foot properly, restoring the walk it interrupted - which is
+    // exactly the behaviour we want and were destroying by hand.
     void AbortVehicleEnter(int slot) {
         auto *ped = PedFor(slot);
 
@@ -542,8 +567,18 @@ namespace VantaMP::SDK {
             return;
         }
 
-        ClearPrimaryTask(ped);
-        GiveDefaultPrimary(ped);
+        auto *task = PrimaryTask(ped);
+
+        if (!task) {
+            return;
+        }
+
+        using MakeAbortableFn = bool(__thiscall *)(void *, CPed *, int, void *);
+
+        // IMMEDIATE, not URGENT. An urgent abort lets the task finish its
+        // current animation before unwinding, and the whole point here is
+        // that the player pressed a key to get out NOW.
+        reinterpret_cast<MakeAbortableFn>(TaskVirtual(task, Internal::kTaskMakeAbortableSlot))(task, ped, ABORT_PRIORITY_IMMEDIATE, nullptr);
     }
 
     void AbortVehicleExit(int slot, void *handle, std::uint8_t seat) {
