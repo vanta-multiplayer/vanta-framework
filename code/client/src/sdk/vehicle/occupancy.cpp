@@ -853,9 +853,8 @@ namespace VantaMP::SDK {
     // they are tumbling under physics from the force it applied - and the
     // network must not correct it, or the tumble is fought frame by frame.
     //
-    // bKnockedOffBike is set by the event itself (CalcForcesAndAnims sets
-    // ped->bKnockedOffBike). The fall/get-up task types are what it hands over
-    // to; the flag alone lingers, so both are checked.
+    // Detected purely from the task slots the fall lives in - see the note at
+    // the return below for why ped->bKnockedOffBike is not used.
     bool PedIsFallingOffBike(int slot) {
         auto *ped = PedFor(slot);
 
@@ -893,7 +892,15 @@ namespace VantaMP::SDK {
             }
         }
 
-        return ped->bKnockedOffBike;
+        // DELIBERATELY NOT ped->bKnockedOffBike.
+        //
+        // That flag is set by CalcForcesAndAnims and nothing in the reversed
+        // source ever clears it, so trusting it would exclude the ped from
+        // position correction FOREVER after their first fall - a far worse
+        // desync than the one this guard exists to prevent. The task slots
+        // above are self-limiting: they disappear when the ped is back on
+        // their feet, which is exactly the window we want.
+        return false;
     }
 
     std::uint8_t DoorRatioIndexForTarget(std::uint8_t target) {
