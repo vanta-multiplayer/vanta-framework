@@ -215,7 +215,7 @@ namespace VantaMP::Game {
             Framework::Logging::GetLogger("Vehicle")->debug("local enter vehicle {} seat {} door {} warp {}", vehicleId, seat, door, warp);
         }
 
-        void SendLocalExit(bool warp, std::uint8_t door, bool abortEnter = false, void *vehicle = nullptr) {
+        void SendLocalExit(bool warp, std::uint8_t door, bool abortEnter = false, void *vehicle = nullptr, bool knockedOff = false) {
             auto *net = Framework::CoreModules::GetNetworkPeer();
 
             if (!net) {
@@ -240,7 +240,7 @@ namespace VantaMP::Game {
             }
 
             Shared::RPC::PlayerExitVehicle exit;
-            exit.FromParameters(0, warp, door, abortEnter, ratio);
+            exit.FromParameters(0, warp, door, abortEnter, ratio, knockedOff);
             net->BroadcastRPC(exit);
 
             Framework::Logging::GetLogger("Vehicle")->debug("local exit door {} warp {} abortEnter {}", door, warp, abortEnter);
@@ -332,13 +332,37 @@ namespace VantaMP::Game {
                     gLocalRide = LocalRide::Leaving;
                 }
                 else if (!occupancy.seated && !occupancy.entering) {
-                    SendLocalExit(false, occupancy.door);
+                    // THROWN OUT, NOT WALKED OUT.
+                    //
+                    // Seated one frame, on the pavement the next, with no
+                    // leave task in between. Nobody asked for this - GTA did
+                    // it. A crash on a bike raises CEventKnockOffBike
+                    // (World.cpp:2008 constructs one for explosions;
+                    // CEventHandler::ComputeKnockOffBikeResponse is the
+                    // handler MTA hooks at 0x4BA06F), and the ped is ejected
+                    // without ever running CTaskComplexLeaveCar.
+                    //
+                    // This used to send warp=false, the same as a deliberate
+                    // exit, which was wrong twice over. The server fires
+                    // vehicleStartExit for a non-warp exit, so a script could
+                    // "veto" something that had already physically happened.
+                    // And the receiver built a CTaskComplexLeaveCar - a calm,
+                    // open-the-door-and-step-out animation - for a ped who was
+                    // just launched over the handlebars. That is why the
+                    // knock-off never looked right on the other machine.
+                    //
+                    // warp=true says "they are already out, put them there".
+                    // It is the same distinction MTA draws between
+                    // VEHICLE_NOTIFY_OUT and a requested exit.
+                    SendLocalExit(true, occupancy.door, false, nullptr, true);
                     gLocalRide = LocalRide::OnFoot;
                 }
                 break;
 
             case LocalRide::Leaving:
                 if (!occupancy.seated && !occupancy.leaving) {
+                    // The leave finished normally - the exit RPC went out when
+                    // the task started, so there is nothing more to send.
                     gLocalRide = LocalRide::OnFoot;
                 }
                 else if (occupancy.seated && !occupancy.leaving) {
@@ -1166,9 +1190,20 @@ namespace VantaMP::Game {
         }
     }
 
-    void ApplyRemoteExitVehicle(std::uint64_t networkId, bool warp, std::uint8_t door, bool abortEnter, std::uint8_t doorRatio) {
+    void ApplyRemoteExitVehicle(std::uint64_t networkId, bool warp, std::uint8_t door, bool abortEnter, std::uint8_t doorRatio, bool knockedOff) {
         if (networkId == 0 || networkId == LocalNetworkId()) {
-            if (networkId == LocalNetworkId() && warp) {
+            // OUR OWN EXIT COMES BACK TO US - IGNORE IT IF WE ARE ALREADY OUT.
+            //
+            // The server rebroadcasts to everyone including the sender, and a
+            // knock-off now reports warp=true (the ped was ejected, not
+            // walked out). Without this check that echo would re-run
+            // ExitVehicle on a ped who is already lying on the road, which
+            // re-issues CTaskSimpleCarSetPedOut and stamps them back to the
+            // door position.
+            //
+            // The branch still matters for a genuine SERVER-forced warp-out,
+            // where we are seated and are being told to get out.
+            if (networkId == LocalNetworkId() && warp && SDK::IsPedInVehicle(0)) {
                 SDK::ExitVehicle(0, true, door);
                 gLocalRide = LocalRide::OnFoot;
             }
@@ -1205,7 +1240,7 @@ namespace VantaMP::Game {
             }
         }
 
-        SDK::ExitVehicle(slot, warp, door);
+        SDK::ExitVehicle(slot, warp, door, knockedOff);
 
         if (!SDK::IsPedInVehicle(slot)) {
             SDK::SetRemotePedCollision(slot, true);

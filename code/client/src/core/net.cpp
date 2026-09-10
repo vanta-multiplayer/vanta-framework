@@ -78,7 +78,7 @@ namespace VantaMP::Core::Net {
         });
 
         net->RegisterRPC<Shared::RPC::PlayerExitVehicle>([](const Shared::RPC::PlayerExitVehicle &exit, MafiaNet::Packet *) {
-            Game::ApplyRemoteExitVehicle(exit.networkId, exit.warp, exit.door, exit.abortEnter, exit.doorRatio);
+            Game::ApplyRemoteExitVehicle(exit.networkId, exit.warp, exit.door, exit.abortEnter, exit.doorRatio, exit.knockedOff);
         });
 
         net->RegisterRPC<Shared::RPC::PlayerOccupancyAbort>([](const Shared::RPC::PlayerOccupancyAbort &abort, MafiaNet::Packet *) {

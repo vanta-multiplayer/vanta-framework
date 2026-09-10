@@ -30,7 +30,10 @@ namespace VantaMP::SDK {
     [[nodiscard]] bool IsPedOccupyingVehicle(int slot);
 
     bool EnterVehicle(int slot, void *vehicle, std::uint8_t seat, bool warp, std::uint8_t door = kInvalidDoor);
-    void ExitVehicle(int slot, bool warp, std::uint8_t door = kInvalidDoor);
+    // knockedOff plays GTA's fall-off instead of placing the ped at the door.
+    // Only meaningful with warp, which is how an involuntary ejection is
+    // reported - the ped is already out, so there is no leave animation.
+    void ExitVehicle(int slot, bool warp, std::uint8_t door = kInvalidDoor, bool knockedOff = false);
 
     // Drop an enter walk and stand them back up. Movement cancel and a
     // script veto both land here — GTA will not abort CTaskComplexEnterCar

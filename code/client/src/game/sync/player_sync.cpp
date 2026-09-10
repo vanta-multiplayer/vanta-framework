@@ -471,7 +471,32 @@ namespace VantaMP::Game {
 
             const int slot = found->second;
 
-            if (entity->vehicleNetworkId != 0 || SDK::IsPedOccupyingVehicle(slot)) {
+            // THE OWNER SAYS ON FOOT, OUR COPY IS STILL SEATED.
+            //
+            // This branch owns the ped completely - it returns before the
+            // position correction below ever runs, on the reasoning that a
+            // seated ped's position comes from the vehicle. That holds while
+            // both machines agree.
+            //
+            // A knock-off breaks the agreement. The owner's rider is thrown
+            // clear, so vehicleNetworkId goes to 0, but our copy is still in
+            // the seat, so IsPedOccupyingVehicle is still true and we take
+            // this branch anyway - and return without ever correcting their
+            // position. The remote ped stayed welded to the bike, or stood
+            // wherever the seat left them, drifting further every packet.
+            //
+            // MTA guards the same way round: CClientPed::SetPosition only
+            // skips the write when GetRealOccupiedVehicle() is non-null
+            // (CClientPed.cpp:1070, 1128) - the ped's ACTUAL vehicle, not the
+            // one the network last mentioned. When those disagree the
+            // position write goes through.
+            //
+            // So: only skip the position correction while the owner still
+            // claims a seat. Once they report on foot, fall through and
+            // correct them, whatever our local copy still believes.
+            const bool ownerInVehicle = entity->vehicleNetworkId != 0;
+
+            if (ownerInVehicle || SDK::IsPedOccupyingVehicle(slot)) {
                 const auto occupancy = SDK::QueryPedOccupancy(slot);
 
                 // Only a seated ped loses collision. Doing it while they
@@ -517,10 +542,17 @@ namespace VantaMP::Game {
                 // a turn is a ramp, not a 100ms snap of the cabin.
                 WriteLerpedRemotePad(slot, gAimedBySlot[slot], entity);
                 SDK::SetRemotePedInterior(slot, entity->interior);
-                return;
-            }
 
-            SDK::SetRemotePedCollision(slot, true);
+                // Only the vehicle owns this ped's position while the OWNER
+                // agrees they are in it. Otherwise fall through to the
+                // correction below - see the note above.
+                if (ownerInVehicle || occupancy.entering || occupancy.leaving) {
+                    return;
+                }
+            }
+            else {
+                SDK::SetRemotePedCollision(slot, true);
+            }
 
             // AIMED AT, NOT SNAPPED TO.
             //

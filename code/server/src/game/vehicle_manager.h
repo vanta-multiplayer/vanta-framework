@@ -41,7 +41,7 @@ namespace VantaMP::Game {
         bool Destroy(std::uint64_t networkId);
 
         void HandleEnter(Shared::PlayerEntity &player, std::uint64_t vehicleId, std::uint8_t seat, bool warp, std::uint8_t door);
-        void HandleExit(Shared::PlayerEntity &player, bool warp, std::uint8_t door, bool abortEnter = false, std::uint8_t doorRatio = 0);
+        void HandleExit(Shared::PlayerEntity &player, bool warp, std::uint8_t door, bool abortEnter = false, std::uint8_t doorRatio = 0, bool knockedOff = false);
 
         [[nodiscard]] Shared::PlayerEntity *OccupantOf(std::uint64_t vehicleId, std::uint8_t seat) const;
         void HandleDamage(std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panels, std::uint32_t lights,

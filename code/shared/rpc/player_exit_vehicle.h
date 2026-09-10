@@ -38,12 +38,23 @@ namespace VantaMP::Shared::RPC {
         // the same packet.
         std::uint8_t doorRatio = 0;
 
-        void FromParameters(std::uint64_t id, bool instant, std::uint8_t usedDoor = 0xFF, bool cancelEnter = false, std::uint8_t ratio = 0) {
+        // GTA THREW THEM OUT; THEY DID NOT GET OUT.
+        //
+        // A crash on a bike raises CEventKnockOffBike (World.cpp:2008) and the
+        // rider is ejected without ever running a leave task. That arrives as
+        // warp=true, because they are already out - but so does a
+        // server-forced warp-out, and the two should not look the same. This
+        // bit tells the receiver to play GTA's fall rather than place the ped
+        // at the door.
+        bool knockedOff = false;
+
+        void FromParameters(std::uint64_t id, bool instant, std::uint8_t usedDoor = 0xFF, bool cancelEnter = false, std::uint8_t ratio = 0, bool thrown = false) {
             networkId  = id;
             warp       = instant;
             door       = usedDoor;
             abortEnter = cancelEnter;
             doorRatio  = ratio;
+            knockedOff = thrown;
         }
 
         void Serialize(MafiaNet::BitStream *bs, bool write) {
@@ -52,6 +63,7 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, door);
             bs->Serialize(write, abortEnter);
             bs->Serialize(write, doorRatio);
+            bs->Serialize(write, knockedOff);
         }
     };
 } // namespace VantaMP::Shared::RPC

@@ -594,6 +594,13 @@ namespace VantaMP::SDK {
         uintptr_t CTaskSimpleCarSetPedInAsPassenger__Constructor = 0;
         uintptr_t CTaskComplexLeaveCar__Constructor            = 0;
         uintptr_t CTaskSimpleCarSetPedOut__Constructor         = 0;
+
+        // CTaskSimpleCarFallOut. The task that actually PLAYS the fall off a
+        // bike, over several frames, ending in FinishAnimFallOutCB. Distinct
+        // from CarSetPedOut above, which places a ped and is done.
+        // (vehicle, doorIndex, flag) - the layout MTA documents in
+        // CTaskSimpleCarFallOutSAInterface: pVehicle +0x10, doorIndex +0x14.
+        uintptr_t CTaskSimpleCarFallOut__Constructor           = 0;
         uintptr_t CCarEnterExit__ComputeTargetDoorToEnterAsPassenger = 0;
         uintptr_t CCarEnterExit__ComputeTargetDoorToExit             = 0;
         uintptr_t CCarEnterExit__ComputePassengerIndexFromCarDoor    = 0;

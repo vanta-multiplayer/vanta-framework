@@ -38,6 +38,7 @@ namespace VantaMP::SDK {
         using SetInPassengerCtorFn = void *(__thiscall *)(void *, CVehicle *, int, void *);
         using LeaveCarCtorFn       = void *(__thiscall *)(void *, CVehicle *, int, int, bool, bool);
         using SetOutCtorFn         = void *(__thiscall *)(void *, CVehicle *, int, bool);
+        using CarFallOutCtorFn     = void *(__thiscall *)(void *, CVehicle *, int, int);
 
         constexpr std::size_t kProcessPedSlot = 7;
 
@@ -47,6 +48,12 @@ namespace VantaMP::SDK {
         constexpr unsigned int kSetInDriverBytes    = 0x1C;
         constexpr unsigned int kSetInPassengerBytes = 0x20;
         constexpr unsigned int kSetOutBytes         = 0x18;
+
+        // 0x1C, the size GTA's own caller passes to operator new before this
+        // constructor (push 0x1C at 0x64C7F0). MTA's
+        // CTaskSimpleCarFallOutSAInterface documents the fields that occupy
+        // it: pVehicle at +0x10, doorIndex at +0x14.
+        constexpr unsigned int kCarFallOutBytes     = 0x1C;
 
         constexpr int kNoDoor     = 0;
         constexpr int kNoSuchDoor = 0xFF;
@@ -160,10 +167,28 @@ namespace VantaMP::SDK {
 
         void PrepareForTransition(CPed *ped) {
             // FlushImmediately clears the walk that would otherwise fight the
-            // climb. CantBeKnockedOffBike = never: a remote ped is a puppet
-            // and local physics knocking it off a bike has nothing to correct it.
+            // climb.
             reinterpret_cast<FlushTasksFn>(gPatterns.CPedIntelligence__FlushImmediately)(ped->m_pIntelligence, false);
-            ped->CantBeKnockedOffBike = 1u;
+
+            // KNOCK-OFF IMMUNITY IS FOR PUPPETS ONLY.
+            //
+            // A REMOTE ped must not decide for itself when it falls off: each
+            // viewer would decide differently, from their own copy of the
+            // collision, with no authority to reconcile them. 1 = Never
+            // (CPed.h:171) keeps them on the bike until the owner says
+            // otherwise.
+            //
+            // The LOCAL ped is the authority, and setting it here made them
+            // immune too - so nobody could ever be knocked off, on any
+            // machine, and the whole knock-off path was dead. 0 = Default is
+            // what GTA ships with and what CGameLogic restores on
+            // resurrection (GameLogic.cpp:309).
+            if (ped != Internal::LocalPed()) {
+                ped->CantBeKnockedOffBike = 1u;
+            }
+            else {
+                ped->CantBeKnockedOffBike = 0u;
+            }
         }
 
         void *AllocateTask(unsigned int bytes) {
@@ -515,7 +540,7 @@ namespace VantaMP::SDK {
         return true;
     }
 
-    void ExitVehicle(int slot, bool warp, std::uint8_t door) {
+    void ExitVehicle(int slot, bool warp, std::uint8_t door, bool knockedOff) {
         auto *ped = PedFor(slot);
 
         if (!ped || !ped->m_pIntelligence) {
@@ -561,11 +586,46 @@ namespace VantaMP::SDK {
             ? reinterpret_cast<DoorToExitFn>(gPatterns.CCarEnterExit__ComputeTargetDoorToExit)(vehicle, ped)
             : static_cast<int>(door);
 
+        if (knockedOff) {
+            // THE FALL IS A TASK THAT RUNS, NOT A FLAG ON ONE THAT DOES NOT.
+            //
+            // The previous attempt set m_bFallingOutOfCar / m_bKnockedOffBike
+            // on a CTaskSimpleCarSetPedOut built in STACK storage and pushed
+            // through ProcessPed once. That can never animate: the object dies
+            // at the end of this function, and one ProcessPed call is one
+            // frame. SetPedOut is a place-the-ped task - it finishes
+            // immediately by design, which is exactly right for a warp and
+            // exactly wrong for a fall. So the flags were set on something
+            // that had already done its whole job.
+            //
+            // CTaskSimpleCarFallOut (ctor 0x648D60, vtable 0x86EFD0) is the
+            // one that plays it. GTA reaches it from its own knock-off
+            // handling, and MTA knows it by its animation callback
+            // FinishAnimFallOutCB (CMultiplayerSA_CrashFixHacks.cpp:862) -
+            // an anim callback is the proof it spans frames.
+            //
+            // Heap-allocated and installed as the PRIMARY task, so the task
+            // manager owns it and steps it every frame until the animation
+            // ends.
+            if (gPatterns.CTaskSimpleCarFallOut__Constructor) {
+                if (auto *fall = AllocateTask(kCarFallOutBytes)) {
+                    reinterpret_cast<CarFallOutCtorFn>(gPatterns.CTaskSimpleCarFallOut__Constructor)(fall, vehicle, chosenDoor, 0);
+                    SetPrimaryTask(ped, fall);
+                    return;
+                }
+            }
+
+            // No pattern, or the allocation failed. Fall through to the warp
+            // below rather than leaving the ped welded to a bike.
+        }
+
         if (warp) {
             alignas(void *) unsigned char storage[kSetOutBytes] {};
 
             reinterpret_cast<SetOutCtorFn>(gPatterns.CTaskSimpleCarSetPedOut__Constructor)(storage, vehicle, chosenDoor, false);
+
             reinterpret_cast<CTaskSimpleCarSetPedOut *>(storage)->m_bWarpingOutOfCar = true;
+
             ProcessSimpleTask(storage, ped);
             GiveDefaultPrimary(ped);
             return;
