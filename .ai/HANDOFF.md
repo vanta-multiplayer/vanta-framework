@@ -12,8 +12,16 @@ GTA:SA multiplayer client + server ("VantaMP"), built on the MafiaHub Framework.
 - `current/` at the workspace root is the OLD, previously-working Vanta
   implementation. It is a reference, not a build target, and it is frequently the
   fastest answer to "how should this work".
-- MTA:SA source is checked out at `%TEMP%\mta-ref` (`C:\Users\norbe\AppData\Local\Temp\mta-ref`).
-  It is the other reference and generally the authority on sync behaviour.
+- **References live in `reference/` at the workspace root**, not in `%TEMP%`:
+  - `reference/mtasa-neon` — MTA:SA source. Generally the authority on sync
+    behaviour.
+  - `reference/gta-reversed` — the reversed GTA:SA source. This is a **sparse
+    checkout**: `git ls-files` shows far more than the working tree does, so
+    read a missing file with `git show HEAD:<path>` before concluding it is
+    not there. `Bike.cpp`, `Events/` and `Tasks/TaskTypes/` are all tracked
+    and all invisible on disk.
+  - A clean 1.0 US `gta_sa.exe` for `derive_pattern.py` — the user's install
+    at `E:\GTA San Andreas\gta_sa.exe` is one.
 
 ## Build and run
 
@@ -234,14 +242,37 @@ ped, not the chase cam.
 both players start near deep water. Grove Street is commented in
 `shared/world/spawn_points.h`.
 
+**Bikes have their own sync handler.** `game/sync/vehicle/bike_sync.cpp`
+owns the whole `CBike` lifecycle, because a bike needs a different policy
+from a car rather than the same one minus features: its orientation is
+physics that fights back, its suspension state is relative to its own
+position, and `ProcessControlInputs` never runs for a remote bike (so
+steer, handbrake and both pedals are copied from the wire). XY is dead
+reckoned; Z, pitch and roll stay GTA's except during a wheelie. See
+`docs/vehicles.md` → Bikes.
+
+Getting knocked off a bike is GTA's own `CEventKnockOffBike`, raised on the
+receiver rather than described over the wire. Everything that writes to a
+ped — position, heading, seat warp, ejection — has to stand off while it
+plays (`SDK::PedIsFallingOffBike`).
+
 **Temporary telemetry may still be in `player_sync.cpp`** (`TEMPORARY
-TELEMETRY`). Strip it once sync has been watched long enough.
+TELEMETRY`) and `sdk/vehicle/vehicle.cpp` (`BikeDbg`: `LogTrail`,
+`LogPacketCorrection`, `LogBikeBasis`, the `PAD AT PROCESSCTRL` and
+`POSE WRITES ON RIDDEN BIKE` counters, plus the debug accessors
+`IsBikeHandle` / `BikeWheelsOffGround` / `VehicleContactWheels`). Strip
+both once sync has been watched long enough.
 
 Human map: `docs/`. Prefer that folder when this file and the code
 disagree.
 
 ## Known issues / not yet verified
 
+- **Bike work from the latest session is unverified in-game.** The wheelie
+  interpolation, the reverse pedals, the door mask, the abort rework and the
+  knock-off event were each built and built clean, but only the knock-off
+  animation has been seen working. Test a few falls in a row — the
+  intermittent cases are what exposed the last three bugs.
 - **Camera rotation is still snapped** at 10Hz, the way heading used to
   be. MTA lerps it in the same window as rotation and we do not. It is
   applied in `ApplyRemoteState`, not after `CorrectRemotePlayer`, so it
@@ -285,9 +316,19 @@ gun" note is stale.
   Interior and dimension are at the end. `shared/world/world_space.h`,
   `shared/rpc/world_space.h`.
 - `code/shared/entity/vehicle_entity.{h,cpp}` — append-only after interior /
-  dimension: paintjob, 17 upgrades, four `uint32` RGB colours.
+  dimension: paintjob, 17 upgrades, four `uint32` RGB colours, then
+  `handbrake`, then signed `gasPedal` / `brakePedal`.
   `shared/vehicle/colors.h`, `shared/vehicle/upgrades.h`,
   `shared/catalog/model_catalog.*`.
+- `code/client/src/game/sync/vehicle/` — the per-GTA-type split.
+  `handler.{h,cpp}` dispatches on vehicle class; `bike_sync.cpp` and
+  `automobile_sync.cpp` each own their type's complete physical lifecycle;
+  `common.cpp` is only what more than one handler uses.
+  `game/sync/vehicle_sync.cpp` is now shared infrastructure and dispatch.
+- `code/client/src/sdk/vehicle/occupancy.cpp` — enter/exit/abort tasks and
+  the knock-off event. Read the ped-tasks section of
+  `docs/sdk-and-patterns.md` before touching it: nulling a task slot and
+  re-aborting an unwinding task have each cost a session.
 - `code/server/src/scripting/player.*` — Framework Player plus spawn /
   world-space. `vehicle.*` is the Entity handle. `bindings.cpp` only
   Bind + Register.
@@ -311,3 +352,20 @@ gun" note is stale.
   quiet case, not the broken one.
 - Batch verification into one game launch. Rebuild-and-relaunch per hypothesis is
   the expensive part of this loop.
+- **"The source is not there" is usually wrong.** `reference/gta-reversed` is a
+  sparse checkout; two sessions were spent reconstructing from disassembly what
+  was sitting in `git show HEAD:<path>` the whole time. The reconstruction
+  crashed the game; the file answered it in one read.
+- **Raise the game's own event instead of reproducing its response.** The
+  knock-off is three steps plus an unreversed responder. Building it by hand
+  meant guessing an argument that turned out to be a pointer, and a null
+  dereference on the first frame. `eventGroup.Add` runs all of it.
+- **Do not fight an animation you asked the game to play.** Position
+  correction, heading lerp, a seat warp and a second ejection each
+  independently killed the fall. If GTA owns the ped for a while, every writer
+  has to stand off for that whole window — and the window starts when the event
+  is *queued*, not when its task appears.
+- A latching flag is not a state test. `bKnockedOffBike` is set and never
+  cleared, so using it as "is falling" would have excluded a ped from position
+  correction permanently. Prefer state that expires on its own — a task slot
+  that empties, or a timestamp.

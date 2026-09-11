@@ -53,7 +53,10 @@ freed pointer (AV at `0x705B3B` a beat after disconnect).
 
    The workspace-relative clean exe is
    `current/build/gta-clean/gta_sa.exe` (outside this git repo, in the
-   parent Vanta checkout).
+   parent Vanta checkout). If that checkout is not present, any clean
+   **1.0 US** `gta_sa.exe` works — `derive_pattern.py` proves the signature
+   resolves back to the address it started from, so a wrong build fails
+   loudly rather than producing a bad pattern.
 3. Add the member to `Patterns`, the scan to `patterns.cpp`, and a comment
    that names the 1.0 US address as **provenance**, not as a value the
    client uses.
@@ -89,6 +92,48 @@ plugin-sdk is confined to the files on `VANTAMP_CLIENT_SDK_FILES` because
 it ships its own DirectX SDK headers (they lose to the Windows SDK's dxgi)
 and it needs `RW` defined, which collides with a function of the same name
 in the framework's `jitasm.h`.
+
+## Ped tasks
+
+Two mistakes in this area have each cost a session. Both are about writing
+to the task manager instead of asking GTA to do the work.
+
+**The slots are not interchangeable.** `ePrimaryTasks` is
+`PHYSICAL_RESPONSE 0`, `EVENT_RESPONSE_TEMP 1`, `EVENT_RESPONSE_NONTEMP 2`,
+`PRIMARY 3`, `DEFAULT 4`. `CPedIntelligence::FlushImmediately(true)` puts
+its replacement task in slot **4**, not the slot you just emptied — so
+`SetTask(nullptr, PRIMARY)` followed by a flush leaves slot 3 empty. It
+also wipes the event group and event handler
+(`PedIntelligence.cpp:479-481`), which is what actually freezes a player:
+input arrives as events, and the handler that turns them into tasks is
+gone.
+
+**Never null a live slot to cancel something.** Call `MakeAbortable` and
+let the task unwind — that is MTA's pattern at every abort site
+(`CClientPed.cpp:7798-7841`). The unwind is not decoration: for an enter
+task it is what closes the door. Deleting the task skips it.
+
+Abort **once**. `MakeAbortable` does not remove the task, it asks it to
+unwind, which takes several frames — during which the ped still reads as
+"entering". Anything that polls that condition will call straight back in
+and restart the unwind from the top, which looks like a stuttering,
+half-played animation. Latch on the *task pointer*, not a bool, so a
+genuinely new task later is still abortable.
+
+**Find a task by walking, not by guessing the slot.** An event's response
+lands in `PHYSICAL_RESPONSE` or one of the event-response slots, never
+`PRIMARY`, and it is usually a complex task with the real work nested
+underneath. Scan every primary slot and follow `GetSubTask` (vtable slot 2,
+after the destructor and `Clone`). MTA reads both ends the same way
+(`CClientPed.cpp:7194`).
+
+**Prefer raising GTA's own event.** Reconstructing a response by hand means
+reproducing every step *and* the parts nobody has reversed. Adding a real
+event to `ped->m_pIntelligence->m_eventGroup` runs the lot. Note that
+`CEventGroup::Add` only *queues* — the task does not exist until the ped's
+next `ProcessEvents`, so anything that waits on the task needs to cover
+those frames — and it returns `nullptr` when `AffectsPed` refuses, which is
+worth checking rather than assuming.
 
 ## Provenance file
 

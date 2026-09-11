@@ -1018,20 +1018,20 @@ Recorded as observations, not as a task list.
 | Vehicle type | Drives capability checks | **done** - `shared/vehicle/type.h`, cached per remote vehicle |
 | Wire format | Quantised per field, delta damage, zero-bit shortcuts | Full-width fields every tick |
 | Rotation | 3 x uint16 Euler degrees | Quaternion |
-| Door ratios | Doors 2-5 only, capability-gated | All six, every vehicle |
+| Door ratios | Doors 2-5 only, capability-gated | All six, every vehicle. **Occupied doors are now masked for remote peds too** (MTA's `AllowDoorRatioSetting`), and an aborted entry carries its final angle on the wire |
 | Stale packets | Rejected by sync time context | No equivalent; a late packet can undo a ForceState |
 | Server validation | Position range, frozen, health-up, teleport alert | None on the vehicle path |
 | Trailers | Chain rides the driver's packet | **partly** - towed vehicles now skip the transform; the chain itself is not synced |
 | Contact peds | Moved with the vehicle, 30 m radius | still missing |
-| Enter/exit | Request -> confirm -> notify, with ATTEMPT_FAILED | Client acts, then reports; abort bolted on |
+| Enter/exit | Request -> confirm -> notify, with ATTEMPT_FAILED | Client acts, then reports. **Abort is now MTA's shape**: GTA cancels the enter itself, we observe `!entering` and report which way it ended |
 | Enter distance | Server-checked: 50 m, 10 m for jack/water | Client-side reach only |
-| Fell off bike | Own protocol message, hands over syncer | **partly** - `bKnockedOffBike` reports the exit as a warp; no dedicated message |
+| Fell off bike | Own protocol message, hands over syncer | **done, differently** - `PlayerExitVehicle` carries `knockedOff`; receivers raise GTA's own `CEventKnockOffBike` rather than describing the result. Still no syncer handover |
 | NaN handling | Validated on every read and write, with recovery | **done** - `shared/vehicle/validate.h`, refused on send and receive |
 | Model change | Resets damage by capability and type | Keeps packed bytes |
 | Unloaded ground | Driverless vehicles pinned, collision off, ratcheting release | **tried and reverted** - see below |
 | Handling | Full profile synced at entity-add, incl. suspension and COM | Not synced |
 | Bike lean source | `fMaxLean` / `fDesLean` in bike handling data, outside ProcessControl | Not synced, not considered |
-| Bike physics gating | `CBike::ProcessControl` skips ~241 bytes with no `m_pDriver` | Relies on the same task MTA uses; unverified at runtime |
+| Bike physics gating | `CBike::ProcessControl` skips ~241 bytes with no `m_pDriver` | **verified at runtime** - `ProcessControlInputs` never runs for a remote bike, so steer, handbrake and both pedals are copied from the wire |
 | Streaming out | Real destroy; state saved into the wrapper | Never streamed out |
 | Remote pad | Whole `CPadSAInterface` per ped, swapped wholesale | Same idea, narrower |
 | Context switch | Horn history, last-touched, gravity, goggles, sound suppression | Pad + camera + mouselook only |
