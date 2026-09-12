@@ -59,6 +59,13 @@ namespace VantaMP::Shared::RPC {
 
         std::uint8_t flags = 0;
 
+        // Where the gun is pointing. Present only when the Fire or Aim button
+        // is down - see OnFootField::kAim. These drive the upper-body IK
+        // (CPedIK::PointGunInDirection), not the movement task, which is why
+        // they are gated separately from the input that carries them.
+        float aimHorizontal = 0.0f;
+        float aimVertical   = 0.0f;
+
         [[nodiscard]] bool Has(std::uint8_t field) const {
             return (fields & field) != 0;
         }
@@ -97,6 +104,11 @@ namespace VantaMP::Shared::RPC {
                 bs->Serialize(write, brake);
                 bs->Serialize(write, buttons);
                 Player::SerializeAngle(bs, write, cameraRotation);
+            }
+
+            if (Has(Player::OnFootField::kAim)) {
+                Player::SerializeAngle(bs, write, aimHorizontal);
+                Player::SerializeAngle(bs, write, aimVertical);
             }
 
             if (Has(Player::OnFootField::kFlags)) {

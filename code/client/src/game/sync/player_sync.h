@@ -4,7 +4,6 @@
 
 namespace VantaMP::Shared::RPC {
     struct PlayerOnFootSync;
-    struct PlayerAimSync;
     struct WorldSpace;
     struct PlayerScript;
 }
@@ -74,7 +73,6 @@ namespace VantaMP::Game {
     // same PlayerEntity fields the apply path already reads, so nothing below
     // the decode knows the state arrived by packet rather than by replica.
     void ApplyRemoteOnFootSync(const Shared::RPC::PlayerOnFootSync &sync);
-    void ApplyRemoteAimSync(const Shared::RPC::PlayerAimSync &sync);
 
     // Server told us a player's compact wire id. Until it arrives, motion for
     // that player cannot be addressed.

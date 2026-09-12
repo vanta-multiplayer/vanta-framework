@@ -31,7 +31,21 @@ namespace VantaMP::Shared::RPC::Player {
         inline constexpr std::uint8_t kVelocity = 1u << 2;
         inline constexpr std::uint8_t kInput    = 1u << 3;
         inline constexpr std::uint8_t kFlags    = 1u << 4;
-        inline constexpr std::uint8_t kCount    = 5;
+
+        // AIM RIDES THE MOVEMENT PACKET, GATED ON ACTUALLY AIMING.
+        //
+        // This was briefly its own PlayerAimSync packet. That was wrong: a
+        // separate RPC pays a second Huffman identifier (~9 B) on every
+        // update, which is more than the two quantized angles cost.
+        //
+        // MTA puts the same two angles inside keysync and puresync, written
+        // only when `ControllerState.RightShoulder1 || ButtonCircle` - i.e.
+        // only when the player is genuinely aiming or firing
+        // (CNetAPI.cpp:1128, CKeysyncPacket.cpp:56). A running player pays
+        // nothing for aim, and an aiming one pays 4 bytes rather than a whole
+        // second packet. Same idea here, keyed off the Fire/Aim button bits.
+        inline constexpr std::uint8_t kAim      = 1u << 5;
+        inline constexpr std::uint8_t kCount    = 6;
     } // namespace OnFootField
 
     // Pose flags. GTA cannot derive these from a stick position - entering

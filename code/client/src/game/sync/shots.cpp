@@ -5,8 +5,8 @@
 #include "sdk/ped/local_ped.h"
 #include "sdk/ped/shot.h"
 #include "sdk/ped/weapon.h"
-#include "shared/rpc/player_reload.h"
-#include "shared/rpc/player_shot.h"
+#include "shared/rpc/player/reload.h"
+#include "shared/rpc/player/shot.h"
 
 #include <core_modules.h>
 #include <logging/logger.h>

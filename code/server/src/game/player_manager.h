@@ -14,7 +14,6 @@ namespace VantaMP::Shared {
 
 namespace VantaMP::Shared::RPC {
     struct PlayerOnFootSync;
-    struct PlayerAimSync;
 } // namespace VantaMP::Shared::RPC
 
 namespace VantaMP::Game {
@@ -69,7 +68,6 @@ namespace VantaMP::Game {
         // Movement and aim from a player's own client. Validates authority and
         // values, updates the authoritative replica, relays to everyone else.
         void HandleOnFootSync(Shared::PlayerEntity &sender, const Shared::RPC::PlayerOnFootSync &sync);
-        void HandleAimSync(Shared::PlayerEntity &sender, const Shared::RPC::PlayerAimSync &sync);
 
         // Tells one player, or everyone, the compact wire id for a player.
         void AnnounceWireId(std::uint64_t networkId, MafiaNet::PeerGuid to = MafiaNet::UNASSIGNED_PEER_GUID);
@@ -95,13 +93,11 @@ namespace VantaMP::Game {
         // instance: slot numbers do not mean anything across entity kinds.
         Shared::RPC::Common::WireRegistry _wireIds;
 
-        // Newest sequence accepted per player, per stream, so a reordered or
+        // Newest on-foot sequence accepted per player, so a reordered or
         // replayed datagram is dropped here rather than relayed to everyone.
         struct AcceptedSequence {
             std::uint16_t onFoot     = 0;
-            std::uint16_t aim        = 0;
             bool          haveOnFoot = false;
-            bool          haveAim    = false;
         };
 
         std::unordered_map<std::uint64_t, AcceptedSequence> _sequences;

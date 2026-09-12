@@ -11,10 +11,9 @@
 #include "shared/entity/state_forced.h"
 #include "shared/rpc/common/metrics.h"
 #include "shared/rpc/common/wire_registry.h"
-#include "shared/rpc/player/aim_sync.h"
 #include "shared/rpc/player/onfoot_sync.h"
-#include "shared/rpc/player_script.h"
-#include "shared/rpc/player_weapon.h"
+#include "shared/rpc/player/script.h"
+#include "shared/rpc/player/weapon.h"
 #include "shared/rpc/world_space.h"
 #include "shared/sync_rates.h"
 #include "shared/entity/vehicle_entity.h"
@@ -372,7 +371,8 @@ namespace VantaMP::Game {
             return flags;
         }
 
-        void SendOnFootSync(Shared::PlayerEntity *entity, const SDK::LocalPedState &local, const SDK::ControllerInput &input, bool seated) {
+        void SendOnFootSync(Shared::PlayerEntity *entity, const SDK::LocalPedState &local, const SDK::ControllerInput &input, const SDK::PedAim &aim,
+                            bool seated) {
             namespace Field = Shared::RPC::Player::OnFootField;
 
             (void)entity;
@@ -440,6 +440,22 @@ namespace VantaMP::Game {
                 sync.cameraRotation = camera;
             }
 
+            // AIM ONLY WHILE ACTUALLY AIMING, which is MTA's rule: keysync and
+            // puresync both write the arm directions only when
+            // RightShoulder1 || ButtonCircle is down (CNetAPI.cpp:1128). A
+            // player running across town has a stale aim nobody can see, and
+            // paying four bytes a tick for it - let alone a second packet -
+            // buys nothing.
+            const bool aiming = (entity->buttons & (SDK::Button::Fire | SDK::Button::Aim)) != 0;
+
+            if (aiming
+                && (keyframe || std::fabs(aim.horizontal - gLocalSend.sentAimH) > kPlayerAngleEpsilon
+                    || std::fabs(aim.vertical - gLocalSend.sentAimV) > kPlayerAngleEpsilon)) {
+                sync.fields |= Field::kAim;
+                sync.aimHorizontal = aim.horizontal;
+                sync.aimVertical   = aim.vertical;
+            }
+
             if (keyframe || flags != gLocalSend.sentFlags) {
                 sync.fields |= Field::kFlags;
                 sync.flags = flags;
@@ -483,6 +499,11 @@ namespace VantaMP::Game {
                 gLocalSend.sentCamera  = camera;
             }
 
+            if (sync.fields & Field::kAim) {
+                gLocalSend.sentAimH = aim.horizontal;
+                gLocalSend.sentAimV = aim.vertical;
+            }
+
             if (sync.fields & Field::kFlags) {
                 gLocalSend.sentFlags = flags;
             }
@@ -490,49 +511,6 @@ namespace VantaMP::Game {
             gLocalSend.primed = true;
 
             Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::PlayerOnFootSync, bs.GetNumberOfBytesUsed());
-        }
-
-        void SendAimSync(Shared::PlayerEntity *entity, const SDK::PedAim &aim) {
-            (void)entity;
-
-            if (!gLocalWireId.Valid()) {
-                return;
-            }
-
-            // NOTHING TO SAY WHILE NOT AIMING, and that is the whole point of
-            // the split: a player running across town sends no aim packets at
-            // all, where before these two angles rode every movement update.
-            const bool changed = !gLocalSend.aimPrimed || std::fabs(aim.horizontal - gLocalSend.sentAimH) > kPlayerAngleEpsilon
-                              || std::fabs(aim.vertical - gLocalSend.sentAimV) > kPlayerAngleEpsilon;
-
-            if (!changed) {
-                return;
-            }
-
-            auto *net = Framework::CoreModules::GetNetworkPeer();
-
-            if (!net) {
-                return;
-            }
-
-            Shared::RPC::PlayerAimSync sync;
-
-            sync.playerId      = gLocalWireId;
-            sync.sequence      = static_cast<std::uint16_t>(gLocalSend.aimSequence + 1);
-            sync.aimHorizontal = aim.horizontal;
-            sync.aimVertical   = aim.vertical;
-
-            MafiaNet::BitStream bs;
-
-            sync.Serialize(&bs, true);
-            net->BroadcastRPC(sync, MafiaNet::Priority::High, MafiaNet::Reliability::Unreliable);
-
-            gLocalSend.aimSequence = sync.sequence;
-            gLocalSend.sentAimH    = aim.horizontal;
-            gLocalSend.sentAimV    = aim.vertical;
-            gLocalSend.aimPrimed   = true;
-
-            Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::PlayerAimSync, bs.GetNumberOfBytesUsed());
         }
 
         void PushLocalState(Shared::PlayerEntity *entity) {
@@ -666,8 +644,7 @@ namespace VantaMP::Game {
             // Movement, input and aim go out as their own packets; everything
             // written above stays on the replica, where an unchanged field
             // costs one bit.
-            SendOnFootSync(entity, local, input, seat.seated);
-            SendAimSync(entity, aim);
+            SendOnFootSync(entity, local, input, aim, seat.seated);
 
             // Tells every receiver the pose is coming from the packet instead.
             // Only true while we actually have a wire id AND are on foot: a
@@ -1480,6 +1457,13 @@ namespace VantaMP::Game {
             entity->cameraRotation = sync.cameraRotation;
         }
 
+        // Aim is present only when the sender was actually aiming; absent
+        // means "not aiming", NOT "aiming at zero".
+        if (sync.Has(Field::kAim)) {
+            entity->aimHorizontal = sync.aimHorizontal;
+            entity->aimVertical   = sync.aimVertical;
+        }
+
         if (sync.Has(Field::kFlags)) {
             namespace Flag = Shared::RPC::Player::PedFlag;
 
@@ -1493,29 +1477,6 @@ namespace VantaMP::Game {
         // point knows the difference.
     }
 
-    void ApplyRemoteAimSync(const Shared::RPC::PlayerAimSync &sync) {
-        std::uint64_t networkId = 0;
-        auto         *entity    = ResolveRemotePlayer(sync.playerId, networkId);
-
-        if (!entity) {
-            return;
-        }
-
-        auto &seen = gAppliedSequence[networkId];
-
-        // Aim carries its OWN sequence: it is a separate stream at a separate
-        // cadence, so comparing it against the movement sequence would drop
-        // every aim update sent between two movement packets.
-        if (seen.haveAim && !Shared::RPC::IsNewerSequence(sync.sequence, seen.aim)) {
-            return;
-        }
-
-        seen.aim     = sync.sequence;
-        seen.haveAim = true;
-
-        entity->aimHorizontal = sync.aimHorizontal;
-        entity->aimVertical   = sync.aimVertical;
-    }
 
     void ApplyPlayerWeapon(std::uint8_t action, std::uint32_t weaponType, std::uint32_t ammo) {
         if (action == Shared::RPC::PlayerWeapon::kTakeAll) {

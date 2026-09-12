@@ -13,7 +13,7 @@ namespace VantaMP::Shared {
 
         // SEEDED HERE BECAUSE THEY LEFT SerializeFields.
         //
-        // Movement, input and aim moved to PlayerOnFootSync / PlayerAimSync,
+        // Movement, input and aim moved to PlayerOnFootSync,
         // which a player only sends while they are actually moving or aiming.
         // A client that streams in a player standing perfectly still would
         // otherwise never hear their pose or their gun direction at all.
@@ -66,8 +66,8 @@ namespace VantaMP::Shared {
         // MOVEMENT, INPUT AND AIM ARE NOT HERE ANY MORE. leftStickX/Y,
         // accelerator, brake, buttons, cameraRotation, the three pose flags
         // and the two aim angles used to ride this snapshot every tick. They
-        // are now carried by PlayerOnFootSync and PlayerAimSync, which name
-        // them in a change mask and quantize them - keeping them here too
+        // are now carried by PlayerOnFootSync, which names
+        // them in a change mask and quantizes them - keeping them here too
         // would be the same fact on the wire twice.
         //
         // The FIELDS still exist on the class: the server holds them as

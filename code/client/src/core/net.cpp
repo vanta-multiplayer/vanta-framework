@@ -7,16 +7,15 @@
 #include "game/sync/world_sync.h"
 #include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
-#include "shared/rpc/local_player_spawn.h"
-#include "shared/rpc/player_enter_vehicle.h"
-#include "shared/rpc/player_exit_vehicle.h"
-#include "shared/rpc/player_occupancy_abort.h"
-#include "shared/rpc/player_script.h"
-#include "shared/rpc/player_weapon.h"
-#include "shared/rpc/player/aim_sync.h"
+#include "shared/rpc/player/spawn.h"
+#include "shared/rpc/player/enter_vehicle.h"
+#include "shared/rpc/player/exit_vehicle.h"
+#include "shared/rpc/player/occupancy_abort.h"
+#include "shared/rpc/player/script.h"
+#include "shared/rpc/player/weapon.h"
 #include "shared/rpc/player/onfoot_sync.h"
-#include "shared/rpc/player_reload.h"
-#include "shared/rpc/player_shot.h"
+#include "shared/rpc/player/reload.h"
+#include "shared/rpc/player/shot.h"
 #include "shared/rpc/vehicle/damage.h"
 #include "shared/rpc/vehicle/driver_sync.h"
 #include "shared/rpc/vehicle/sync_owner.h"
@@ -93,10 +92,6 @@ namespace VantaMP::Core::Net {
 
         net->RegisterRPC<Shared::RPC::PlayerOnFootSync>([](const Shared::RPC::PlayerOnFootSync &sync, MafiaNet::Packet *) {
             Game::ApplyRemoteOnFootSync(sync);
-        });
-
-        net->RegisterRPC<Shared::RPC::PlayerAimSync>([](const Shared::RPC::PlayerAimSync &sync, MafiaNet::Packet *) {
-            Game::ApplyRemoteAimSync(sync);
         });
 
         net->RegisterRPC<Shared::RPC::VehicleDriverSync>([](const Shared::RPC::VehicleDriverSync &sync, MafiaNet::Packet *) {

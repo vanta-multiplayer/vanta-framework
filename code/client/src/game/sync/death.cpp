@@ -2,7 +2,7 @@
 
 #include "game/entities/local_player.h"
 #include "sdk/ped/local_ped.h"
-#include "shared/rpc/player_death.h"
+#include "shared/rpc/player/death.h"
 
 #include <core_modules.h>
 #include <logging/logger.h>

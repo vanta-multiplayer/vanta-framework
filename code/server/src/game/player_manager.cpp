@@ -3,13 +3,12 @@
 #include "shared/catalog/model_catalog.h"
 #include "shared/entity/player_entity.h"
 #include "shared/rpc/common/metrics.h"
-#include "shared/rpc/local_player_spawn.h"
-#include "shared/rpc/player/aim_sync.h"
+#include "shared/rpc/player/spawn.h"
 #include "shared/rpc/player/onfoot_sync.h"
 #include "shared/rpc/vehicle/sync_owner.h"
 #include "shared/vehicle/validate.h"
-#include "shared/rpc/player_script.h"
-#include "shared/rpc/player_weapon.h"
+#include "shared/rpc/player/script.h"
+#include "shared/rpc/player/weapon.h"
 #include "shared/rpc/world_space.h"
 #include "shared/world/world_space.h"
 
@@ -286,6 +285,15 @@ namespace VantaMP::Game {
             sender.cameraRotation = sync.cameraRotation;
         }
 
+        if (sync.Has(Field::kAim)) {
+            if (!Shared::IsFiniteFloat(sync.aimHorizontal) || !Shared::IsFiniteFloat(sync.aimVertical)) {
+                return;
+            }
+
+            sender.aimHorizontal = sync.aimHorizontal;
+            sender.aimVertical   = sync.aimVertical;
+        }
+
         if (sync.Has(Field::kFlags)) {
             namespace Flag = Shared::RPC::Player::PedFlag;
 
@@ -311,43 +319,4 @@ namespace VantaMP::Game {
                                                      static_cast<std::uint32_t>(Count() > 0 ? Count() - 1 : 0));
     }
 
-    void PlayerManager::HandleAimSync(Shared::PlayerEntity &sender, const Shared::RPC::PlayerAimSync &sync) {
-        const auto networkId = _wireIds.Resolve(sync.playerId);
-
-        if (networkId == 0 || networkId != static_cast<std::uint64_t>(sender.GetNetworkID())) {
-            return;
-        }
-
-        if (!Shared::IsFiniteFloat(sync.aimHorizontal) || !Shared::IsFiniteFloat(sync.aimVertical)) {
-            return;
-        }
-
-        auto &seen = _sequences[networkId];
-
-        if (seen.haveAim && !Shared::RPC::IsNewerSequence(sync.sequence, seen.aim)) {
-            return;
-        }
-
-        seen.aim     = sync.sequence;
-        seen.haveAim = true;
-
-        sender.aimHorizontal = sync.aimHorizontal;
-        sender.aimVertical   = sync.aimVertical;
-
-        auto *net = Framework::CoreModules::GetNetworkPeer();
-
-        if (!net) {
-            return;
-        }
-
-        auto relay = sync;
-
-        net->BroadcastRPC(relay, MafiaNet::Priority::High, MafiaNet::Reliability::Unreliable, MafiaNet::ToGuid(sender.ownerGUID));
-
-        MafiaNet::BitStream sizing;
-
-        relay.Serialize(&sizing, true);
-        Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::PlayerAimSync, sizing.GetNumberOfBytesUsed(),
-                                                     static_cast<std::uint32_t>(Count() > 0 ? Count() - 1 : 0));
-    }
 } // namespace VantaMP::Game

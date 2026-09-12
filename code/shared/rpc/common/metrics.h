@@ -27,7 +27,6 @@ namespace VantaMP::Shared::RPC::Metrics {
         Damage,
         SyncOwner,
         PlayerOnFootSync,
-        PlayerAimSync,
         EnterVehicle,
         ExitVehicle,
         OccupancyAbort,
@@ -44,7 +43,6 @@ namespace VantaMP::Shared::RPC::Metrics {
         case PacketType::Damage: return "VehicleDamageReport";
         case PacketType::SyncOwner: return "VehicleSyncOwner";
         case PacketType::PlayerOnFootSync: return "PlayerOnFootSync";
-        case PacketType::PlayerAimSync: return "PlayerAimSync";
         case PacketType::EnterVehicle: return "PlayerEnterVehicle";
         case PacketType::ExitVehicle: return "PlayerExitVehicle";
         case PacketType::OccupancyAbort: return "PlayerOccupancyAbort";

@@ -6,13 +6,12 @@
 #include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
 #include "shared/rpc/eac_messages.h"
-#include "shared/rpc/player_death.h"
-#include "shared/rpc/player_enter_vehicle.h"
-#include "shared/rpc/player_exit_vehicle.h"
-#include "shared/rpc/player/aim_sync.h"
+#include "shared/rpc/player/death.h"
+#include "shared/rpc/player/enter_vehicle.h"
+#include "shared/rpc/player/exit_vehicle.h"
 #include "shared/rpc/player/onfoot_sync.h"
-#include "shared/rpc/player_reload.h"
-#include "shared/rpc/player_shot.h"
+#include "shared/rpc/player/reload.h"
+#include "shared/rpc/player/shot.h"
 #include "shared/rpc/vehicle/damage.h"
 #include "shared/rpc/vehicle/driver_sync.h"
 #include "shared/rpc/vehicle/unoccupied_sync.h"
@@ -118,16 +117,6 @@ namespace VantaMP::Net {
             }
 
             server.Players().HandleOnFootSync(*sender, incoming);
-        });
-
-        net->RegisterRPC<Shared::RPC::PlayerAimSync>([&server](const Shared::RPC::PlayerAimSync &incoming, MafiaNet::Packet *packet) {
-            auto *sender = server.Players().Find(MafiaNet::ToPeerGuid(packet->guid));
-
-            if (!sender) {
-                return;
-            }
-
-            server.Players().HandleAimSync(*sender, incoming);
         });
 
         net->RegisterRPC<Shared::RPC::VehicleDriverSync>([&server](const Shared::RPC::VehicleDriverSync &incoming, MafiaNet::Packet *packet) {

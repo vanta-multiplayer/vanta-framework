@@ -165,37 +165,70 @@ real `BitStream`, before any of it is believed.
 
 ## Migrated (2026-09-12)
 
-Built exactly as proposed above:
-
-| Packet | Identifier | Reliability | Measured |
+| Packet | Identifier | Reliability | Measured payload |
 |---|---|---|---|
-| `PlayerOnFootSync` | `VMP:PF` | Unreliable | 31 B all-fields, 15 B position-only, 13 B input-only |
-| `PlayerAimSync` | `VMP:PA` | Unreliable | 8 B |
+| `PlayerOnFootSync` | `VMP:PF` | Unreliable | 31 B walking, 35 B aiming, 15 B position-only, 13 B input-only |
 
-Add ~9 B RPC4 header to each.
+Add ~9 B RPC4 header.
+
+### Aim: corrected after reading MTA
+
+The first cut of this made aim its own `PlayerAimSync` packet, on the reasoning
+that it has a different cadence from movement. **That was wrong**, and reading
+MTA is what showed it.
+
+MTA does not have an aim packet. It writes the two arm angles *inside* keysync
+and puresync, and only when the player is actually aiming or firing:
+
+```cpp
+if (ControllerState.RightShoulder1 || ControllerState.ButtonCircle)   // CNetAPI.cpp:1128
+```
+
+with the same gate on the read side (`CKeysyncPacket.cpp:56`). The cadence
+argument was right — a running player should pay nothing for aim — but the
+conclusion was wrong: a **mask bit** achieves that for free, where a second
+packet pays another ~9 B Huffman identifier every time it is sent.
+
+Measured, for a walking-and-aiming player:
+
+| Design | Per tick | vs original |
+|---|---|---|
+| Original replica | 66.8 B | — |
+| Two packets (first attempt) | 57.0 B | −15% |
+| **One packet, aim gated by `kAim`** | **44.0 B** | **−34%** |
+
+Folding aim back in saved 13 B/tick over the two-packet design. `PlayerAimSync`
+is deleted.
 
 ### Measured before vs after
 
 | Scenario | Before | After | |
 |---|---|---|---|
-| Walking, not aiming | 668 B/s | 400 B/s | **-40%** |
-| Walking + aiming | 668 B/s | 570 B/s | **-15%** |
-| Driving (player half) | 410 B/s | 0 B/s | **-100%** |
+| Walking, not aiming | 668 B/s | 400 B/s | **−40%** |
+| Walking + aiming | 668 B/s | 440 B/s | **−34%** |
+| Driving (player half) | 410 B/s | 0 B/s | **−100%** |
 | Idle | 0 B/s | 0 B/s | already free |
-| 10 players walking | 6680 B/s | 4000 B/s | **-40%** |
 
-The aiming case is only -15% because `PlayerAimSync` pays its own ~9 B
-identifier header. The split still wins overall because a player who is *not*
-aiming — the common case outside a firefight — now sends nothing for aim at
-all, where before those two float32 angles rode every movement update.
+### What MTA does that VantaMP deliberately does not
+
+MTA also splits **keysync** from **puresync** by *cadence*: puresync is the full
+state sent while the ped is moving, keysync is controls+rotation+flags only,
+sent when the ped is otherwise idle but a control changed
+(`IsSmallKeySyncNeeded`). Two packet ids, two payload shapes.
+
+VantaMP gets the same effect from **one** packet with a change mask: an idle
+player whose only change is a button produces exactly the `kInput` field
+(13 B measured) and nothing else. MTA's split predates the change-mask
+approach in its own puresync; replicating both mechanisms would be two ways to
+express one idea.
 
 ### Legacy removed
 
 `PlayerEntity::SerializeFields` no longer carries `leftStickX/Y`,
 `accelerator`, `brake`, `buttons`, `cameraRotation`, `isDucked`, `isInAir`,
 `isInWater`, `aimHorizontal` or `aimVertical`. They are seeded in
-`OnSerializeConstruction` (once per receiver) so a late joiner still sees a
-still player correctly, and carried per-tick only by the packets.
+`OnSerializeConstruction` (once per receiver) so a late joiner sees a
+motionless player correctly, and carried per-tick only by the packet.
 
 `SerializeTransform` is overridden with the same presence-bit suppression as
 `VehicleEntity`, so the pose does not travel twice.
@@ -203,14 +236,27 @@ still player correctly, and carried per-tick only by the packets.
 The temporary `SyncDbg` telemetry (`Telemetry`, `gTelemetryBySlot`,
 `ReportTelemetry`, the per-tick SEND/RECV logging) is **deleted**.
 
+### Directory
+
+All player RPCs now live under `shared/rpc/player/`:
+
+```
+player/   common, onfoot_sync, spawn, death, shot, reload,
+          weapon, script, enter_vehicle, exit_vehicle, occupancy_abort
+vehicle/  common, driver_sync, unoccupied_sync, resync, damage,
+          sync_owner, authority
+common/   wire_id, wire_registry, sequence, metrics
+```
+
+`shared/rpc/` itself now holds only `world_env.h`, `world_space.h` and
+`eac_messages.h` — genuinely neither player nor vehicle.
+
 ### Shared, not duplicated
 
-`WireId`, `WireRegistry`, `IsNewerSequence` and the metrics counters moved to
+`WireId`, `WireRegistry`, `IsNewerSequence` and the metrics counters live in
 `shared/rpc/common/` and are used by both protocols. Players and vehicles keep
 **separate registry instances** — a slot number means nothing across kinds, and
 packets are already typed by their RPC identifier.
 
 The wire-id announcement reuses `VehicleSyncOwner` rather than adding a
-near-identical player packet: it already carries "this entity has this wire
-id", and nothing in it is vehicle-specific. The client routes it by resolving
-the entity type.
+near-identical player packet; the client routes it by resolving the entity type.
