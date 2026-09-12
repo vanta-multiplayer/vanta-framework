@@ -14,6 +14,8 @@
 
 #include <string>
 
+#include <glm/gtc/quaternion.hpp>
+
 #include <core_modules.h>
 #include <logging/logger.h>
 #include <networking/network_peer.h>
@@ -291,6 +293,16 @@ namespace VantaMP::Game {
         // against, so it must not go stale because motion moved to a packet.
         if (sync.Has(Field::kPosition)) {
             sender.position = sync.position;
+        }
+
+        // HEADING WAS VALIDATED AND THEN DROPPED, which is the bug that made
+        // remote players face the wrong way at random. A ped has one heading
+        // and it is stored on the replica as a yaw-only quaternion; without
+        // this the replica kept whatever rotation it was spawned with, and
+        // every client constructing from it - or falling back to it between
+        // packets - got that stale angle.
+        if (sync.Has(Field::kHeading)) {
+            sender.rotation = glm::quat(glm::vec3(0.0f, 0.0f, sync.heading));
         }
 
         if (sync.Has(Field::kVelocity)) {

@@ -192,7 +192,11 @@ namespace VantaMP::Game::PlayerSyncState {
             sync.position = position;
         }
 
-        if (keyframe || std::fabs(local.heading - gLocalSend.sentHeading) > kPlayerAngleEpsilon) {
+        // WRAPPED DIFFERENCE, NOT A RAW ONE. A heading runs -pi..pi, so a ped
+        // turning through north goes 3.13 -> -3.13: a real movement of 0.02
+        // rad that `fabs` reports as 6.26. That sent a full packet on every
+        // crossing whether or not the player had actually turned.
+        if (keyframe || std::fabs(OffsetRadians(gLocalSend.sentHeading, local.heading)) > kPlayerAngleEpsilon) {
             sync.fields |= Field::kHeading;
             sync.heading = local.heading;
         }
