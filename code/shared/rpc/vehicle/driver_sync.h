@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "wire_id.h"
+#include "../common/wire_id.h"
 
 #include <mafianet/BitStream.h>
 
@@ -34,7 +34,7 @@ namespace VantaMP::Shared::RPC {
         // of the 64-bit NetworkID, which at this packet's rate was the
         // largest single field in it. See wire_id.h for why the generation
         // half is not optional.
-        Vehicle::WireId vehicleId {};
+        Common::WireId vehicleId {};
 
         // Wraps at 65536 ticks (~109 minutes at 100 ms). Compared with a
         // signed-difference test so wrap is harmless, and it is what makes a

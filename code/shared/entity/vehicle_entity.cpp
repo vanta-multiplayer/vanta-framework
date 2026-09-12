@@ -45,17 +45,45 @@ namespace VantaMP::Shared {
         fields.Field(modelId);
         fields.Field(primaryColour);
         fields.Field(secondaryColour);
+
+        // SEEDED HERE BECAUSE THEY LEFT SerializeFields.
+        //
+        // Motion and control moved to VehicleDriverSync, which only a live
+        // driver sends. A client that streams in a car nobody is driving
+        // would otherwise never hear its health, engine or physical flags at
+        // all - it would show a pristine, idling car that is actually a
+        // burnt-out wreck with its lights on.
+        //
+        // Construction is sent once per receiver, so this is the right place:
+        // it is the seed a receiver starts from, and the packets correct it
+        // from there. Sending it per tick was the duplication being removed.
+        fields.Field(health);
+        fields.Field(engineOn);
+        fields.Field(sirenOn);
+        fields.Field(lightsOn);
+        fields.Field(onGround);
+        fields.Field(handbrake);
     }
 
     void VehicleEntity::SerializeFields(Replication::FieldSerializer &fields) {
         // ORDER IS THE WIRE FORMAT. Append only.
-        fields.Field(angularVelocity);
-        fields.Field(health);
-        fields.Field(engineOn);
-        fields.Field(sirenOn);
-        fields.Field(steer);
-        fields.Field(accelerator);
-        fields.Field(brake);
+        //
+        // MOTION AND CONTROL ARE NOT HERE ANY MORE. angularVelocity, health,
+        // engineOn, sirenOn, steer, accelerator, brake, handbrake, gasPedal,
+        // brakePedal, lightsOn and onGround used to ride this snapshot every
+        // tick. They are now carried by VehicleDriverSync and
+        // VehicleUnoccupiedSync, which name them in a change mask and
+        // quantize them - so keeping them here too would be the same fact on
+        // the wire twice. See docs/vehicle-protocol-migration.md.
+        //
+        // The FIELDS still exist on the class: the server holds them as
+        // authoritative state and construction seeds a late joiner from them.
+        // What changed is that they no longer re-serialize per tick.
+        //
+        // What remains below is configuration and script state: it changes
+        // rarely, it must survive a late join, and the VDS delta costs one bit
+        // per unchanged field - cheaper than any packet, because an RPC pays a
+        // Huffman-encoded identifier that the replica path does not.
         fields.Field(damageEngine);
         fields.Field(doorsPacked);
         fields.Field(wheelsPacked);
@@ -94,9 +122,7 @@ namespace VantaMP::Shared {
         fields.Field(collisions);
         fields.Field(landingGearDown);
 
-        fields.Field(lightsOn);
         fields.Field(alpha);
-        fields.Field(onGround);
 
         fields.Field(engineBroken);
         fields.Field(wheelsCanBurst);
@@ -104,17 +130,6 @@ namespace VantaMP::Shared {
         fields.Field(nitroCount);
         fields.Field(variant);
         fields.Field(variant2);
-
-        // APPENDED. GTA's handbrake flag, which a remote bike cannot derive
-        // for itself because its ProcessControlInputs never runs. Must stay
-        // last: order is the wire format.
-        fields.Field(handbrake);
-
-        // APPENDED. Signed pedals, so reverse survives the wire - the
-        // unsigned `accelerator`/`brake` above clamp at zero. Must stay last:
-        // order is the wire format.
-        fields.Field(gasPedal);
-        fields.Field(brakePedal);
     }
 
     void VehicleEntity::OnStateForced() {

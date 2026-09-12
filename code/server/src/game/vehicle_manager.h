@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/rpc/vehicle/wire_registry.h"
+#include "shared/rpc/common/wire_registry.h"
 
 #include <mafianet/types.h>
 
@@ -15,6 +15,7 @@ namespace VantaMP::Shared {
 }
 
 namespace VantaMP::Shared::RPC {
+    struct VehicleDamageReport;
     struct VehicleDriverSync;
     struct VehicleUnoccupiedSync;
 } // namespace VantaMP::Shared::RPC
@@ -52,9 +53,11 @@ namespace VantaMP::Game {
 
         [[nodiscard]] Shared::PlayerEntity *OccupantOf(std::uint64_t vehicleId, std::uint8_t seat) const;
         // Takes the reporter so the report can be validated against them:
-        // damage from a player who cannot see the vehicle is forged.
-        void HandleDamage(Shared::PlayerEntity &reporter, std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels,
-                          std::uint32_t panels, std::uint32_t lights, std::uint64_t doorRatios, bool applyRatios, float health);
+        // damage from a player who cannot see the vehicle is forged. Takes the
+        // packet whole rather than a dozen loose parameters, because the mask
+        // and the values must not be separable - the mask is what says which
+        // of them mean anything.
+        void HandleDamage(Shared::PlayerEntity &reporter, const Shared::RPC::VehicleDamageReport &report);
 
         // Last pose freezes: owner returns to the server. Anyone they were
         // sitting with is told they warped out.
@@ -94,7 +97,7 @@ namespace VantaMP::Game {
         // THE SERVER IS THE ONLY MINTER. One registry, so two vehicles can
         // never hold the same slot and a released slot's generation is bumped
         // in exactly one place.
-        Shared::RPC::Vehicle::WireRegistry _wireIds;
+        Shared::RPC::Common::WireRegistry _wireIds;
 
         // Newest driver-sync sequence accepted per vehicle, so a reordered or
         // replayed datagram is dropped at the server rather than relayed on to

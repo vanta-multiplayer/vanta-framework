@@ -3,6 +3,7 @@
 #include <cstdint>
 
 namespace VantaMP::Shared::RPC {
+    struct VehicleDamageReport;
     struct VehicleDriverSync;
     struct VehicleUnoccupiedSync;
 } // namespace VantaMP::Shared::RPC
@@ -17,8 +18,7 @@ namespace VantaMP::Game {
     void ApplyRemoteEnterVehicle(std::uint64_t networkId, std::uint64_t vehicleId, std::uint8_t seat, bool warp, std::uint8_t door);
     void ApplyRemoteExitVehicle(std::uint64_t networkId, bool warp, std::uint8_t door, bool abortEnter = false, std::uint8_t doorRatio = 0, bool knockedOff = false);
     void ApplyOccupancyAbort(std::uint64_t networkId, std::uint64_t vehicleId, std::uint8_t kind, std::uint8_t seat, std::uint8_t door);
-    void ApplyRemoteVehicleDamage(std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panels, std::uint32_t lights,
-                                  std::uint64_t doorRatios, bool applyRatios, float health);
+    void ApplyRemoteVehicleDamage(const Shared::RPC::VehicleDamageReport &report);
 
     // Motion from a vehicle's authoritative driver. Decodes into the same
     // VehicleEntity fields the type handlers already read, so BikeSync and

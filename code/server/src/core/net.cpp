@@ -11,7 +11,7 @@
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
-#include "shared/rpc/vehicle_damage_report.h"
+#include "shared/rpc/vehicle/damage.h"
 #include "shared/rpc/vehicle/driver_sync.h"
 #include "shared/rpc/vehicle/unoccupied_sync.h"
 #include "shared/world/spawn_points.h"
@@ -137,8 +137,7 @@ namespace VantaMP::Net {
                 return;
             }
 
-            server.Vehicles().HandleDamage(*reporter, incoming.vehicleId, incoming.damageEngine, incoming.doorsPacked, incoming.wheelsPacked, incoming.panels,
-                                           incoming.lights, incoming.doorRatiosPacked, incoming.applyRatios, incoming.health);
+            server.Vehicles().HandleDamage(*reporter, incoming);
         });
 
         net->RegisterRPC<Shared::RPC::EacRegister>([&server](const Shared::RPC::EacRegister &incoming, MafiaNet::Packet *packet) {

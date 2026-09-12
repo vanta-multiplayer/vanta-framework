@@ -10,11 +10,11 @@
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/player_occupancy_abort.h"
-#include "shared/rpc/vehicle_damage_report.h"
+#include "shared/rpc/vehicle/damage.h"
 #include "shared/rpc/vehicle/driver_sync.h"
 #include "shared/rpc/vehicle/unoccupied_sync.h"
 #include "shared/rpc/vehicle/metrics.h"
-#include "shared/rpc/vehicle/wire_registry.h"
+#include "shared/rpc/common/wire_registry.h"
 #include "shared/sync_rates.h"
 #include "shared/vehicle/colors.h"
 #include "shared/entity/vehicle_entity.h"
@@ -168,7 +168,7 @@ namespace VantaMP::Game {
 
         // Canonical NetworkID <-> compact wire id. The client only ever
         // learns mappings; it never mints one (see wire_registry.h).
-        Shared::RPC::Vehicle::WireRegistry gWireIds;
+        Shared::RPC::Common::WireRegistry gWireIds;
 
         // MTA's stream-in warp: a ped that appeared already in a seat,
         // remembered until the car exists and they are put in it.
@@ -788,7 +788,7 @@ namespace VantaMP::Game {
         // Builds one entry for a vehicle we sync, or leaves fields==0 when
         // nothing changed. Does NOT update the baseline - that happens only
         // once the entry is actually committed to a batch that gets sent.
-        [[nodiscard]] Shared::RPC::VehicleUnoccupiedEntry BuildUnoccupiedEntry(Shared::RPC::Vehicle::WireId wireId, RemoteVehicle &remote,
+        [[nodiscard]] Shared::RPC::VehicleUnoccupiedEntry BuildUnoccupiedEntry(Shared::RPC::Common::WireId wireId, RemoteVehicle &remote,
                                                                               const SDK::VehicleState &state, bool keyframe) {
             namespace Field = Shared::RPC::Vehicle::UnoccupiedField;
 
@@ -1053,13 +1053,10 @@ namespace VantaMP::Game {
             return Shared::VehicleEntity::WorseBytes(local.wheelsPacked, entity.wheelsPacked, Shared::VehicleEntity::kWheelCount) != entity.wheelsPacked;
         }
 
-        void ApplyDamageToHandle(void *handle, const Shared::VehicleEntity &entity, RemoteVehicle &remote, bool spawnFlying, bool applyRatios) {
+        // Damage STATUS only. The door swing is driven by BeginDoorInterp on
+        // the kDoorRatios path, never from here.
+        void ApplyDamageToHandle(void *handle, const Shared::VehicleEntity &entity, RemoteVehicle &remote, bool spawnFlying) {
             SDK::ApplyVehicleDamage(handle, entity.damageEngine, entity.doorsPacked, entity.wheelsPacked, entity.panels, entity.lights, spawnFlying);
-
-            if (applyRatios) {
-                SDK::ApplyVehicleDoorRatios(handle, entity.doorRatiosPacked, SDK::OccupiedDoorMask(handle));
-                remote.lastRatios = entity.doorRatiosPacked;
-            }
 
             remote.haveDamage = true;
             remote.lastEngine = entity.damageEngine;
@@ -1115,7 +1112,7 @@ namespace VantaMP::Game {
                 Shared::VehicleEntity::WorsePacked(entity->lights, local.lights, Shared::VehicleEntity::kLightCount, 2) != local.lights;
 
             if (replicaWorse) {
-                ApplyDamageToHandle(remote.handle, *entity, remote, false, false);
+                ApplyDamageToHandle(remote.handle, *entity, remote, false);
             }
 
             if (entity->health + 0.5f < local.health) {
@@ -1146,8 +1143,28 @@ namespace VantaMP::Game {
                 return;
             }
 
+            namespace Field = Shared::RPC::Vehicle::DamageField;
+
+            // STATUS GROUPS ONLY. The door ANGLES are not ours to report -
+            // the driver owns the swing - so kDoorRatios stays out of the
+            // mask, and the receiver cannot mistake its absence for "shut
+            // every door".
             Shared::RPC::VehicleDamageReport report;
-            report.FromParameters(vehicleId, local.damageEngine, local.doorsPacked, local.wheelsPacked, local.panels, local.lights, 0, false, local.health);
+
+            report.vehicleId    = vehicleId;
+            report.damageEngine = local.damageEngine;
+            report.doorsPacked  = local.doorsPacked;
+            report.wheelsPacked = local.wheelsPacked;
+            report.panels       = local.panels;
+            report.lights       = local.lights;
+            report.health       = local.health;
+            report.Mark(Field::kEngine);
+            report.Mark(Field::kDoors);
+            report.Mark(Field::kWheels);
+            report.Mark(Field::kPanels);
+            report.Mark(Field::kLights);
+            report.Mark(Field::kHealth);
+
             net->BroadcastRPC(report);
             remote.lastDamageReportMs = now;
         }
@@ -1228,9 +1245,28 @@ namespace VantaMP::Game {
                 return;
             }
 
+            namespace Field = Shared::RPC::Vehicle::DamageField;
+
+            // THE DOOR ANGLES ARE THE POINT OF THIS REPORT, so kDoorRatios
+            // is in the mask.
             Shared::RPC::VehicleDamageReport report;
-            report.FromParameters(vehicleId, local.damageEngine, local.doorsPacked, local.wheelsPacked, local.panels, local.lights, local.doorRatiosPacked, true,
-                                  local.health);
+
+            report.vehicleId        = vehicleId;
+            report.damageEngine     = local.damageEngine;
+            report.doorsPacked      = local.doorsPacked;
+            report.wheelsPacked     = local.wheelsPacked;
+            report.panels           = local.panels;
+            report.lights           = local.lights;
+            report.doorRatiosPacked = local.doorRatiosPacked;
+            report.health           = local.health;
+            report.Mark(Field::kEngine);
+            report.Mark(Field::kDoors);
+            report.Mark(Field::kWheels);
+            report.Mark(Field::kPanels);
+            report.Mark(Field::kLights);
+            report.Mark(Field::kDoorRatios);
+            report.Mark(Field::kHealth);
+
             net->BroadcastRPC(report);
             remote.lastRatioReportMs = now;
             remote.lastSentRatios    = local.doorRatiosPacked;
@@ -1397,7 +1433,7 @@ namespace VantaMP::Game {
             if (partsChanged && !remote.wrecked) {
                 // One flying component per newly-missing part, not a
                 // SetupDamageAfterLoad of the whole wreck.
-                ApplyDamageToHandle(remote.handle, *entity, remote, entity->health > SDK::kWreckHealth, false);
+                ApplyDamageToHandle(remote.handle, *entity, remote, entity->health > SDK::kWreckHealth);
             }
 
             if (!remote.wrecked && (entity->IsBlown() || SDK::IsVehicleWrecked(remote.handle))) {
@@ -1787,7 +1823,7 @@ namespace VantaMP::Game {
     }
 
     void AdoptVehicleWireId(std::uint64_t networkId, std::uint16_t wireId) {
-        gWireIds.Adopt(networkId, Shared::RPC::Vehicle::WireId {wireId});
+        gWireIds.Adopt(networkId, Shared::RPC::Common::WireId {wireId});
     }
 
     void SetVehicleSyncerRole(std::uint64_t networkId, bool start) {
@@ -1959,35 +1995,70 @@ namespace VantaMP::Game {
         // which is the whole point of decoding into the entity.
     }
 
-    void ApplyRemoteVehicleDamage(std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels, std::uint32_t panels, std::uint32_t lights,
-                                  std::uint64_t doorRatios, bool applyRatios, float health) {
-        const auto found = gVehicles.find(vehicleId);
+    void ApplyRemoteVehicleDamage(const Shared::RPC::VehicleDamageReport &report) {
+        namespace Field = Shared::RPC::Vehicle::DamageField;
+
+        const auto found = gVehicles.find(report.vehicleId);
 
         if (found == gVehicles.end() || !found->second.handle) {
             return;
         }
 
-        Shared::VehicleEntity entity;
-        entity.damageEngine     = engine;
-        entity.doorsPacked      = doors;
-        entity.wheelsPacked     = wheels;
-        entity.panels           = panels;
-        entity.lights           = lights;
-        entity.doorRatiosPacked = doorRatios;
-        entity.health           = health;
-
-        ApplyDamageToHandle(found->second.handle, entity, found->second, health > SDK::kWreckHealth, false);
-
         auto &remote = found->second;
-        const auto local = SDK::ReadVehicle(remote.handle);
 
-        if (health + 0.5f < local.health) {
-            remote.health = health;
+        // SEEDED FROM WHAT WE ALREADY HAVE, NOT FROM ZERO.
+        //
+        // This used to build a blank VehicleEntity and copy every group out
+        // of the packet into it, which meant a report about one panel arrived
+        // at ApplyDamageToHandle claiming every door, wheel and light was
+        // pristine. It survived only because the old sender always filled all
+        // seven groups - so the mask is not just a bandwidth saving here, it
+        // is what makes a partial report expressible at all.
+        Shared::VehicleEntity entity;
 
-            SDK::ApplyVehicleStates(remote.handle, health, local.engineOn, local.sirenOn);
+        entity.damageEngine     = remote.lastEngine;
+        entity.doorsPacked      = remote.lastDoors;
+        entity.wheelsPacked     = remote.lastWheels;
+        entity.panels           = remote.lastPanels;
+        entity.lights           = remote.lastLights;
+        entity.doorRatiosPacked = remote.lastRatios;
+        entity.health           = remote.health;
+
+        if (report.Has(Field::kEngine)) {
+            entity.damageEngine = report.damageEngine;
         }
 
-        if (!remote.wrecked && health <= SDK::kWreckHealth) {
+        if (report.Has(Field::kDoors)) {
+            entity.doorsPacked = report.doorsPacked;
+        }
+
+        if (report.Has(Field::kWheels)) {
+            entity.wheelsPacked = report.wheelsPacked;
+        }
+
+        if (report.Has(Field::kPanels)) {
+            entity.panels = report.panels;
+        }
+
+        if (report.Has(Field::kLights)) {
+            entity.lights = report.lights;
+        }
+
+        if (report.Has(Field::kHealth)) {
+            entity.health = report.health;
+        }
+
+        ApplyDamageToHandle(remote.handle, entity, remote, entity.health > SDK::kWreckHealth);
+
+        const auto local = SDK::ReadVehicle(remote.handle);
+
+        if (report.Has(Field::kHealth) && report.health + 0.5f < local.health) {
+            remote.health = report.health;
+
+            SDK::ApplyVehicleStates(remote.handle, report.health, local.engineOn, local.sirenOn);
+        }
+
+        if (!remote.wrecked && entity.health <= SDK::kWreckHealth) {
             SDK::WreckVehicle(remote.handle, false);
             remote.wrecked = true;
         }
@@ -1996,10 +2067,11 @@ namespace VantaMP::Game {
             SDK::KeepScriptVehicle(remote.handle);
         }
 
-        if (applyRatios) {
-            remote.lastRatios       = doorRatios;
-            remote.lastEntityRatios = doorRatios;
-            BeginDoorInterp(remote, remote.handle, doorRatios);
+        // Absent ratios mean DO NOT TOUCH THE DOORS - not "close them".
+        if (report.Has(Field::kDoorRatios)) {
+            remote.lastRatios       = report.doorRatiosPacked;
+            remote.lastEntityRatios = report.doorRatiosPacked;
+            BeginDoorInterp(remote, remote.handle, report.doorRatiosPacked);
         }
     }
 

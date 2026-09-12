@@ -344,8 +344,30 @@ namespace VantaMP::Game {
                 return;
             }
 
-            entity->position = glm::vec3(local.x, local.y, local.z);
-            entity->rotation = HeadingTo(local.heading);
+            // A SEATED PED'S TRANSFORM IS THE VEHICLE'S. DO NOT SEND IT TWICE.
+            //
+            // While this player is in a seat, every receiver positions their
+            // ped by seating it in the car (SeatRemoteInVehicle) and never
+            // reads entity->position at all - GTA puts a seated ped where the
+            // vehicle is. So pushing the ped pose as well was ~41 bytes a tick
+            // of a fact already travelling in VehicleDriverSync, and the two
+            // could even disagree for a frame because they are independent
+            // messages with independent loss.
+            //
+            // ONE FACT, ONE SOURCE OF TRUTH: the vehicle packet owns the
+            // transform while driving; the player replica owns it on foot.
+            // Everything else below (health, weapon, aim, input) is genuinely
+            // player state and keeps flowing either way.
+            //
+            // Queried here rather than reusing the occupancy read further down
+            // because the pose write has to happen before it, and one GTA read
+            // is cheaper than reordering the whole function.
+            const auto seat = SDK::QueryPedOccupancy(0);
+
+            if (!seat.seated) {
+                entity->position = glm::vec3(local.x, local.y, local.z);
+                entity->rotation = HeadingTo(local.heading);
+            }
 
             entity->health = local.health;
             entity->armour = local.armour;
@@ -370,7 +392,13 @@ namespace VantaMP::Game {
             // that interval - metres, at 100ms. Handing the game a move speed
             // lets the ped carry itself between updates, which is what MTA does
             // (SetMoveSpeed before the position target) and what closes the gap.
-            entity->velocity = glm::vec3(local.velocityX, local.velocityY, local.velocityZ);
+            //
+            // ON FOOT ONLY, for the same reason as the pose above: a seated
+            // ped's momentum is the vehicle's, and VehicleDriverSync already
+            // carries it.
+            if (!seat.seated) {
+                entity->velocity = glm::vec3(local.velocityX, local.velocityY, local.velocityZ);
+            }
 
             entity->modelId = static_cast<std::uint32_t>(local.modelIndex);
 
@@ -397,7 +425,9 @@ namespace VantaMP::Game {
             entity->isInAir   = local.inAir;
             entity->isInWater = local.inWater;
 
-            const auto occupancy = SDK::QueryPedOccupancy(0);
+            // The same read taken at the top of this function for the pose
+            // gate. One GTA query per tick, not two.
+            const auto &occupancy = seat;
 
             // Keep the id while they climb out. Clearing it the moment the
             // leave task starts is what made remotes warp-exit from the

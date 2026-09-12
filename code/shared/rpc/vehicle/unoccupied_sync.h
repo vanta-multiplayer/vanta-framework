@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "wire_id.h"
+#include "../common/wire_id.h"
 
 #include <mafianet/BitStream.h>
 
@@ -22,7 +22,7 @@ namespace VantaMP::Shared::RPC {
         // Compact id: this is repeated once PER VEHICLE inside a batch, so
         // it is the field that decides how many vehicles fit in one
         // datagram. 64 bits here cost 6 bytes a vehicle for nothing.
-        Vehicle::WireId vehicleId {};
+        Common::WireId vehicleId {};
         std::uint8_t    fields = 0;
 
         glm::vec3 position {};
@@ -75,7 +75,7 @@ namespace VantaMP::Shared::RPC {
         // batch before it crosses the MTU; deliberately an over-estimate, so
         // the batch stops early rather than fragmenting.
         [[nodiscard]] static constexpr int MaxBits() {
-            return Vehicle::WireId::kBits                     // vehicleId (compact)
+            return Common::WireId::kBits                     // vehicleId (compact)
                  + Vehicle::UnoccupiedField::kCount           // mask
                  + 3 * Vehicle::kPositionBits                 // position
                  + 2 + 3 * Vehicle::kQuatComponentBits        // rotation

@@ -2,8 +2,13 @@
 
 #include <cstdint>
 
-namespace VantaMP::Shared::RPC::Vehicle {
-    // A compact, session-local reference to a networked vehicle.
+namespace VantaMP::Shared::RPC::Common {
+    // A compact, session-local reference to a networked entity.
+    //
+    // SHARED BY VEHICLES AND PLAYERS. There is one wire-id scheme in this
+    // project, not one per entity kind: the lifetime and reuse problem is
+    // identical for both, and two implementations would be two chances to
+    // get the generation handling wrong.
     //
     // THE CANONICAL ID DOES NOT CHANGE. NetworkID stays the 64-bit value
     // ReplicaManager3 assigns and every RPC outside the hot path keeps
@@ -22,9 +27,13 @@ namespace VantaMP::Shared::RPC::Vehicle {
     //   bits 12-15  generation (16 reuses before a slot repeats)
     //
     // 4096 is far above what the game can hold: GTA's vehicle pool tops out
-    // near 110 streamed in, and MTA caps its own at the same order. The
-    // headroom is for server-side entities that exist while nobody is near
-    // them.
+    // near 110 streamed in and the ped pool is the same order. The headroom
+    // is for server-side entities that exist while nobody is near them.
+    //
+    // Each entity kind keeps its OWN registry instance, so a slot number
+    // means nothing across kinds - a player and a vehicle may both hold
+    // slot 7. Packets are already typed by their RPC identifier, so there
+    // is nothing to disambiguate on the wire.
     struct WireId {
         static constexpr int           kSlotBits       = 12;
         static constexpr int           kGenerationBits = 4;
@@ -56,4 +65,4 @@ namespace VantaMP::Shared::RPC::Vehicle {
             return value == other.value;
         }
     };
-} // namespace VantaMP::Shared::RPC::Vehicle
+} // namespace VantaMP::Shared::RPC::Common

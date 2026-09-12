@@ -14,16 +14,11 @@ namespace VantaMP::Shared::RPC {
     // 100 ms motion snapshot. That separation is the single biggest reason
     // the motion packet is small.
     //
-    // The mask replaces the old all-or-nothing struct, which sent seven
-    // damage groups - 27 bytes of them - on every report even when a single
-    // panel had moved.
-    //
     // OMITTED MEANS DO NOT MODIFY. This is not a style preference here: the
     // server merges worse-wins, and merging against an absent group read as
     // zero would silently REPAIR damage that the reporter simply had nothing
-    // to say about. `applyRatios` in the old struct existed to work around
-    // exactly this for one field; the mask generalises it and that flag is
-    // gone.
+    // to say about. Door ratios are worse: they are REPLACED rather than
+    // merged, so an absent group read as zero slams every door shut.
     struct VehicleDamageReport {
         static constexpr const char *kIdentifier = "VantaMP::VehicleDamageReport";
 

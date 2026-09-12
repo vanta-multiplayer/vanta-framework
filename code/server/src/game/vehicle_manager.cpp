@@ -6,8 +6,8 @@
 #include "shared/rpc/player_enter_vehicle.h"
 #include "shared/rpc/player_exit_vehicle.h"
 #include "shared/rpc/player_occupancy_abort.h"
-#include "shared/rpc/vehicle_damage_report.h"
 #include "shared/rpc/vehicle/authority.h"
+#include "shared/rpc/vehicle/damage.h"
 #include "shared/rpc/vehicle/driver_sync.h"
 #include "shared/rpc/vehicle/metrics.h"
 #include "shared/rpc/vehicle/sync_owner.h"
@@ -349,9 +349,10 @@ namespace VantaMP::Game {
         }
     }
 
-    void VehicleManager::HandleDamage(Shared::PlayerEntity &reporter, std::uint64_t vehicleId, std::uint8_t engine, std::uint64_t doors, std::uint32_t wheels,
-                                      std::uint32_t panels, std::uint32_t lights, std::uint64_t doorRatios, bool applyRatios, float health) {
-        auto *vehicle = Find(vehicleId);
+    void VehicleManager::HandleDamage(Shared::PlayerEntity &reporter, const Shared::RPC::VehicleDamageReport &report) {
+        namespace Field = Shared::RPC::Vehicle::DamageField;
+
+        auto *vehicle = Find(report.vehicleId);
 
         if (!vehicle) {
             return;
@@ -369,7 +370,7 @@ namespace VantaMP::Game {
         // across a street is legitimate; one reporting a car in another city
         // is not. The vehicle's own occupants and owner are always in range
         // by definition, so they are not distance-tested.
-        const bool isOccupant = reporter.vehicleNetworkId == vehicleId;
+        const bool isOccupant = reporter.vehicleNetworkId == report.vehicleId;
         const bool isOwner    = vehicle->ownerGUID == reporter.ownerGUID;
 
         if (!isOccupant && !isOwner) {
@@ -382,20 +383,53 @@ namespace VantaMP::Game {
             }
         }
 
-        // Health arrives as a float from a client. A NaN merged here would
-        // propagate into the replica and from there into every receiver's
-        // GTA vehicle, which never recovers.
-        if (!Shared::RPC::Vehicle::IsValidHealth(health)) {
-            return;
+        // OMITTED MEANS DO NOT MODIFY, AND HERE THAT IS THE WHOLE POINT.
+        //
+        // The merge below is worse-wins. A group the reporter did not send
+        // would, if it were read as zero, merge as "undamaged" - and because
+        // worse-wins takes the larger value, a zero cannot repair anything
+        // by itself. But doorRatios is REPLACED rather than merged, so an
+        // absent ratios group read as zero would slam every door shut.
+        bool changed = false;
+
+        if (report.Has(Field::kEngine)) {
+            vehicle->damageEngine = report.damageEngine > vehicle->damageEngine ? report.damageEngine : vehicle->damageEngine;
+            changed               = true;
         }
 
-        vehicle->damageEngine = engine > vehicle->damageEngine ? engine : vehicle->damageEngine;
-        vehicle->doorsPacked  = Shared::VehicleEntity::WorseBytes(vehicle->doorsPacked, doors, Shared::VehicleEntity::kDoorCount);
-        vehicle->wheelsPacked = static_cast<std::uint32_t>(Shared::VehicleEntity::WorseBytes(vehicle->wheelsPacked, wheels, Shared::VehicleEntity::kWheelCount));
-        vehicle->panels       = Shared::VehicleEntity::WorsePacked(vehicle->panels, panels, Shared::VehicleEntity::kPanelCount, 4);
-        vehicle->lights       = Shared::VehicleEntity::WorsePacked(vehicle->lights, lights, Shared::VehicleEntity::kLightCount, 2);
-        vehicle->health       = health < vehicle->health ? health : vehicle->health;
-        vehicle->LatchBlown();
+        if (report.Has(Field::kDoors)) {
+            vehicle->doorsPacked = Shared::VehicleEntity::WorseBytes(vehicle->doorsPacked, report.doorsPacked, Shared::VehicleEntity::kDoorCount);
+            changed              = true;
+        }
+
+        if (report.Has(Field::kWheels)) {
+            vehicle->wheelsPacked =
+                static_cast<std::uint32_t>(Shared::VehicleEntity::WorseBytes(vehicle->wheelsPacked, report.wheelsPacked, Shared::VehicleEntity::kWheelCount));
+            changed = true;
+        }
+
+        if (report.Has(Field::kPanels)) {
+            vehicle->panels = Shared::VehicleEntity::WorsePacked(vehicle->panels, report.panels, Shared::VehicleEntity::kPanelCount, 4);
+            changed         = true;
+        }
+
+        if (report.Has(Field::kLights)) {
+            vehicle->lights = Shared::VehicleEntity::WorsePacked(vehicle->lights, report.lights, Shared::VehicleEntity::kLightCount, 2);
+            changed         = true;
+        }
+
+        if (report.Has(Field::kHealth)) {
+            // Health arrives from a client. A NaN merged here would propagate
+            // into the replica and from there into every receiver's GTA
+            // vehicle, which never recovers.
+            if (!Shared::RPC::Vehicle::IsValidHealth(report.health)) {
+                return;
+            }
+
+            vehicle->health = report.health < vehicle->health ? report.health : vehicle->health;
+            vehicle->LatchBlown();
+            changed = true;
+        }
 
         // REPLACE, DO NOT MAX - and only when nobody is driving.
         // A passenger report used to stomp the owner's close, then the
@@ -404,13 +438,20 @@ namespace VantaMP::Game {
         bool hasDriver = false;
 
         _players.ForEach([&](Shared::PlayerEntity *player) {
-            if (player->vehicleNetworkId == vehicleId && player->vehicleSeat == 0) {
+            if (player->vehicleNetworkId == report.vehicleId && player->vehicleSeat == 0) {
                 hasDriver = true;
             }
         });
 
-        if (applyRatios && !hasDriver) {
-            vehicle->doorRatiosPacked = doorRatios;
+        const bool takeRatios = report.Has(Field::kDoorRatios) && !hasDriver;
+
+        if (takeRatios) {
+            vehicle->doorRatiosPacked = report.doorRatiosPacked;
+            changed                   = true;
+        }
+
+        if (!changed) {
+            return;
         }
 
         auto *net = Framework::CoreModules::GetNetworkPeer();
@@ -419,11 +460,58 @@ namespace VantaMP::Game {
             return;
         }
 
-        Shared::RPC::VehicleDamageReport report;
-        report.FromParameters(vehicleId, vehicle->damageEngine, vehicle->doorsPacked, vehicle->wheelsPacked, vehicle->panels, vehicle->lights, vehicle->doorRatiosPacked,
-                              applyRatios && !hasDriver, vehicle->health);
-        net->BroadcastRPC(report, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
+        // Rebroadcast the MERGED authoritative state, masked to what actually
+        // moved. The server is the source of truth here, not the reporter:
+        // two clients can each see half a wreck, and everyone must end up
+        // with the union.
+        Shared::RPC::VehicleDamageReport merged;
+
+        merged.vehicleId = report.vehicleId;
+
+        if (report.Has(Field::kEngine)) {
+            merged.Mark(Field::kEngine);
+            merged.damageEngine = vehicle->damageEngine;
+        }
+
+        if (report.Has(Field::kDoors)) {
+            merged.Mark(Field::kDoors);
+            merged.doorsPacked = vehicle->doorsPacked;
+        }
+
+        if (report.Has(Field::kWheels)) {
+            merged.Mark(Field::kWheels);
+            merged.wheelsPacked = vehicle->wheelsPacked;
+        }
+
+        if (report.Has(Field::kPanels)) {
+            merged.Mark(Field::kPanels);
+            merged.panels = vehicle->panels;
+        }
+
+        if (report.Has(Field::kLights)) {
+            merged.Mark(Field::kLights);
+            merged.lights = vehicle->lights;
+        }
+
+        if (report.Has(Field::kHealth)) {
+            merged.Mark(Field::kHealth);
+            merged.health = vehicle->health;
+        }
+
+        if (takeRatios) {
+            merged.Mark(Field::kDoorRatios);
+            merged.doorRatiosPacked = vehicle->doorRatiosPacked;
+        }
+
+        net->BroadcastRPC(merged, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
+
+        MafiaNet::BitStream sizing;
+
+        merged.Serialize(&sizing, true);
+        Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::Damage, sizing.GetNumberOfBytesUsed(),
+                                                    static_cast<std::uint32_t>(_players.Count()));
     }
+
 
     void VehicleManager::AnnounceWireId(std::uint64_t networkId, MafiaNet::PeerGuid to) {
         auto *net = Framework::CoreModules::GetNetworkPeer();

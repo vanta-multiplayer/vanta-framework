@@ -15,7 +15,7 @@
 #include "shared/rpc/player_weapon.h"
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
-#include "shared/rpc/vehicle_damage_report.h"
+#include "shared/rpc/vehicle/damage.h"
 #include "shared/rpc/vehicle/driver_sync.h"
 #include "shared/rpc/vehicle/sync_owner.h"
 #include "shared/rpc/vehicle/unoccupied_sync.h"
@@ -109,8 +109,7 @@ namespace VantaMP::Core::Net {
         });
 
         net->RegisterRPC<Shared::RPC::VehicleDamageReport>([](const Shared::RPC::VehicleDamageReport &report, MafiaNet::Packet *) {
-            Game::ApplyRemoteVehicleDamage(report.vehicleId, report.damageEngine, report.doorsPacked, report.wheelsPacked, report.panels, report.lights,
-                                           report.doorRatiosPacked, report.applyRatios, report.health);
+            Game::ApplyRemoteVehicleDamage(report);
         });
 
         net->RegisterRPC<Shared::RPC::EacOpaque>([](const Shared::RPC::EacOpaque &opaque, MafiaNet::Packet *) {

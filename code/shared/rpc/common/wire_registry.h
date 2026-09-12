@@ -1,12 +1,12 @@
 #pragma once
 
-#include "wire_id.h"
+#include "../common/wire_id.h"
 
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
 
-namespace VantaMP::Shared::RPC::Vehicle {
+namespace VantaMP::Shared::RPC::Common {
     // Maps the canonical 64-bit NetworkID to the compact hot-path WireId and
     // back.
     //
@@ -177,4 +177,4 @@ namespace VantaMP::Shared::RPC::Vehicle {
         std::vector<std::uint16_t> _freeSlots;
         std::uint16_t              _nextSlot = 0;
     };
-} // namespace VantaMP::Shared::RPC::Vehicle
+} // namespace VantaMP::Shared::RPC::Common
