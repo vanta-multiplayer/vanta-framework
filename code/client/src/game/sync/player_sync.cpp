@@ -304,6 +304,87 @@ namespace VantaMP::Game {
             SDK::WriteRemoteInput(slot, input);
         }
 
+        // The replica fields that are not movement: world placement plus the
+        // slow-changing ped state.
+        //
+        // These ride the replica's delta channel, where an unchanged field
+        // costs one bit - which is why they are NOT in PlayerOnFootSync. Some
+        // are GTA facts the owner reports (wanted level, fighting style,
+        // oxygen, drowning); the rest are script-owned and the owner only
+        // echoes them back, never invents them from the game.
+        void PushLocalWorldAndScriptState(Shared::PlayerEntity *entity, const SDK::LocalPedState &local) {
+            // Area code is a GTA fact. Dimension is not — leave the replica
+            // alone so a script write the owner was told about survives.
+            entity->interior     = local.interior;
+            gLocalWorld.interior  = local.interior;
+            gLocalWorld.dimension = entity->dimension;
+
+            // Money, freeze and collision are script-owned. Wanted,
+            // fighting style and oxygen are GTA facts — cops, fists
+            // and swimming change them, so the owner reports them.
+            entity->wantedLevel    = SDK::LocalPlayerWanted();
+            entity->fightingStyle  = SDK::LocalPedFightingStyle();
+            entity->oxygen         = SDK::LocalPlayerOxygen();
+            entity->walkingStyle   = SDK::LocalPedWalkingStyle();
+            entity->onFire         = SDK::LocalPedOnFire();
+            entity->isDrowning     = local.drowning;
+            // maxHealth / jetpack are script-owned — echo, do not invent from GTA.
+            SDK::SetLocalPedAlpha(entity->alpha);
+            SDK::SetLocalPedJetPack(entity->hasJetPack);
+        }
+
+        // What is in this player's hands, and where it is pointing.
+        //
+        // Returns the aim because the on-foot packet needs it too - reading it
+        // twice would be two GTA queries for one fact.
+        [[nodiscard]] SDK::PedAim PushLocalWeaponAndAim(Shared::PlayerEntity *entity) {
+            const auto weapon = SDK::QueryLocalPedWeapon();
+
+            entity->weaponType  = weapon.type;
+            entity->ammoClip    = weapon.ammoClip;
+            entity->ammoTotal   = weapon.ammoTotal;
+            entity->isReloading = weapon.reloading;
+
+            const auto aim = SDK::ReadLocalPedAim();
+
+            entity->aimHorizontal = aim.horizontal;
+            entity->aimVertical   = aim.vertical;
+
+            return aim;
+        }
+
+        // The controller state and the pose flags GTA cannot derive from it.
+        //
+        // WHAT MAKES A REMOTE PLAYER WALK RATHER THAN GLIDE: GTA derives
+        // animation, speed, crouching and strafing from controller input, so
+        // replaying it on the other client reproduces the movement with a
+        // correct walk cycle. Position alone leaves the player sliding with
+        // their legs still on every other screen.
+        //
+        // The camera goes with the input because it is what the input MEANS - a
+        // stick pushed forward means "away from the camera", so the two are one
+        // reading. Pair this tick's stick with last tick's view and the player
+        // moves in a direction neither of them described.
+        //
+        // Returns the input because the on-foot packet carries it as well.
+        [[nodiscard]] SDK::ControllerInput PushLocalInputAndPose(Shared::PlayerEntity *entity, const SDK::LocalPedState &local) {
+            const auto input = SDK::ReadLocalInput();
+
+            entity->leftStickX  = input.leftStickX;
+            entity->leftStickY  = input.leftStickY;
+            entity->accelerator = input.accelerator;
+            entity->brake       = input.brake;
+            entity->buttons     = input.buttons;
+
+            entity->cameraRotation = SDK::ReadLocalCameraRotation();
+
+            entity->isDucked  = local.ducked;
+            entity->isInAir   = local.inAir;
+            entity->isInWater = local.inWater;
+
+            return input;
+        }
+
         // Copies the local player into the entity the server sees.
         // --- Outbound player packets ----------------------------------------
         //
@@ -552,17 +633,7 @@ namespace VantaMP::Game {
             entity->health = local.health;
             entity->armour = local.armour;
 
-            const auto weapon = SDK::QueryLocalPedWeapon();
-
-            entity->weaponType  = weapon.type;
-            entity->ammoClip    = weapon.ammoClip;
-            entity->ammoTotal   = weapon.ammoTotal;
-            entity->isReloading = weapon.reloading;
-
-            const auto aim = SDK::ReadLocalPedAim();
-
-            entity->aimHorizontal = aim.horizontal;
-            entity->aimVertical   = aim.vertical;
+            const auto aim = PushLocalWeaponAndAim(entity);
 
             // VELOCITY IS SENT, AND IT IS NOT REDUNDANT WITH THE INPUT.
             //
@@ -582,28 +653,7 @@ namespace VantaMP::Game {
 
             entity->modelId = static_cast<std::uint32_t>(local.modelIndex);
 
-            // WHAT MAKES A REMOTE PLAYER WALK RATHER THAN GLIDE. GTA derives
-            // animation, speed, crouching and strafing from controller input,
-            // so replaying it on the other client reproduces the movement with
-            // a correct walk cycle. Position alone leaves the player sliding
-            // with their legs still on every other screen.
-            const auto input = SDK::ReadLocalInput();
-
-            entity->leftStickX  = input.leftStickX;
-            entity->leftStickY  = input.leftStickY;
-            entity->accelerator = input.accelerator;
-            entity->brake       = input.brake;
-            entity->buttons     = input.buttons;
-
-            // SENT WITH THE INPUT, BECAUSE IT IS WHAT THE INPUT MEANS. A stick
-            // pushed forward means "away from the camera", so the two are one
-            // reading: pair this tick's stick with last tick's view and the
-            // player moves in a direction neither of them described.
-            entity->cameraRotation = SDK::ReadLocalCameraRotation();
-
-            entity->isDucked  = local.ducked;
-            entity->isInAir   = local.inAir;
-            entity->isInWater = local.inWater;
+            const auto input = PushLocalInputAndPose(entity, local);
 
             // The same read taken at the top of this function for the pose
             // gate. One GTA query per tick, not two.
@@ -622,24 +672,7 @@ namespace VantaMP::Game {
                 entity->vehicleSeat      = 0;
             }
 
-            // Area code is a GTA fact. Dimension is not — leave the replica
-            // alone so a script write the owner was told about survives.
-            entity->interior     = local.interior;
-            gLocalWorld.interior  = local.interior;
-            gLocalWorld.dimension = entity->dimension;
-
-            // Money, freeze and collision are script-owned. Wanted,
-            // fighting style and oxygen are GTA facts — cops, fists
-            // and swimming change them, so the owner reports them.
-            entity->wantedLevel    = SDK::LocalPlayerWanted();
-            entity->fightingStyle  = SDK::LocalPedFightingStyle();
-            entity->oxygen         = SDK::LocalPlayerOxygen();
-            entity->walkingStyle   = SDK::LocalPedWalkingStyle();
-            entity->onFire         = SDK::LocalPedOnFire();
-            entity->isDrowning     = local.drowning;
-            // maxHealth / jetpack are script-owned — echo, do not invent from GTA.
-            SDK::SetLocalPedAlpha(entity->alpha);
-            SDK::SetLocalPedJetPack(entity->hasJetPack);
+            PushLocalWorldAndScriptState(entity, local);
 
             // Movement, input and aim go out as their own packets; everything
             // written above stays on the replica, where an unchanged field
@@ -655,34 +688,45 @@ namespace VantaMP::Game {
         }
 
         // Applies a remote entity to its ped, creating one if needed.
-        void ApplyRemoteState(Shared::PlayerEntity *entity) {
-            const auto networkId = static_cast<std::uint64_t>(entity->GetNetworkID());
-
+        // Finds this player's ped slot, creating the ped if they are new.
+        //
+        // Returns -1 when the player cannot be shown at all - no free slot, or
+        // GTA refused the ped. `justCreated` tells the caller whether this is
+        // the first frame for that ped, which is what decides a stream-in warp
+        // rather than a walked entry.
+        [[nodiscard]] int AcquireRemotePedSlot(Shared::PlayerEntity *entity, std::uint64_t networkId, bool &justCreated) {
             auto found = gSlotByNetworkId.find(networkId);
 
-            bool justCreated = false;
+            justCreated = false;
 
             if (found == gSlotByNetworkId.end()) {
                 const int slot = ClaimSlot();
 
                 if (slot < 0) {
                     Framework::Logging::GetLogger("Sync")->warn("No free slot for player {}; they will be invisible", networkId);
-                    return;
+                    return -1;
                 }
 
                 const int model = entity->modelId != 0 ? static_cast<int>(entity->modelId) : kDefaultModel;
 
                 if (!SDK::CreateRemotePed(slot, model, entity->position.x, entity->position.y, entity->position.z)) {
                     Framework::Logging::GetLogger("Sync")->error("Could not create a ped for player {}", networkId);
-                    return;
+                    return -1;
                 }
 
                 found       = gSlotByNetworkId.emplace(networkId, slot).first;
                 justCreated = true;
             }
 
-            const int slot = found->second;
+            return found->second;
+        }
 
+        // Applies everything that depends on whether this player is in a vehicle:
+        // collision, health, model, script state, and seating or unseating the ped.
+        //
+        // Returns true when the ped is seated and the caller must NOT correct its
+        // position - a seated ped is placed by its vehicle, not by us.
+        [[nodiscard]] bool ApplyRemoteOccupancy(Shared::PlayerEntity *entity, int slot, bool justCreated) {
             // THE OWNER SAYS ON FOOT, OUR COPY IS STILL SEATED.
             //
             // This branch owns the ped completely - it returns before the
@@ -766,12 +810,131 @@ namespace VantaMP::Game {
                 // agrees they are in it. Otherwise fall through to the
                 // correction below - see the note above.
                 if (ownerInVehicle || occupancy.entering || occupancy.leaving) {
-                    return;
+                    return true;
                 }
 
             }
             else {
                 SDK::SetRemotePedCollision(slot, true);
+            }
+
+            return false;
+        }
+
+        // Applies everything that is a PER-PACKET fact, on the packet edge only.
+        //
+        void ApplyRemoteSnapshot(Shared::PlayerEntity *entity, int slot, AimedAt &aimed, std::uint32_t now) {
+            ++aimed.updates;
+
+            // 1. Momentum, but NOT ON EVERY UPDATE WHILE ON FOOT.
+            //
+            // A ped standing on the ground gets its move speed from its own
+            // walk animation, recomputed every frame. Overwriting that with
+            // the owner's reading fights it: the ped is being carried by the
+            // replayed input already, so the injected speed is movement
+            // counted twice, and the correction then drags it back.
+            //
+            // In the AIR there is no animation driving it and the game is
+            // integrating gravity, so the owner's velocity is the only thing
+            // that makes a jump arc match - it goes every update.
+            //
+            // On the ground it still goes occasionally, to catch drift the
+            // input replay alone would not. MTA's exact rule: every sync
+            // while airborne, every fourth otherwise.
+            if (entity->isInAir || (aimed.updates % 4u) == 0u) {
+                SDK::SetRemotePedVelocity(slot, entity->velocity.x, entity->velocity.y, entity->velocity.z);
+            }
+
+            // 2. Health, armour, and what is in their hands.
+            SDK::SetRemotePedHealth(slot, entity->health, entity->armour);
+            SDK::SetRemotePedModel(slot, entity->modelId != 0 ? static_cast<int>(entity->modelId) : 0);
+            SDK::SetRemotePedFrozen(slot, entity->frozen);
+            SDK::SetRemotePedCollision(slot, entity->collisions);
+            SDK::SetRemotePedFightingStyle(slot, entity->fightingStyle);
+            SDK::SetRemotePedOxygen(slot, entity->oxygen);
+            SDK::SetRemotePedWalkingStyle(slot, entity->walkingStyle);
+            SDK::SetRemotePedOnFire(slot, entity->onFire);
+            SDK::SetRemotePedJetPack(slot, entity->hasJetPack);
+            SDK::SetRemotePedAlpha(slot, entity->alpha);
+            gRemoteAlpha[slot] = entity->alpha;
+
+            // On the update path rather than per-frame. It costs nothing
+            // when the weapon has not changed, but the frame path runs six
+            // times per update and there is nothing here that needs it.
+            SDK::SetRemotePedWeapon(slot, entity->weaponType, entity->ammoClip, entity->ammoTotal);
+
+            if (entity->isReloading) {
+                SDK::ReloadRemotePedWeapon(slot);
+            }
+
+            // 3. The transform.
+
+            const auto current = SDK::GetRemotePedPosition(slot);
+
+            auto &interpolator = gInterpolationBySlot[slot];
+
+            // FULL CORRECTION, NOT A QUARTER OF ONE.
+            //
+            // The framework scales the error by mix(0.25, 1.0, unlerp(min,
+            // max, delay)), so at the default range of 100..400ms an update
+            // arriving every 100ms lands exactly on the lower bound and gets
+            // 0.25 - a quarter of the gap closed per update, for ever, which
+            // is a remote player permanently metres behind where their owner
+            // says they are. MTA scales the error by nothing at all:
+            // vecError is target - current, whole.
+            //
+            // The range is a statement about the rates a project sends at,
+            // and ours is 100ms. Putting the minimum below it puts our rate
+            // inside the range rather than on its floor.
+            interpolator.GetPosition()->SetErrorContributionDelayRange(0.0f, static_cast<float>(Shared::SyncRate::kPlayerMs));
+
+            interpolator.GetPosition()->SetTargetValue(glm::vec3(current.x, current.y, current.z), entity->position, static_cast<float>(Shared::SyncRate::kPlayerMs));
+
+            // Rotation is AIMED here and turned frame by frame in
+            // CorrectRemotePlayer, the same shape as the position above.
+            // From wherever the ped is actually facing now, so the turn
+            // starts where the last one ended rather than from the last
+            // value received.
+            aimed.headingFrom    = HeadingFrom(SDK::GetRemotePedRotation(slot));
+            aimed.headingTo      = HeadingFrom(entity->rotation);
+            aimed.headingBeginMs = now;
+            aimed.headingEndMs   = now + Shared::SyncRate::kPlayerMs;
+
+            // Same window as heading. Starts from wherever the last lerp
+            // left the value, so consecutive updates join up instead of
+            // jumping back to the previous target.
+            const auto shown = SDK::GetRemotePedAim(slot);
+
+            aimed.cameraFrom  = SDK::GetRemoteCameraRotation(slot);
+            aimed.cameraTo    = entity->cameraRotation;
+            aimed.aimHFrom    = shown.horizontal;
+            aimed.aimHTo      = entity->aimHorizontal;
+            aimed.aimVFrom    = shown.vertical;
+            aimed.aimVTo      = entity->aimVertical;
+            aimed.viewBeginMs = now;
+            aimed.viewEndMs   = now + Shared::SyncRate::kPlayerMs;
+
+            aimed.position = entity->position;
+            aimed.rotation = entity->rotation;
+            aimed.speed    = glm::length(entity->velocity);
+            aimed.whenMs   = now;
+            aimed.valid    = true;
+        }
+
+        void ApplyRemoteState(Shared::PlayerEntity *entity) {
+            const auto networkId = static_cast<std::uint64_t>(entity->GetNetworkID());
+
+            bool      justCreated = false;
+            const int slot        = AcquireRemotePedSlot(entity, networkId, justCreated);
+
+            if (slot < 0) {
+                return;
+            }
+
+            // Vehicle occupancy owns the ped while it is seated; when it reports
+            // so, the position correction below is skipped deliberately.
+            if (ApplyRemoteOccupancy(entity, slot, justCreated)) {
+                return;
             }
 
             // AIMED AT, NOT SNAPPED TO.
@@ -828,103 +991,10 @@ namespace VantaMP::Game {
             // tick rate is doing.
             const bool changed = !aimed.valid || aimed.position != entity->position || aimed.rotation != entity->rotation;
             const bool due     = aimed.valid && (now - aimed.whenMs) >= Shared::SyncRate::kPlayerMs;
-
+            // Momentum, vitals and the transform are per-packet facts; input,
+            // camera and pose are per-frame and follow below.
             if (changed || due) {
-                ++aimed.updates;
-
-                // 1. Momentum, but NOT ON EVERY UPDATE WHILE ON FOOT.
-                //
-                // A ped standing on the ground gets its move speed from its own
-                // walk animation, recomputed every frame. Overwriting that with
-                // the owner's reading fights it: the ped is being carried by the
-                // replayed input already, so the injected speed is movement
-                // counted twice, and the correction then drags it back.
-                //
-                // In the AIR there is no animation driving it and the game is
-                // integrating gravity, so the owner's velocity is the only thing
-                // that makes a jump arc match - it goes every update.
-                //
-                // On the ground it still goes occasionally, to catch drift the
-                // input replay alone would not. MTA's exact rule: every sync
-                // while airborne, every fourth otherwise.
-                if (entity->isInAir || (aimed.updates % 4u) == 0u) {
-                    SDK::SetRemotePedVelocity(slot, entity->velocity.x, entity->velocity.y, entity->velocity.z);
-                }
-
-                // 2. Health, armour, and what is in their hands.
-                SDK::SetRemotePedHealth(slot, entity->health, entity->armour);
-                SDK::SetRemotePedModel(slot, entity->modelId != 0 ? static_cast<int>(entity->modelId) : 0);
-                SDK::SetRemotePedFrozen(slot, entity->frozen);
-                SDK::SetRemotePedCollision(slot, entity->collisions);
-                SDK::SetRemotePedFightingStyle(slot, entity->fightingStyle);
-                SDK::SetRemotePedOxygen(slot, entity->oxygen);
-                SDK::SetRemotePedWalkingStyle(slot, entity->walkingStyle);
-                SDK::SetRemotePedOnFire(slot, entity->onFire);
-                SDK::SetRemotePedJetPack(slot, entity->hasJetPack);
-                SDK::SetRemotePedAlpha(slot, entity->alpha);
-                gRemoteAlpha[slot] = entity->alpha;
-
-                // On the update path rather than per-frame. It costs nothing
-                // when the weapon has not changed, but the frame path runs six
-                // times per update and there is nothing here that needs it.
-                SDK::SetRemotePedWeapon(slot, entity->weaponType, entity->ammoClip, entity->ammoTotal);
-
-                if (entity->isReloading) {
-                    SDK::ReloadRemotePedWeapon(slot);
-                }
-
-                // 3. The transform.
-
-                const auto current = SDK::GetRemotePedPosition(slot);
-
-                auto &interpolator = gInterpolationBySlot[slot];
-
-                // FULL CORRECTION, NOT A QUARTER OF ONE.
-                //
-                // The framework scales the error by mix(0.25, 1.0, unlerp(min,
-                // max, delay)), so at the default range of 100..400ms an update
-                // arriving every 100ms lands exactly on the lower bound and gets
-                // 0.25 - a quarter of the gap closed per update, for ever, which
-                // is a remote player permanently metres behind where their owner
-                // says they are. MTA scales the error by nothing at all:
-                // vecError is target - current, whole.
-                //
-                // The range is a statement about the rates a project sends at,
-                // and ours is 100ms. Putting the minimum below it puts our rate
-                // inside the range rather than on its floor.
-                interpolator.GetPosition()->SetErrorContributionDelayRange(0.0f, static_cast<float>(Shared::SyncRate::kPlayerMs));
-
-                interpolator.GetPosition()->SetTargetValue(glm::vec3(current.x, current.y, current.z), entity->position, static_cast<float>(Shared::SyncRate::kPlayerMs));
-
-                // Rotation is AIMED here and turned frame by frame in
-                // CorrectRemotePlayer, the same shape as the position above.
-                // From wherever the ped is actually facing now, so the turn
-                // starts where the last one ended rather than from the last
-                // value received.
-                aimed.headingFrom    = HeadingFrom(SDK::GetRemotePedRotation(slot));
-                aimed.headingTo      = HeadingFrom(entity->rotation);
-                aimed.headingBeginMs = now;
-                aimed.headingEndMs   = now + Shared::SyncRate::kPlayerMs;
-
-                // Same window as heading. Starts from wherever the last lerp
-                // left the value, so consecutive updates join up instead of
-                // jumping back to the previous target.
-                const auto shown = SDK::GetRemotePedAim(slot);
-
-                aimed.cameraFrom  = SDK::GetRemoteCameraRotation(slot);
-                aimed.cameraTo    = entity->cameraRotation;
-                aimed.aimHFrom    = shown.horizontal;
-                aimed.aimHTo      = entity->aimHorizontal;
-                aimed.aimVFrom    = shown.vertical;
-                aimed.aimVTo      = entity->aimVertical;
-                aimed.viewBeginMs = now;
-                aimed.viewEndMs   = now + Shared::SyncRate::kPlayerMs;
-
-                aimed.position = entity->position;
-                aimed.rotation = entity->rotation;
-                aimed.speed    = glm::length(entity->velocity);
-                aimed.whenMs   = now;
-                aimed.valid    = true;
+                ApplyRemoteSnapshot(entity, slot, aimed, now);
             }
 
             // 4. Input, AFTER the transform, so the game walks the ped from
@@ -1045,41 +1115,12 @@ namespace VantaMP::Game {
         }
     }
 
-    void CorrectRemotePlayer(int slot) {
-        if (const auto found = gRemoteAlpha.find(slot); found != gRemoteAlpha.end()) {
-            SDK::SetRemotePedAlpha(slot, found->second);
-        }
-
-        if (SDK::IsPedOccupyingVehicle(slot)) {
-            return;
-        }
-
-        // MID-FALL: GTA OWNS THIS PED, POSITION AND HEADING BOTH.
-        //
-        // CEventKnockOffBike applies a launch force and hands the ped to a
-        // fall/get-up task. For that second or so they are tumbling under the
-        // game's own physics, and every write from here fights it: the
-        // position correction drags them back toward a target they are
-        // deliberately flying away from, and the heading lerp above stands a
-        // tumbling body upright.
-        //
-        // Standing off is safe because both machines run the SAME simulation
-        // from the same starting state - the owner fell from the bike we have
-        // synced all along. Any residual gap is paid off by the ordinary
-        // correction once they are on their feet.
-        if (SDK::PedIsFallingOffBike(slot)) {
-            return;
-        }
-
-        const auto found = gInterpolationBySlot.find(slot);
-
-        if (found == gInterpolationBySlot.end()) {
-            return;
-        }
-
-        auto &interpolator = found->second;
-
-        // TURNED FRAME BY FRAME, NOT SNAPPED TEN TIMES A SECOND.
+    // Turns the ped a frame at a time toward the heading its owner reported.
+    //
+    // Frame by frame, NOT snapped ten times a second - a snapped heading shows
+    // up first in the water, where a turn is all there is to see. This is what
+    // MTA does (CClientPed::Interpolate).
+    void InterpolateRemoteHeading(int slot) {
         //
         // Heading used to be written once per update, straight to the value
         // received. In between, the game turned the ped with its own animation,
@@ -1124,8 +1165,15 @@ namespace VantaMP::Game {
                 }
             }
         }
+    }
 
-        // WHERE THE GAME JUST PUT THIS PED, read after its own processing has
+    // Eases the ped toward where its owner says it is, or warps it when the gap
+    // is absurd.
+    //
+    // A share of the error at a time is right for the metre or two a normal
+    // update disagrees by; a warp is for the case where easing would take
+    // visibly too long.
+    void CorrectRemotePosition(int slot, Framework::Utils::Interpolator &interpolator) {
         // walked it. The interpolator returns that position plus a share of the
         // error, so the walk is kept and only the drift from what the owner
         // reports is taken out.
@@ -1168,8 +1216,44 @@ namespace VantaMP::Game {
         const auto next = interpolator.GetPosition()->UpdateTargetValue(here);
 
         SDK::SetRemotePedPosition(slot, next.x, next.y, next.z);
+    }
 
+    void CorrectRemotePlayer(int slot) {
+        if (const auto found = gRemoteAlpha.find(slot); found != gRemoteAlpha.end()) {
+            SDK::SetRemotePedAlpha(slot, found->second);
+        }
 
+        if (SDK::IsPedOccupyingVehicle(slot)) {
+            return;
+        }
+
+        // MID-FALL: GTA OWNS THIS PED, POSITION AND HEADING BOTH.
+        //
+        // CEventKnockOffBike applies a launch force and hands the ped to a
+        // fall/get-up task. For that second or so they are tumbling under the
+        // game's own physics, and every write from here fights it: the
+        // position correction drags them back toward a target they are
+        // deliberately flying away from, and the heading lerp above stands a
+        // tumbling body upright.
+        //
+        // Standing off is safe because both machines run the SAME simulation
+        // from the same starting state - the owner fell from the bike we have
+        // synced all along. Any residual gap is paid off by the ordinary
+        // correction once they are on their feet.
+        if (SDK::PedIsFallingOffBike(slot)) {
+            return;
+        }
+
+        const auto found = gInterpolationBySlot.find(slot);
+
+        if (found == gInterpolationBySlot.end()) {
+            return;
+        }
+
+        auto &interpolator = found->second;
+
+        InterpolateRemoteHeading(slot);
+        CorrectRemotePosition(slot, interpolator);
     }
 
     void InstallRemotePlayerCorrection() {

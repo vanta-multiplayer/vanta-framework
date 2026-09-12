@@ -584,6 +584,90 @@ namespace VantaMP::SDK {
         return true;
     }
 
+    // GTA'S OWN KNOCK-OFF EVENT, raised rather than reproduced.
+    //
+    // Returns true when the event was raised and owns the exit from here - the
+    // caller must not then build a leave task of its own. False means the
+    // patterns are unavailable and the ordinary exit path should run.
+    [[nodiscard]] bool RaiseKnockOffEvent(CPed *ped, CVehicle *vehicle, int slot) {
+        if (!gPatterns.CEventKnockOffBike__Constructor || !gPatterns.CEventGroup__Add) {
+            return false;
+        }
+
+        // RAISE GTA'S OWN EVENT AND LET IT DO ALL OF IT.
+        //
+        // Two earlier attempts got this wrong by trying to reproduce the
+        // knock-off by hand. The first built a CTaskSimpleCarFallOut with
+        // 0 for its third argument and crashed at 0x6513C5 - that argument
+        // is a CTaskUtilityLineUpPedWithCar*, and
+        // CTaskSimpleCarFallOut::SetPedPosition dereferences it with no
+        // null check. CarFallOut is also the wrong task entirely: it is
+        // the CAR fall-out, driven by CTaskComplexEnterCar, and a
+        // knock-off never uses it.
+        //
+        // What GTA actually does is CEventKnockOffBike, and the response
+        // is three separate steps that all have to happen together
+        // (EventKnockOffBike.cpp):
+        //
+        //   SetPedOutCar        0x4AFF60 - CTaskSimpleCarSetPedOut with
+        //                                  m_bKnockedOffBike, then
+        //                                  RemoveCarSitAnim
+        //   CalcForcesAndAnims  0x4B0020 - ApplyMoveForce off the bike's
+        //                                  Up/Right vectors, and returns
+        //                                  the anim (ANIM_ID_BIKE_FALLR,
+        //                                  KO_SPIN_L/R, KD_LEFT/RIGHT,
+        //                                  KO_SKID_BACK, FALL_FALL)
+        //   SetPedSafePosition  0x4B4AC0 - clears the bike's LeanAngle and
+        //                                  m_bLeanMatrixCalculated
+        //
+        // Doing those by hand means picking knockOffType and direction
+        // ourselves and calling an unreversed responder
+        // (CEventHandler::ComputeKnockOffBikeResponse, 0x4B9FF0, marked
+        // reversed=false) to play the anim. Adding the event to the ped's
+        // own event group runs the whole thing the way the game does,
+        // including the parts nobody has reversed.
+        //
+        // m_forceKnockOff = true is the bit that matters for us:
+        // CEventKnockOffBike::AffectsPed returns false for a ped with
+        // CantBeKnockedOffBike set UNLESS this is on, and every remote ped
+        // has that flag (see PrepareForTransition). The owner already
+        // decided they fell; this says "do it anyway".
+        alignas(void *) unsigned char event[kKnockOffEventBytes] {};
+
+        const CVector moveSpeed = vehicle->m_vecMoveSpeed;
+        const CVector impact    = vehicle->m_vecMoveSpeed;
+
+        reinterpret_cast<KnockOffCtorFn>(gPatterns.CEventKnockOffBike__Constructor)(
+            event, vehicle, &moveSpeed, &impact,
+            0.0f,                        // damageIntensity
+            0.0f,                        // field_28
+            kKnockOffTypeFall,           // KNOCK_OFF_TYPE_FALL
+            0,                           // direction
+            0,                           // time
+            ped,
+            vehicle->m_pDriver == ped,   // isVictimDriver
+            true);                       // forceKnockOff - see above
+
+        // Add returns the CLONE it stored, or nullptr when the event was
+        // refused. CEventKnockOffBike::AffectsPed (0x4AFEE0) refuses a
+        // dead ped, a STATUS_GHOST vehicle, or a ped that is not actually
+        // in this vehicle. If it refused, nothing will eject the rider and
+        // they would sit welded to the bike - so fall through to the plain
+        // warp below rather than leaving them there.
+        const bool accepted =
+            reinterpret_cast<EventGroupAddFn>(gPatterns.CEventGroup__Add)(&ped->m_pIntelligence->m_eventGroup, event, false) != nullptr;
+
+        if (accepted) {
+            // The response task does not exist yet - Add only queues. Mark
+            // the moment so PedIsFallingOffBike can hold the network off
+            // until it does.
+            KnockOffRaisedMsFor(slot) = GetTickCount();
+            return true;
+        }
+
+        return false;
+    }
+
     void ExitVehicle(int slot, bool warp, std::uint8_t door, bool knockedOff) {
         auto *ped = PedFor(slot);
 
@@ -640,77 +724,10 @@ namespace VantaMP::SDK {
             ? reinterpret_cast<DoorToExitFn>(gPatterns.CCarEnterExit__ComputeTargetDoorToExit)(vehicle, ped)
             : static_cast<int>(door);
 
-        if (knockedOff && gPatterns.CEventKnockOffBike__Constructor && gPatterns.CEventGroup__Add) {
-            // RAISE GTA'S OWN EVENT AND LET IT DO ALL OF IT.
-            //
-            // Two earlier attempts got this wrong by trying to reproduce the
-            // knock-off by hand. The first built a CTaskSimpleCarFallOut with
-            // 0 for its third argument and crashed at 0x6513C5 - that argument
-            // is a CTaskUtilityLineUpPedWithCar*, and
-            // CTaskSimpleCarFallOut::SetPedPosition dereferences it with no
-            // null check. CarFallOut is also the wrong task entirely: it is
-            // the CAR fall-out, driven by CTaskComplexEnterCar, and a
-            // knock-off never uses it.
-            //
-            // What GTA actually does is CEventKnockOffBike, and the response
-            // is three separate steps that all have to happen together
-            // (EventKnockOffBike.cpp):
-            //
-            //   SetPedOutCar        0x4AFF60 - CTaskSimpleCarSetPedOut with
-            //                                  m_bKnockedOffBike, then
-            //                                  RemoveCarSitAnim
-            //   CalcForcesAndAnims  0x4B0020 - ApplyMoveForce off the bike's
-            //                                  Up/Right vectors, and returns
-            //                                  the anim (ANIM_ID_BIKE_FALLR,
-            //                                  KO_SPIN_L/R, KD_LEFT/RIGHT,
-            //                                  KO_SKID_BACK, FALL_FALL)
-            //   SetPedSafePosition  0x4B4AC0 - clears the bike's LeanAngle and
-            //                                  m_bLeanMatrixCalculated
-            //
-            // Doing those by hand means picking knockOffType and direction
-            // ourselves and calling an unreversed responder
-            // (CEventHandler::ComputeKnockOffBikeResponse, 0x4B9FF0, marked
-            // reversed=false) to play the anim. Adding the event to the ped's
-            // own event group runs the whole thing the way the game does,
-            // including the parts nobody has reversed.
-            //
-            // m_forceKnockOff = true is the bit that matters for us:
-            // CEventKnockOffBike::AffectsPed returns false for a ped with
-            // CantBeKnockedOffBike set UNLESS this is on, and every remote ped
-            // has that flag (see PrepareForTransition). The owner already
-            // decided they fell; this says "do it anyway".
-            alignas(void *) unsigned char event[kKnockOffEventBytes] {};
-
-            const CVector moveSpeed = vehicle->m_vecMoveSpeed;
-            const CVector impact    = vehicle->m_vecMoveSpeed;
-
-            reinterpret_cast<KnockOffCtorFn>(gPatterns.CEventKnockOffBike__Constructor)(
-                event, vehicle, &moveSpeed, &impact,
-                0.0f,                        // damageIntensity
-                0.0f,                        // field_28
-                kKnockOffTypeFall,           // KNOCK_OFF_TYPE_FALL
-                0,                           // direction
-                0,                           // time
-                ped,
-                vehicle->m_pDriver == ped,   // isVictimDriver
-                true);                       // forceKnockOff - see above
-
-            // Add returns the CLONE it stored, or nullptr when the event was
-            // refused. CEventKnockOffBike::AffectsPed (0x4AFEE0) refuses a
-            // dead ped, a STATUS_GHOST vehicle, or a ped that is not actually
-            // in this vehicle. If it refused, nothing will eject the rider and
-            // they would sit welded to the bike - so fall through to the plain
-            // warp below rather than leaving them there.
-            const bool accepted =
-                reinterpret_cast<EventGroupAddFn>(gPatterns.CEventGroup__Add)(&ped->m_pIntelligence->m_eventGroup, event, false) != nullptr;
-
-            if (accepted) {
-                // The response task does not exist yet - Add only queues. Mark
-                // the moment so PedIsFallingOffBike can hold the network off
-                // until it does.
-                KnockOffRaisedMsFor(slot) = GetTickCount();
-                return;
-            }
+        // GTA raises and services the knock-off itself; when it takes the exit
+        // there is nothing further for us to build.
+        if (knockedOff && RaiseKnockOffEvent(ped, vehicle, slot)) {
+            return;
         }
 
         if (warp) {
