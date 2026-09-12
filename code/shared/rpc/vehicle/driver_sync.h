@@ -40,7 +40,7 @@ namespace VantaMP::Shared::RPC {
         // Wraps at 65536 ticks (~109 minutes at 100 ms). Compared with a
         // signed-difference test so wrap is harmless, and it is what makes a
         // reordered UDP datagram detectable.
-        std::uint16_t sequence = 0;
+        Sequence sequence = 0;
 
         std::uint16_t fields = 0;
 
@@ -79,7 +79,7 @@ namespace VantaMP::Shared::RPC {
             }
 
             if (Has(Vehicle::DriverField::kPosition)) {
-                Vehicle::SerializePosition(bs, write, position);
+                Common::SerializePosition(bs, write, position);
             }
 
             if (Has(Vehicle::DriverField::kRotation)) {
@@ -87,11 +87,11 @@ namespace VantaMP::Shared::RPC {
             }
 
             if (Has(Vehicle::DriverField::kVelocity)) {
-                Vehicle::SerializeVelocity(bs, write, velocity);
+                Common::SerializeVelocity(bs, write, velocity);
             }
 
             if (Has(Vehicle::DriverField::kTurnSpeed)) {
-                Vehicle::SerializeVelocity(bs, write, turnSpeed);
+                Common::SerializeVelocity(bs, write, turnSpeed);
             }
 
             if (Has(Vehicle::DriverField::kHealth)) {

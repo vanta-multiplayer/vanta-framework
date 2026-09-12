@@ -166,7 +166,7 @@ namespace VantaMP::Game {
         // separate cadences - sharing one would drop every aim update that
         // arrived between two movement packets.
         struct AppliedSequence {
-            std::uint16_t onFoot     = 0;
+            Shared::RPC::Sequence onFoot = 0;
             std::uint16_t aim        = 0;
             bool          haveOnFoot = false;
             bool          haveAim    = false;
@@ -322,7 +322,7 @@ namespace VantaMP::Game {
         constexpr std::uint32_t kPlayerKeyframeMs = 1000;
 
         struct LocalSendState {
-            std::uint16_t sequence = 0;
+            Shared::RPC::Sequence sequence = 0;
 
             glm::vec3 sentPosition {};
             glm::vec3 sentVelocity {};
@@ -339,7 +339,7 @@ namespace VantaMP::Game {
             std::uint32_t lastKeyframeMs = 0;
             bool          primed         = false;
 
-            std::uint16_t aimSequence = 0;
+
             float         sentAimH    = 0.0f;
             float         sentAimV    = 0.0f;
             bool          aimPrimed   = false;
@@ -991,6 +991,14 @@ namespace VantaMP::Game {
 
             if (player->IsOwner()) {
                 gLocalNetworkId = static_cast<std::uint64_t>(player->GetNetworkID());
+
+                // Pick up an id that was announced before we knew which entity
+                // was ours. Cheap: a hash lookup once a tick until it resolves,
+                // and nothing at all afterwards.
+                if (!gLocalWireId.Valid()) {
+                    gLocalWireId = gPlayerWireIds.Find(gLocalNetworkId);
+                }
+
                 PushLocalState(player);
                 CheckLocalDeath();
                 return;
@@ -1016,6 +1024,14 @@ namespace VantaMP::Game {
             gInterpolationBySlot.erase(it->second);
             gRemoteAlpha.erase(it->second);
             gAimedBySlot.erase(it->second);
+
+            // The wire id and the applied sequence die with the player.
+            // Leaving the mapping behind would let a packet still in flight
+            // resolve to a player who is gone, and leaving the sequence would
+            // make a REJOINING player's first packets look stale until their
+            // counter climbed past the old one.
+            gPlayerWireIds.Release(it->first);
+            gAppliedSequence.erase(it->first);
 
             ClearRemoteOccupancy(it->second);
             SDK::DestroyRemotePed(it->second);
@@ -1196,6 +1212,13 @@ namespace VantaMP::Game {
         gInterpolationBySlot.clear();
         gAimedBySlot.clear();
         gRemoteAlpha.clear();
+
+        // A disconnect invalidates every mapping: the next server mints its
+        // own id space, and our own id is no longer ours.
+        gPlayerWireIds.Clear();
+        gAppliedSequence.clear();
+        gLocalWireId = Shared::RPC::Common::WireId {};
+        gLocalSend   = LocalSendState {};
     }
 
     int SlotOfNetworkId(std::uint64_t networkId) {
@@ -1378,6 +1401,18 @@ namespace VantaMP::Game {
 
     void AdoptPlayerWireId(std::uint64_t networkId, std::uint16_t wireId) {
         gPlayerWireIds.Adopt(networkId, Shared::RPC::Common::WireId {wireId});
+
+        // OUR OWN ID MAY ARRIVE BEFORE WE KNOW WHICH ENTITY IS OURS.
+        //
+        // The server announces wire ids from OnPlayerReady, which can land
+        // before UpdatePlayerSync has run and discovered the owned entity - so
+        // gLocalNetworkId is still 0 and a `networkId == gLocalNetworkId` test
+        // would miss. The mapping is kept regardless (above), and
+        // ResolveLocalWireId below picks it up once the entity appears, so the
+        // two can arrive in either order.
+        if (gLocalNetworkId != 0 && networkId == gLocalNetworkId) {
+            gLocalWireId = Shared::RPC::Common::WireId {wireId};
+        }
     }
 
     void SetLocalPlayerWireId(std::uint16_t wireId) {

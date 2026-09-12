@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shared/rpc/common/quantize.h"
 #include "shared/vehicle/validate.h"
 
 #include <mafianet/BitStream.h>
@@ -78,14 +79,10 @@ namespace VantaMP::Shared::RPC::Vehicle {
     // Every choice below is justified by measured error against the field's
     // real range, not by how small it looks. See docs/vehicle-protocol.md.
 
-    // POSITION: GTA:SA's world is 6000x6000 and the playable Z band is well
-    // inside -1000..2000. 26 bits over +/-8192 gives a 0.00024 m step - far
-    // below the millimetre: MEASURED worst-case error across the playable
-    // map is 0.12 mm, against a 0.244 mm step. The bound is deliberately
-    // wider than the 6000x6000 map so a script teleport past the edge
-    // clamps at a sane place instead of wrapping.
-    inline constexpr float kPositionLimit = 8192.0f;
-    inline constexpr int   kPositionBits  = 26;
+    // Position, velocity and the fixed-point helper live in
+    // rpc/common/quantize.h, shared with the player protocol. What stays here
+    // is what is genuinely vehicle-shaped: a full 3D orientation (a car can
+    // sit on its roof, a ped cannot) and the health range.
 
     // ROTATION: a unit quaternion, 3 components at 16 bits over -1..1 plus 2
     // bits naming the dropped largest component ("smallest three"). MEASURED
@@ -94,13 +91,6 @@ namespace VantaMP::Shared::RPC::Vehicle {
     // the error that actually matters here. Full float32 quat is 128 bits;
     // this is 50.
     inline constexpr int kQuatComponentBits = 16;
-
-    // VELOCITY: MTA's scheme (SVelocitySync). A stationary car - the common
-    // case for an unoccupied vehicle - costs ONE BIT. Otherwise magnitude as
-    // float32 plus a 48-bit normalized direction. Kept rather than replaced
-    // because the zero case is what actually dominates, and the direction
-    // error at 16 bits per axis is invisible next to GTA's own integrator.
-    inline constexpr float kVelocityEpsilon = 1e-4f;
 
     // HEALTH: GTA vehicle health runs 0..1000 normally and scripts may raise
     // it. 12 bits over 0..2047.5 is MTA's SVehicleHealthSync exactly: a 0.5
@@ -111,31 +101,7 @@ namespace VantaMP::Shared::RPC::Vehicle {
     // Writes a float into `bits` bits over [min,max]. Clamps rather than
     // wrapping: an out-of-range value must land at the edge, never on the
     // far side of the map.
-    inline void SerializeFixed(MafiaNet::BitStream *bs, bool write, float &value, float min, float max, int bits) {
-        const std::uint32_t maxQ = (bits >= 32) ? 0xFFFFFFFFu : ((1u << bits) - 1u);
 
-        if (write) {
-            float alpha = (value - min) / (max - min);
-
-            alpha = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha);
-
-            auto quantized = static_cast<std::uint32_t>(alpha * static_cast<float>(maxQ) + 0.5f);
-
-            bs->WriteBits(reinterpret_cast<const unsigned char *>(&quantized), bits);
-        }
-        else {
-            std::uint32_t quantized = 0;
-
-            bs->ReadBits(reinterpret_cast<unsigned char *>(&quantized), bits);
-            value = min + (static_cast<float>(quantized) / static_cast<float>(maxQ)) * (max - min);
-        }
-    }
-
-    inline void SerializePosition(MafiaNet::BitStream *bs, bool write, glm::vec3 &position) {
-        SerializeFixed(bs, write, position.x, -kPositionLimit, kPositionLimit, kPositionBits);
-        SerializeFixed(bs, write, position.y, -kPositionLimit, kPositionLimit, kPositionBits);
-        SerializeFixed(bs, write, position.z, -kPositionLimit, kPositionLimit, kPositionBits);
-    }
 
     // Smallest-three quaternion. The largest component is dropped and
     // recovered from the unit-length constraint; its sign is normalised away
@@ -176,7 +142,7 @@ namespace VantaMP::Shared::RPC::Vehicle {
 
                 float value = components[i] * sign;
 
-                SerializeFixed(bs, true, value, -kInvSqrt2, kInvSqrt2, kQuatComponentBits);
+                Common::SerializeFixed(bs, true, value, -kInvSqrt2, kInvSqrt2, kQuatComponentBits);
             }
         }
         else {
@@ -194,7 +160,7 @@ namespace VantaMP::Shared::RPC::Vehicle {
 
                 float value = 0.0f;
 
-                SerializeFixed(bs, false, value, -kInvSqrt2, kInvSqrt2, kQuatComponentBits);
+                Common::SerializeFixed(bs, false, value, -kInvSqrt2, kInvSqrt2, kQuatComponentBits);
                 components[i] = value;
                 sumOfSquares += value * value;
             }
@@ -208,43 +174,8 @@ namespace VantaMP::Shared::RPC::Vehicle {
 
     // MTA's SVelocitySync: one bit for the zero case, which is what an
     // unoccupied vehicle almost always is.
-    inline void SerializeVelocity(MafiaNet::BitStream *bs, bool write, glm::vec3 &velocity) {
-        if (write) {
-            const float magnitude = glm::length(velocity);
-
-            if (!std::isfinite(magnitude) || magnitude < kVelocityEpsilon) {
-                bs->Write(false);
-                return;
-            }
-
-            bs->Write(true);
-            bs->Write(magnitude);
-
-            const glm::vec3 direction = velocity / magnitude;
-
-            bs->WriteNormVector(direction.x, direction.y, direction.z);
-        }
-        else {
-            bool moving = false;
-
-            bs->Read(moving);
-
-            if (!moving) {
-                velocity = glm::vec3(0.0f);
-                return;
-            }
-
-            float magnitude = 0.0f;
-            float x = 0.0f, y = 0.0f, z = 0.0f;
-
-            bs->Read(magnitude);
-            bs->ReadNormVector(x, y, z);
-
-            velocity = glm::vec3(x, y, z) * magnitude;
-        }
-    }
 
     inline void SerializeHealth(MafiaNet::BitStream *bs, bool write, float &health) {
-        SerializeFixed(bs, write, health, 0.0f, kHealthMax, kHealthBits);
+        Common::SerializeFixed(bs, write, health, 0.0f, kHealthMax, kHealthBits);
     }
 } // namespace VantaMP::Shared::RPC::Vehicle

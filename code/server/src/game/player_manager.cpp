@@ -12,6 +12,8 @@
 #include "shared/rpc/world_space.h"
 #include "shared/world/world_space.h"
 
+#include <string>
+
 #include <core_modules.h>
 #include <logging/logger.h>
 #include <networking/network_peer.h>
@@ -60,6 +62,25 @@ namespace VantaMP::Game {
             return;
         }
 
+        const auto networkId = static_cast<std::uint64_t>(found->second->GetNetworkID());
+
+        // READ THE NAME BEFORE THE ENTITY DIES. This used to log
+        // found->second->nickname AFTER DestroyEntity had deleted it and after
+        // the map node was erased - a use-after-free that happened to survive
+        // because the freed memory usually still held the string.
+        const std::string who = found->second->nickname.empty() ? std::string("unknown") : found->second->nickname;
+
+        // RELEASE THE WIRE ID, WHICH BUMPS ITS GENERATION.
+        //
+        // Without this the slot leaks for the life of the server, and - worse -
+        // an on-foot packet still in flight for this player stays resolvable
+        // after they have gone. The generation bump is what makes a stale id
+        // fail to resolve instead of addressing whoever takes the slot next.
+        // The vehicle side has always done this in Destroy(); the player side
+        // was missing it.
+        _wireIds.Release(networkId);
+        _sequences.erase(networkId);
+
         // Destroying the entity is what tells everyone else this player is gone;
         // there is no separate despawn message.
         if (auto *replication = Framework::CoreModules::GetReplication()) {
@@ -68,7 +89,7 @@ namespace VantaMP::Game {
 
         _players.erase(found);
 
-        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("Player {} disconnected", found->second->nickname.empty() ? "unknown" : found->second->nickname);
+        Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->info("Player {} disconnected", who);
     }
 
     bool PlayerManager::Spawn(MafiaNet::PeerGuid guid, float x, float y, float z, float heading, std::uint32_t modelId, float health, float armour,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shared/rpc/common/sequence.h"
 #include "shared/rpc/common/wire_registry.h"
 
 #include <mafianet/types.h>
@@ -102,7 +103,7 @@ namespace VantaMP::Game {
         // Newest driver-sync sequence accepted per vehicle, so a reordered or
         // replayed datagram is dropped at the server rather than relayed on to
         // everyone.
-        std::unordered_map<std::uint64_t, std::uint16_t> _driverSequence;
+        std::unordered_map<std::uint64_t, Shared::RPC::Sequence> _driverSequence;
 
         // Who is currently authoritative for each unowned vehicle's motion.
         // Absent means nobody is - which is the normal state for a car with

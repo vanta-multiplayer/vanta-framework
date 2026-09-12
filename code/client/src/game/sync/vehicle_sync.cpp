@@ -119,7 +119,7 @@ namespace VantaMP::Game {
             // receiver believes, or a field that drifts by less than its
             // threshold every tick is never sent at all and the two sides
             // walk apart for ever.
-            std::uint16_t sentSequence = 0;
+            Shared::RPC::Sequence sentSequence = 0;
             glm::vec3     sentPosition {};
             glm::quat     sentRotation = glm::identity<glm::quat>();
             glm::vec3     sentVelocity {};
@@ -160,7 +160,7 @@ namespace VantaMP::Game {
             // The newest sequence actually APPLIED, so a reordered datagram
             // can be dropped. Per vehicle, not per channel: a sequenced RakNet
             // channel would let one car's packets discard another's.
-            std::uint16_t appliedSequence     = 0;
+            Shared::RPC::Sequence appliedSequence = 0;
             bool          haveAppliedSequence = false;
         };
 
@@ -1594,6 +1594,11 @@ namespace VantaMP::Game {
                 continue;
             }
 
+            // The wire id and the sequence die with the vehicle, exactly as
+            // on the player path: a mapping left behind would let a motion
+            // packet still in flight resolve to a car that no longer exists.
+            gWireIds.Release(it->first);
+
             DestroyHandle(it->second);
             it = gVehicles.erase(it);
         }
@@ -1613,6 +1618,11 @@ namespace VantaMP::Game {
         gVehicles.clear();
         gLateJoinWarp.clear();
         gLocalRide = LocalRide::OnFoot;
+
+        // A disconnect invalidates every mapping: the next server mints its
+        // own id space.
+        gWireIds.Clear();
+        gLastUnoccupiedSendMs = 0;
     }
 
     std::uint64_t VehicleNetworkIdOf(const void *vehicle) {

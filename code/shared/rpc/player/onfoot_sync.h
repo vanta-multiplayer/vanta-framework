@@ -34,7 +34,7 @@ namespace VantaMP::Shared::RPC {
 
         Common::WireId playerId {};
 
-        std::uint16_t sequence = 0;
+        Sequence sequence = 0;
         std::uint8_t  fields   = 0;
 
         glm::vec3 position {};
@@ -83,15 +83,15 @@ namespace VantaMP::Shared::RPC {
             }
 
             if (Has(Player::OnFootField::kPosition)) {
-                Player::SerializePosition(bs, write, position);
+                Common::SerializePosition(bs, write, position);
             }
 
             if (Has(Player::OnFootField::kHeading)) {
-                Player::SerializeAngle(bs, write, heading);
+                Common::SerializeAngle(bs, write, heading);
             }
 
             if (Has(Player::OnFootField::kVelocity)) {
-                Player::SerializeVelocity(bs, write, velocity);
+                Common::SerializeVelocity(bs, write, velocity);
             }
 
             if (Has(Player::OnFootField::kInput)) {
@@ -103,12 +103,12 @@ namespace VantaMP::Shared::RPC {
                 bs->Serialize(write, accelerator);
                 bs->Serialize(write, brake);
                 bs->Serialize(write, buttons);
-                Player::SerializeAngle(bs, write, cameraRotation);
+                Common::SerializeAngle(bs, write, cameraRotation);
             }
 
             if (Has(Player::OnFootField::kAim)) {
-                Player::SerializeAngle(bs, write, aimHorizontal);
-                Player::SerializeAngle(bs, write, aimVertical);
+                Common::SerializeAngle(bs, write, aimHorizontal);
+                Common::SerializeAngle(bs, write, aimVertical);
             }
 
             if (Has(Player::OnFootField::kFlags)) {

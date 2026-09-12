@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "../common/sequence.h"
 #include "../common/wire_id.h"
 
 #include <mafianet/BitStream.h>
@@ -51,7 +52,7 @@ namespace VantaMP::Shared::RPC {
             }
 
             if (Has(Vehicle::UnoccupiedField::kPosition)) {
-                Vehicle::SerializePosition(bs, write, position);
+                Common::SerializePosition(bs, write, position);
             }
 
             if (Has(Vehicle::UnoccupiedField::kRotation)) {
@@ -59,11 +60,11 @@ namespace VantaMP::Shared::RPC {
             }
 
             if (Has(Vehicle::UnoccupiedField::kVelocity)) {
-                Vehicle::SerializeVelocity(bs, write, velocity);
+                Common::SerializeVelocity(bs, write, velocity);
             }
 
             if (Has(Vehicle::UnoccupiedField::kTurnSpeed)) {
-                Vehicle::SerializeVelocity(bs, write, turnSpeed);
+                Common::SerializeVelocity(bs, write, turnSpeed);
             }
 
             if (Has(Vehicle::UnoccupiedField::kHealth)) {
@@ -75,12 +76,13 @@ namespace VantaMP::Shared::RPC {
         // batch before it crosses the MTU; deliberately an over-estimate, so
         // the batch stops early rather than fragmenting.
         [[nodiscard]] static constexpr int MaxBits() {
-            return Common::WireId::kBits                     // vehicleId (compact)
-                 + Vehicle::UnoccupiedField::kCount           // mask
-                 + 3 * Vehicle::kPositionBits                 // position
-                 + 2 + 3 * Vehicle::kQuatComponentBits        // rotation
-                 + 2 * (1 + 32 + 48)                          // velocity + turn speed, worst case
-                 + Vehicle::kHealthBits;                      // health
+            return Common::WireId::kBits                        // vehicleId (compact)
+                 + Vehicle::UnoccupiedField::kCount             // mask
+                 + 2 * Common::kPositionBitsXY                  // position X/Y
+                 + Common::kPositionBitsZ                       // position Z
+                 + 2 + 3 * Vehicle::kQuatComponentBits          // rotation (smallest three)
+                 + 2 * (1 + 3 * Common::kVelocityBits)          // velocity + turn speed, worst case
+                 + Vehicle::kHealthBits;                        // health
         }
     };
 
@@ -108,7 +110,7 @@ namespace VantaMP::Shared::RPC {
         // unbounded memory before a single entry has been validated.
         static constexpr std::uint16_t kMaxEntries = 256;
 
-        std::uint16_t sequence = 0;
+        Sequence sequence = 0;
 
         std::vector<VehicleUnoccupiedEntry> entries;
 

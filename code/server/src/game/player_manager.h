@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shared/rpc/common/sequence.h"
 #include "shared/rpc/common/wire_registry.h"
 
 #include <mafianet/types.h>
@@ -96,7 +97,7 @@ namespace VantaMP::Game {
         // Newest on-foot sequence accepted per player, so a reordered or
         // replayed datagram is dropped here rather than relayed to everyone.
         struct AcceptedSequence {
-            std::uint16_t onFoot     = 0;
+            Shared::RPC::Sequence onFoot = 0;
             bool          haveOnFoot = false;
         };
 

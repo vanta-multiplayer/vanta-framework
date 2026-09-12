@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "../common/sequence.h"
 
 #include <mafianet/BitStream.h>
 
@@ -39,7 +40,7 @@ namespace VantaMP::Shared::RPC {
         // in-flight driver sync sent BEFORE this correction cannot land
         // after it and undo it. Without this the corrected car snaps back to
         // the diverged pose for one tick.
-        std::uint16_t sequence = 0;
+        Sequence sequence = 0;
 
         glm::vec3 position {};
         glm::quat rotation = glm::identity<glm::quat>();
@@ -54,10 +55,10 @@ namespace VantaMP::Shared::RPC {
             bs->Serialize(write, vehicleId);
             bs->Serialize(write, sequence);
 
-            Vehicle::SerializePosition(bs, write, position);
+            Common::SerializePosition(bs, write, position);
             Vehicle::SerializeRotation(bs, write, rotation);
-            Vehicle::SerializeVelocity(bs, write, velocity);
-            Vehicle::SerializeVelocity(bs, write, turnSpeed);
+            Common::SerializeVelocity(bs, write, velocity);
+            Common::SerializeVelocity(bs, write, turnSpeed);
             Vehicle::SerializeHealth(bs, write, health);
 
             if (write) {
