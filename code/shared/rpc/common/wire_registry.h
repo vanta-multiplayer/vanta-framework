@@ -28,6 +28,20 @@ namespace VantaMP::Shared::RPC::Common {
     // reach the generation check. Belt and braces, and free.
     class WireRegistry final {
       public:
+        // SIZED AT CONSTRUCTION, NOT LAZILY.
+        //
+        // These tables used to be filled by EnsureSized(), which was only ever
+        // reached through TakeSlot() -> Acquire(). The server calls Acquire
+        // because it mints ids; a CLIENT only ever calls Adopt() and
+        // Resolve(), so its tables stayed EMPTY and the first inbound packet
+        // indexed _slotLive[slot] out of bounds. That is an access violation
+        // on the first motion packet after connecting.
+        WireRegistry() {
+            _slotNetworkId.assign(WireId::kMaxSlots, 0);
+            _generation.assign(WireId::kMaxSlots, 0);
+            _slotLive.assign(WireId::kMaxSlots, false);
+        }
+
         // Assigns a wire id to a network id, or returns the existing one.
         [[nodiscard]] WireId Acquire(std::uint64_t networkId) {
             if (const auto it = _byNetworkId.find(networkId); it != _byNetworkId.end()) {
@@ -86,7 +100,7 @@ namespace VantaMP::Shared::RPC::Common {
 
             const std::uint16_t slot = id.Slot();
 
-            if (slot >= WireId::kMaxSlots || !_slotLive[slot]) {
+            if (slot >= WireId::kMaxSlots || slot >= _slotLive.size() || !_slotLive[slot]) {
                 return 0;
             }
 
@@ -112,7 +126,7 @@ namespace VantaMP::Shared::RPC::Common {
 
             const std::uint16_t slot = id.Slot();
 
-            if (slot >= WireId::kMaxSlots) {
+            if (slot >= WireId::kMaxSlots || slot >= _slotLive.size()) {
                 return;
             }
 
@@ -144,8 +158,6 @@ namespace VantaMP::Shared::RPC::Common {
 
       private:
         [[nodiscard]] std::uint16_t TakeSlot() {
-            EnsureSized();
-
             // Oldest-first: prefer a never-used slot, then the free list in
             // release order.
             if (_nextSlot < WireId::kMaxSlots) {
@@ -160,14 +172,6 @@ namespace VantaMP::Shared::RPC::Common {
             }
 
             return WireId::kMaxSlots;
-        }
-
-        void EnsureSized() {
-            if (_slotLive.empty()) {
-                _slotLive.assign(WireId::kMaxSlots, false);
-                _slotNetworkId.assign(WireId::kMaxSlots, 0);
-                _generation.assign(WireId::kMaxSlots, 0);
-            }
         }
 
         std::unordered_map<std::uint64_t, WireId> _byNetworkId;

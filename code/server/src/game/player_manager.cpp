@@ -223,7 +223,7 @@ namespace VantaMP::Game {
         // second Huffman identifier to pay for the same fact.
         Shared::RPC::VehicleSyncOwner message;
 
-        message.FromParameters(networkId, false, 0, id.value);
+        message.FromParameters(networkId, false, 0, id.value, Shared::RPC::VehicleSyncOwner::kPlayer);
 
         if (to == MafiaNet::UNASSIGNED_PEER_GUID) {
             net->BroadcastRPC(message, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);

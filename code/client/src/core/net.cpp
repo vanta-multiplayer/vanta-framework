@@ -103,24 +103,21 @@ namespace VantaMP::Core::Net {
         // plain replication carries it - so this has to be handled, not just
         // sent.
         net->RegisterRPC<Shared::RPC::VehicleSyncOwner>([](const Shared::RPC::VehicleSyncOwner &owner, MafiaNet::Packet *) {
-            // ONE ANNOUNCEMENT PACKET, TWO REGISTRIES. Players and vehicles
-            // each keep their own wire-id space (a slot number means nothing
-            // across kinds), so the entity has to be resolved to decide which
-            // registry learns the mapping. Adding a second, near-identical
-            // announcement packet would have cost another Huffman identifier
-            // to carry the same fact.
-            auto *replication = Framework::CoreModules::GetReplication();
-
-            if (!replication) {
-                return;
-            }
-
-            auto *entity = replication->GetEntityByNetworkID(static_cast<MafiaNet::NetworkID>(owner.vehicleId));
-
-            if (dynamic_cast<Shared::PlayerEntity *>(entity)) {
+            // ONE ANNOUNCEMENT PACKET, TWO REGISTRIES - and the packet SAYS
+            // which one. Players and vehicles keep separate wire-id spaces (a
+            // slot number means nothing across kinds).
+            //
+            // This used to resolve the id against the replication manager and
+            // branch on the entity type. That was wrong: the announcements are
+            // sent from OnPlayerReady, before the replicas exist here, so the
+            // lookup returned nullptr and every player id was filed under
+            // vehicles - which silently disabled the whole player sync path.
+            if (owner.kind == Shared::RPC::VehicleSyncOwner::kPlayer) {
                 Game::AdoptPlayerWireId(owner.vehicleId, owner.wireId);
 
                 // Our own id is what lets this client address its own updates.
+                // AdoptPlayerWireId also picks it up lazily once the owned
+                // entity is known, so the two can arrive in either order.
                 if (owner.vehicleId == Game::LocalNetworkId()) {
                     Game::SetLocalPlayerWireId(owner.wireId);
                 }

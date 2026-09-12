@@ -24,6 +24,18 @@ namespace VantaMP::Shared::RPC {
     struct VehicleSyncOwner {
         static constexpr const char *kIdentifier = "VantaMP::VehicleSyncOwner";
 
+        // WHICH KIND OF ENTITY THIS NAMES.
+        //
+        // The receiver cannot work this out for itself: these announcements
+        // are sent from OnPlayerReady, BEFORE the replicas exist on the
+        // joining client, so resolving the id against the replication manager
+        // returns nullptr and every player announcement was being filed in the
+        // vehicle registry. The sender always knows, so it says.
+        static constexpr std::uint8_t kVehicle = 0;
+        static constexpr std::uint8_t kPlayer  = 1;
+
+        std::uint8_t kind = kVehicle;
+
         std::uint64_t vehicleId = 0;
 
         // THE COMPACT ID IS MINTED BY THE SERVER AND LEARNED HERE.
@@ -45,7 +57,9 @@ namespace VantaMP::Shared::RPC {
         // true; a resync follows for anything more than this.
         std::uint16_t sequence = 0;
 
-        void FromParameters(std::uint64_t id, bool begin, std::uint16_t seq = 0, std::uint16_t compactId = 0xFFFF) {
+        void FromParameters(std::uint64_t id, bool begin, std::uint16_t seq = 0, std::uint16_t compactId = 0xFFFF,
+                            std::uint8_t entityKind = kVehicle) {
+            kind      = entityKind;
             vehicleId = id;
             start     = begin;
             sequence  = seq;
@@ -53,6 +67,7 @@ namespace VantaMP::Shared::RPC {
         }
 
         void Serialize(MafiaNet::BitStream *bs, bool write) {
+            bs->Serialize(write, kind);
             bs->Serialize(write, vehicleId);
             bs->Serialize(write, wireId);
             bs->Serialize(write, start);
