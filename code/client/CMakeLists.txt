@@ -15,6 +15,7 @@ set(VANTAMP_CLIENT_SDK_FILES
     src/sdk/ped/weapon.cpp
     src/sdk/ped/shot.cpp
     src/sdk/vehicle/vehicle.cpp
+    src/sdk/vehicle/bike.cpp
     src/sdk/vehicle/occupancy.cpp
 )
 
@@ -62,6 +63,8 @@ set(VANTAMP_CLIENT_FILES
 
     # Keeping those things in step with the server.
     src/game/sync/player_sync.cpp
+    src/game/sync/player/outbound.cpp
+    src/game/sync/player/inbound.cpp
     src/game/sync/shots.cpp
     src/game/sync/death.cpp
     src/game/sync/vehicle_sync.cpp
