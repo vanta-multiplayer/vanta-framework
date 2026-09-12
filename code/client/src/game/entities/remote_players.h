@@ -1,8 +1,10 @@
 #pragma once
 
+#include "sdk/player/slots.h"
+
 namespace VantaMP::Game {
-    // Slot 0 is the local player, and always is.
-    inline constexpr int kLocalPlayerSlot = 0;
+    // kLocalPlayerSlot now lives in sdk/player/slots.h, beside kMaxPlayers -
+    // they describe the same GTA table and were split across two layers.
 
     // Lets the game drive peds that belong to other people.
     //

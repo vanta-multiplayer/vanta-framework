@@ -88,7 +88,7 @@ namespace VantaMP::SDK {
     }
 
     void WriteRemoteInput(int slot, const ControllerInput &input) {
-        auto *pad = reinterpret_cast<CPad *>(Game::PadAt(slot));
+        auto *pad = reinterpret_cast<CPad *>(SDK::PadAt(slot));
 
         if (!pad) {
             return;

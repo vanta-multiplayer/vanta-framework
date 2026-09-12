@@ -142,7 +142,9 @@ namespace VantaMP::SDK {
     [[nodiscard]] float VehicleSteerAngle(const void *vehicle);
     [[nodiscard]] bool  VehicleHandbrakeOn(const void *vehicle);
 
-    // TEMPORARY BIKE DIAGNOSTIC. Remove with LogBikeBasis.
+    // True for CBike/CBmx. This is what the vehicle sync dispatcher keys on
+    // to pick BikeSync over AutomobileSync, so it is load-bearing - it began
+    // life as a diagnostic helper and outlived the diagnostic.
     [[nodiscard]] bool IsBikeHandle(const void *vehicle);
 
     // CEntity::m_nAreaCode on the car. Same visibility rule as peds.

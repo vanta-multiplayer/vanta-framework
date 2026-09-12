@@ -58,7 +58,6 @@ set(VANTAMP_CLIENT_FILES
     # Things in the world, and the slots they live in.
     src/game/camera.cpp
     src/game/entities/local_player.cpp
-    src/game/entities/player_slots.cpp
     src/game/entities/remote_players.cpp
 
     # Keeping those things in step with the server.
@@ -92,6 +91,7 @@ set(VANTAMP_CLIENT_FILES
     src/sdk/world/environment.cpp
     src/sdk/game_build.cpp
     src/sdk/patterns.cpp
+    src/sdk/player/slots.cpp
     src/sdk/ped/aim.cpp
 
     ${VANTAMP_CLIENT_SDK_FILES}

@@ -3,6 +3,7 @@
 #include "game/camera.h"
 #include "game/entities/remote_players.h"
 #include "core/diagnostics/breadcrumbs.h"
+#include "sdk/player/slots.h"
 #include "sdk/patterns.h"
 #include "game/sync/death.h"
 #include "game/sync/player_sync.h"
@@ -61,7 +62,7 @@ namespace VantaMP::Game {
 
         void ClaimLocalPed(void *player) {
             hook::put<int>(SDK::gPatterns.CWorld__PlayerInFocus, 0);
-            RegisterRemotePlayer(kLocalPlayerSlot, player);
+            RegisterRemotePlayer(SDK::kLocalPlayerSlot, player);
         }
     } // namespace
 
@@ -107,7 +108,7 @@ namespace VantaMP::Game {
         // run SetPedOut. Then stand them up at the placeholder so the
         // next server is not joining onto a corpse.
         if (FindLocalPed()) {
-            SDK::UnlinkFromVehicle(kLocalPlayerSlot);
+            SDK::UnlinkFromVehicle(SDK::kLocalPlayerSlot);
             SDK::ReviveLocalPed(gSpawnPoint.x, gSpawnPoint.y, gSpawnPoint.z, 0.0f, 100.0f, 0.0f);
         }
 
@@ -115,7 +116,7 @@ namespace VantaMP::Game {
             return;
         }
 
-        UnregisterRemotePlayer(kLocalPlayerSlot);
+        UnregisterRemotePlayer(SDK::kLocalPlayerSlot);
 
     }
 

@@ -1,6 +1,6 @@
 #include "game/entities/remote_players.h"
 
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 #include "sdk/game.h"
 #include "sdk/patterns.h"
 
@@ -14,6 +14,17 @@
 #include <cstring>
 
 namespace VantaMP::Game {
+    // The slot table moved to the SDK layer (sdk/player/slots.h) - it is GTA
+    // memory-layout knowledge, and seven SDK files were including it from
+    // here, which pointed the dependency the wrong way. These names are used
+    // throughout this file, so they are pulled in once rather than qualified
+    // at forty call sites.
+    using SDK::kLocalPlayerSlot;
+    using SDK::kMaxPlayers;
+    using SDK::kPadSize;
+    using SDK::PadAt;
+    using SDK::PlayerInfoAt;
+
     namespace {
         std::array<void *, kMaxPlayers> gOccupants {};
 

@@ -5,7 +5,7 @@
 #include "sdk/ped/access.h"
 #include "sdk/ped/remote_ped.h"
 
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 
 #include <CTaskComplexEnterCar.h>
 #include <CTaskComplexEnterCarAsDriver.h>
@@ -82,12 +82,12 @@ namespace VantaMP::SDK {
         // latch: once it expires the task slots are authoritative, so a ped
         // whose event never produced a task cannot be stranded.
         std::uint32_t &KnockOffRaisedMsFor(int slot) {
-            static std::uint32_t raised[Game::kMaxPlayers] {};
+            static std::uint32_t raised[SDK::kMaxPlayers] {};
             static std::uint32_t discard = 0;
 
             const int index = slot <= 0 ? 0 : slot;
 
-            if (index < 0 || index >= Game::kMaxPlayers) {
+            if (index < 0 || index >= SDK::kMaxPlayers) {
                 discard = 0;
                 return discard;
             }
@@ -104,12 +104,12 @@ namespace VantaMP::SDK {
         //
         // See AbortVehicleEnter. Indexed by slot; slot <= 0 is the local ped.
         const void *&AbortLatchFor(int slot) {
-            static const void *latches[Game::kMaxPlayers] {};
+            static const void *latches[SDK::kMaxPlayers] {};
             static const void *discard = nullptr;
 
             const int index = slot <= 0 ? 0 : slot;
 
-            if (index < 0 || index >= Game::kMaxPlayers) {
+            if (index < 0 || index >= SDK::kMaxPlayers) {
                 discard = nullptr;
                 return discard;
             }
@@ -1050,7 +1050,7 @@ namespace VantaMP::SDK {
         }
 
         // Then anyone walking TOWARD it, who is not an occupant yet.
-        for (int slot = 2; slot < Game::kMaxPlayers; ++slot) {
+        for (int slot = 2; slot < SDK::kMaxPlayers; ++slot) {
             auto *ped = PedAt(slot);
 
             if (ped && EnterTargetOf(ped) == vehicle) {
@@ -1091,7 +1091,7 @@ namespace VantaMP::SDK {
 
         cancel(Internal::LocalPed());
 
-        for (int slot = 2; slot < Game::kMaxPlayers; ++slot) {
+        for (int slot = 2; slot < SDK::kMaxPlayers; ++slot) {
             cancel(PedAt(slot));
         }
     }
@@ -1193,7 +1193,7 @@ namespace VantaMP::SDK {
             return true;
         }
 
-        for (int slot = 2; slot < Game::kMaxPlayers; ++slot) {
+        for (int slot = 2; slot < SDK::kMaxPlayers; ++slot) {
             if (enteringAsDriver(slot)) {
                 return true;
             }
@@ -1236,7 +1236,7 @@ namespace VantaMP::SDK {
                 slot = 0;
             }
             else {
-                for (int candidate = 2; candidate < Game::kMaxPlayers; ++candidate) {
+                for (int candidate = 2; candidate < SDK::kMaxPlayers; ++candidate) {
                     if (PedAt(candidate) == ped) {
                         slot = candidate;
                         break;

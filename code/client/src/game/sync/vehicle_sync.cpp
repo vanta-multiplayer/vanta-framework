@@ -166,6 +166,16 @@ namespace VantaMP::Game {
 
         std::unordered_map<std::uint64_t, RemoteVehicle> gVehicles;
 
+        // REVERSE INDEX: GTA handle -> network id.
+        //
+        // VehicleNetworkIdOf used to walk every entry in gVehicles. It is
+        // called every frame from the player sync push and from
+        // WatchLocalOccupancy, so on a busy server that was a linear scan of
+        // every streamed vehicle, twice a frame, to answer a question the map
+        // already knew. Maintained at the only two points where a handle is
+        // created or destroyed.
+        std::unordered_map<const void *, std::uint64_t> gVehicleIdByHandle;
+
         // Canonical NetworkID <-> compact wire id. The client only ever
         // learns mappings; it never mints one (see wire_registry.h).
         Shared::RPC::Common::WireRegistry gWireIds;
@@ -1338,6 +1348,8 @@ namespace VantaMP::Game {
                 return;
             }
 
+            gVehicleIdByHandle[remote.handle] = static_cast<std::uint64_t>(entity->GetNetworkID());
+
             remote.lastVariant  = entity->variant;
             remote.lastVariant2 = entity->variant2;
             remote.haveVariants = true;
@@ -1511,6 +1523,8 @@ namespace VantaMP::Game {
                 return;
             }
 
+            gVehicleIdByHandle.erase(remote.handle);
+
             SDK::CancelEntriesInto(remote.handle);
             SDK::ClearVehicleRgbColors(remote.handle);
             SDK::ClearVehicleHeadlightColor(remote.handle);
@@ -1546,9 +1560,15 @@ namespace VantaMP::Game {
             return;
         }
 
-        std::unordered_set<std::uint64_t> seen;
+        // REUSED, NOT REBUILT. This runs every frame and used to allocate a
+        // fresh hash set each time purely to answer "did I see this entity
+        // this tick". Clearing keeps the buckets, so after the first few
+        // frames it stops touching the allocator entirely.
+        static std::unordered_set<std::uint64_t> seen;
 
-        replication->ForEachEntity([&seen](Replication::NetworkEntity *entity) {
+        seen.clear();
+
+        replication->ForEachEntity([](Replication::NetworkEntity *entity) {
             auto *vehicle = dynamic_cast<Shared::VehicleEntity *>(entity);
 
             if (!vehicle) {
@@ -1616,6 +1636,7 @@ namespace VantaMP::Game {
         }
 
         gVehicles.clear();
+        gVehicleIdByHandle.clear();
         gLateJoinWarp.clear();
         gLocalRide = LocalRide::OnFoot;
 
@@ -1630,13 +1651,9 @@ namespace VantaMP::Game {
             return 0;
         }
 
-        for (const auto &[id, remote] : gVehicles) {
-            if (remote.handle == vehicle) {
-                return id;
-            }
-        }
+        const auto found = gVehicleIdByHandle.find(vehicle);
 
-        return 0;
+        return found == gVehicleIdByHandle.end() ? 0 : found->second;
     }
 
     void SeatRemoteInVehicle(int slot, std::uint64_t vehicleId, std::uint8_t seat, bool lateJoin) {

@@ -4,7 +4,7 @@
 #include "game/sync/vehicle_sync.h"
 #include "game/sync/world_sync.h"
 #include "game/entities/local_player.h"
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 #include "game/entities/remote_players.h"
 #include "sdk/game.h"
 #include "shared/entity/player_entity.h"
@@ -188,7 +188,7 @@ namespace VantaMP::Game {
         constexpr int kFirstRemoteSlot = 2;
 
         int ClaimSlot() {
-            for (int slot = kFirstRemoteSlot; slot < kMaxPlayers; ++slot) {
+            for (int slot = kFirstRemoteSlot; slot < SDK::kMaxPlayers; ++slot) {
                 if (!PedInSlot(slot)) {
                     return slot;
                 }
@@ -980,9 +980,15 @@ namespace VantaMP::Game {
         // callback: an entity can vanish for reasons other than a disconnect -
         // streaming out is the common one - and every reason looks the same to
         // the ped, which has to go either way.
-        std::unordered_set<std::uint64_t> seen;
+        // REUSED, NOT REBUILT. This runs every frame and used to allocate a
+        // fresh hash set each time purely to answer "did I see this entity
+        // this tick". Clearing keeps the buckets, so after the first few
+        // frames it stops touching the allocator entirely.
+        static std::unordered_set<std::uint64_t> seen;
 
-        replication->ForEachEntity([&seen](Replication::NetworkEntity *entity) {
+        seen.clear();
+
+        replication->ForEachEntity([](Replication::NetworkEntity *entity) {
             auto *player = dynamic_cast<Shared::PlayerEntity *>(entity);
 
             if (!player) {

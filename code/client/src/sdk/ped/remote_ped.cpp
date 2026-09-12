@@ -51,7 +51,7 @@ namespace VantaMP::SDK {
     } // namespace
 
     void *CreateRemotePed(int slot, int modelIndex, float x, float y, float z) {
-        auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
+        auto *info = reinterpret_cast<CPlayerInfo *>(SDK::PlayerInfoAt(slot));
 
         if (!info) {
             return nullptr;
@@ -102,7 +102,7 @@ namespace VantaMP::SDK {
         // descriptor is then replaced with one of this ped's own: sharing a
         // descriptor lets a change to one player alter another.
         if (auto *playerData = ped->m_pPlayerData) {
-            const auto *localInfo = reinterpret_cast<const CPlayerInfo *>(Game::PlayerInfoAt(0));
+            const auto *localInfo = reinterpret_cast<const CPlayerInfo *>(SDK::PlayerInfoAt(0));
 
             if (localInfo && localInfo->m_pPed && localInfo->m_pPed->m_pPlayerData) {
                 *playerData = *localInfo->m_pPed->m_pPlayerData;
@@ -156,7 +156,7 @@ namespace VantaMP::SDK {
     }
 
     void DestroyRemotePed(int slot) {
-        auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
+        auto *info = reinterpret_cast<CPlayerInfo *>(SDK::PlayerInfoAt(slot));
 
         if (!info || !info->m_pPed) {
             return;
@@ -279,7 +279,7 @@ namespace VantaMP::SDK {
             SetPedPosition(ped, position.x, position.y, position.z);
             SetPedRotation(ped, heading);
 
-            if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot))) {
+            if (auto *info = reinterpret_cast<CPlayerInfo *>(SDK::PlayerInfoAt(slot))) {
                 info->m_nPlayerState = PLAYERSTATE_PLAYING;
             }
         }
@@ -456,7 +456,7 @@ namespace VantaMP::SDK {
     }
 
     void SetRemotePedOxygen(int slot, float breath) {
-        if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot))) {
+        if (auto *info = reinterpret_cast<CPlayerInfo *>(SDK::PlayerInfoAt(slot))) {
             info->m_PlayerData.m_fBreath = breath;
         }
     }

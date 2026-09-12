@@ -345,57 +345,6 @@ namespace VantaMP::SDK {
             pool->Delete(vehicle);
         }
 
-        // TEMPORARY BIKE DIAGNOSTIC. Remove once remote bike roll is solved.
-        //
-        // Prints the physical basis around GTA's own processing so we can see
-        // WHERE the roll enters: if up.z is ~1 going into ProcessControl and
-        // ~0 coming out, GTA is rolling it locally; if it is already wrong on
-        // the way in, the state we applied (or the packet) is the problem.
-        void LogBikeBasis(const char *stage, CVehicle *vehicle) {
-            if (!vehicle || !vehicle->m_matrix) {
-                return;
-            }
-
-            // BIKES ONLY, AND ONLY ONES BEING RIDDEN BY SOMEBODY ELSE.
-            // A parked bike produced ~40 lines a second of identity matrices
-            // that buried the case under test.
-            if (vehicle->m_nVehicleSubClass != VEHICLE_BIKE && vehicle->m_nVehicleSubClass != VEHICLE_BMX) {
-                return;
-            }
-
-            if (!vehicle->m_pDriver || vehicle->m_pDriver == Internal::LocalPed()) {
-                return;
-            }
-
-            // PER-VEHICLE, PER-STAGE BUDGET. One shared timer let the first
-            // stage each window swallow the other three, which is why only
-            // "BEFORE VANTA POSE" ever appeared; keying on the vehicle too
-            // means two bikes cannot silence each other.
-            static std::unordered_map<std::uintptr_t, std::uint32_t> lastMs;
-
-            const auto key = reinterpret_cast<std::uintptr_t>(vehicle) ^ (std::hash<std::string_view>{}(stage) << 1);
-
-            const std::uint32_t now  = GetTickCount();
-            auto               &slot = lastMs[key];
-
-            if (now - slot < 500u) {
-                return;
-            }
-
-            slot = now;
-
-            const auto &m = *vehicle->m_matrix;
-
-            Framework::Logging::GetLogger("BikeDbg")
-                ->info("{:<24} veh{:#x} model{} cls{}/{} R({: .2f},{: .2f},{: .2f}) F({: .2f},{: .2f},{: .2f}) U({: .2f},{: .2f},{: .2f}) mv({: .2f},{: .2f},{: .2f}) ts({: .4f},{: .4f},{: .4f}) steer{: .2f} hb{} drv{:#x} drvIsPlayer{} pedType{} status{}",
-                       stage, reinterpret_cast<std::uintptr_t>(vehicle), vehicle->m_nModelIndex, static_cast<int>(vehicle->m_nVehicleClass), static_cast<int>(vehicle->m_nVehicleSubClass), m.right.x,
-                       m.right.y, m.right.z, m.up.x, m.up.y, m.up.z, m.at.x, m.at.y, m.at.z, vehicle->m_vecMoveSpeed.x, vehicle->m_vecMoveSpeed.y,
-                       vehicle->m_vecMoveSpeed.z, vehicle->m_vecTurnSpeed.x, vehicle->m_vecTurnSpeed.y, vehicle->m_vecTurnSpeed.z, vehicle->m_fSteerAngle,
-                       static_cast<int>(vehicle->bIsHandbrakeOn), reinterpret_cast<std::uintptr_t>(vehicle->m_pDriver),
-                       vehicle->m_pDriver ? static_cast<int>(vehicle->m_pDriver->m_nPedType == PED_TYPE_PLAYER1 || vehicle->m_pDriver->m_nPedType == PED_TYPE_PLAYER2) : -1,
-                       vehicle->m_pDriver ? static_cast<int>(vehicle->m_pDriver->m_nPedType) : -1, static_cast<int>(vehicle->m_nStatus));
-        }
-
         // CEntity::ProcessControl. plugin-sdk lists it after GetBoundRect;
         // the live vtable slot is 10, which is what old Vanta and
         // CoopAndreas hook for the same pad swap.
@@ -514,7 +463,7 @@ namespace VantaMP::SDK {
                 return -1;
             }
 
-            for (int slot = 2; slot < Game::kMaxPlayers; ++slot) {
+            for (int slot = 2; slot < SDK::kMaxPlayers; ++slot) {
                 if (Internal::PedAt(slot) == driver) {
                     return slot;
                 }
@@ -552,61 +501,36 @@ namespace VantaMP::SDK {
 
             void *localPad  = nullptr;
             void *remotePad = nullptr;
-            std::array<std::uint8_t, Game::kPadSize> saved {};
+            std::array<std::uint8_t, SDK::kPadSize> saved {};
             bool neutralised = false;
 
             if (slot >= 0) {
                 localPad  = reinterpret_cast<Internal::GetPadFn>(gPatterns.CPad__GetPad)(0);
-                remotePad = Game::PadAt(slot);
+                remotePad = SDK::PadAt(slot);
 
                 if (localPad && remotePad) {
-                    std::memcpy(saved.data(), localPad, Game::kPadSize);
-                    std::memcpy(localPad, remotePad, Game::kPadSize);
+                    std::memcpy(saved.data(), localPad, SDK::kPadSize);
+                    std::memcpy(localPad, remotePad, SDK::kPadSize);
                 }
             }
             else if (localIsNotDriver && LocalPedIsPassengerOf(vehicle)) {
                 localPad = reinterpret_cast<Internal::GetPadFn>(gPatterns.CPad__GetPad)(0);
 
                 if (localPad) {
-                    std::memcpy(saved.data(), localPad, Game::kPadSize);
-                    std::memset(localPad, 0, Game::kPadSize);
+                    std::memcpy(saved.data(), localPad, SDK::kPadSize);
+                    std::memset(localPad, 0, SDK::kPadSize);
                     neutralised = true;
-                }
-            }
-
-            LogBikeBasis("BEFORE GTA PROCESSCTRL", vehicle);
-
-            // TEMPORARY. Is the pad swap actually in effect for this call,
-            // and what will CPad::GetHandBrake / GetExitVehicle read out of
-            // it? Those are RightShoulder1 and ButtonTriangle in pad modes
-            // 0/1, and either one sets bIsHandbrakeOn for the whole frame.
-            if (vehicle && (vehicle->m_nVehicleSubClass == VEHICLE_BIKE || vehicle->m_nVehicleSubClass == VEHICLE_BMX)) {
-                static std::uint32_t lastPadMs = 0;
-
-                if (const std::uint32_t nowPad = GetTickCount(); nowPad - lastPadMs >= 500u) {
-                    lastPadMs = nowPad;
-
-                    const auto *cs = localPad ? reinterpret_cast<const CControllerState *>(localPad) : nullptr;
-
-                    Framework::Logging::GetLogger("BikeDbg")
-                        ->info("PAD AT PROCESSCTRL       slot{} swapped{} neutral{} stickX{} stickY{} cross{} square{} RS1(handbrake){} triangle(exit){} mode{} disableCtrl{}", slot,
-                               (localPad && remotePad) ? 1 : 0, neutralised ? 1 : 0, cs ? cs->LeftStickX : -999, cs ? cs->LeftStickY : -999,
-                               cs ? cs->ButtonCross : -999, cs ? cs->ButtonSquare : -999, cs ? cs->RightShoulder1 : -999, cs ? cs->ButtonTriangle : -999,
-                               localPad ? static_cast<int>(reinterpret_cast<const CPad *>(localPad)->Mode) : -999,
-                               localPad ? static_cast<int>(reinterpret_cast<const CPad *>(localPad)->DisablePlayerControls) : -999);
                 }
             }
 
             found->second(vehicle);
 
-            LogBikeBasis("AFTER  GTA PROCESSCTRL", vehicle);
-
             if (localPad && remotePad) {
-                std::memcpy(remotePad, localPad, Game::kPadSize);
-                std::memcpy(localPad, saved.data(), Game::kPadSize);
+                std::memcpy(remotePad, localPad, SDK::kPadSize);
+                std::memcpy(localPad, saved.data(), SDK::kPadSize);
             }
             else if (neutralised && localPad) {
-                std::memcpy(localPad, saved.data(), Game::kPadSize);
+                std::memcpy(localPad, saved.data(), SDK::kPadSize);
             }
         }
 
@@ -1272,35 +1196,7 @@ namespace VantaMP::SDK {
             return;
         }
 
-        // TEMPORARY: WHO IS MOVING A RIDDEN REMOTE BIKE, AND HOW OFTEN?
-        //
-        // The bike still bounces, so something is writing its transform on
-        // frames the bike handler deliberately skips. This counts every write
-        // that reaches a bike GTA is simulating with a rider, so the rate
-        // itself is the evidence: ~10/s is the packet edge working as
-        // intended, ~60/s means another path is still driving the chassis.
-        if (IsBikeHandle(vehicle) && vehicle->m_pDriver && vehicle->m_pDriver != Internal::LocalPed()) {
-            static std::uint32_t windowMs = 0;
-            static int           writes   = 0;
-
-            const std::uint32_t now = GetTickCount();
-
-            ++writes;
-
-            if (windowMs == 0) {
-                windowMs = now;
-            }
-            else if (now - windowMs >= 1000u) {
-                Framework::Logging::GetLogger("BikeDbg")->info("POSE WRITES ON RIDDEN BIKE: {}/s", writes);
-
-                writes   = 0;
-                windowMs = now;
-            }
-        }
-
         if (auto *matrix = MatrixOf(vehicle)) {
-            LogBikeBasis("BEFORE VANTA POSE", vehicle);
-
             // OUT OF THE WORLD BEFORE THE WRITE, BACK IN AFTER.
             //
             // GTA indexes every entity into the world SECTOR LISTS by the
@@ -1357,7 +1253,6 @@ namespace VantaMP::SDK {
             // above so the ordering is explicit and matches MTA.
             reinterpret_cast<WorldAddFn>(gPatterns.CWorld__Add)(vehicle);
 
-            LogBikeBasis("AFTER  VANTA POSE", vehicle);
             return;
         }
 
@@ -1739,7 +1634,6 @@ namespace VantaMP::SDK {
         return vehicle && vehicle->bIsHandbrakeOn;
     }
 
-    // TEMPORARY BIKE DIAGNOSTIC. Remove with LogBikeBasis.
     bool IsBikeHandle(const void *handle) {
         const auto *vehicle = AsVehicle(handle);
 

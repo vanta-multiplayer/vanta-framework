@@ -3,13 +3,24 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace VantaMP::Game {
+namespace VantaMP::SDK {
+    // GTA'S PLAYER SLOT TABLE. This is memory-layout knowledge about the
+    // executable - patched array bases, structure sizes verified against the
+    // game's own allocation sites - so it belongs in the SDK layer, not above
+    // it. It lived under game/entities/ and was included by seven SDK files,
+    // which made the SDK depend upwards on game code; moving the file is the
+    // whole fix.
+
     // How many players the client can hold at once.
     //
     // Slot 0 is the local player. Slot 1 is deliberately left alone - it is a
     // leftover from the game's two-player co-op mode and behaves differently
     // from the rest - so remote players start at slot 2.
     inline constexpr int kMaxPlayers = 260;
+
+    // Declared beside kMaxPlayers because the two describe the same table.
+    // It used to live in game/entities/remote_players.h, one layer up.
+    inline constexpr int kLocalPlayerSlot = 0;
 
     // Replaces GTA's two-entry player arrays with ones big enough for a server.
     //
@@ -40,4 +51,4 @@ namespace VantaMP::Game {
     // the structure size as an immediate right after the count.
     inline constexpr std::size_t kPlayerInfoSize = 0x190;
     inline constexpr std::size_t kPadSize        = 0x134;
-} // namespace VantaMP::Game
+} // namespace VantaMP::SDK

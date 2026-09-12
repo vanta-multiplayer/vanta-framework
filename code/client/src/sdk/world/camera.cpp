@@ -1,6 +1,6 @@
 #include "camera.h"
 
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 #include "sdk/patterns.h"
 
 #include <array>
@@ -22,7 +22,7 @@ namespace VantaMP::SDK {
         // owner's value, so each is kept here and swapped into that global for
         // the duration of that ped's processing - the same approach the pad
         // takes, and for the same reason.
-        std::array<float, static_cast<std::size_t>(Game::kMaxPlayers)> gRemoteCameraRotation {};
+        std::array<float, static_cast<std::size_t>(SDK::kMaxPlayers)> gRemoteCameraRotation {};
     } // namespace
 
     float ReadLocalCameraRotation() {
@@ -30,7 +30,7 @@ namespace VantaMP::SDK {
     }
 
     void SetRemoteCameraRotation(int slot, float rotation) {
-        if (slot < 0 || slot >= Game::kMaxPlayers) {
+        if (slot < 0 || slot >= SDK::kMaxPlayers) {
             return;
         }
 
@@ -38,7 +38,7 @@ namespace VantaMP::SDK {
     }
 
     float GetRemoteCameraRotation(int slot) {
-        if (slot < 0 || slot >= Game::kMaxPlayers) {
+        if (slot < 0 || slot >= SDK::kMaxPlayers) {
             return 0.0f;
         }
 

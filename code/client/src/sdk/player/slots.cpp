@@ -1,4 +1,4 @@
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 
 #include "sdk/patterns.h"
 
@@ -9,7 +9,7 @@
 
 #include <cstring>
 
-namespace VantaMP::Game {
+namespace VantaMP::SDK {
     namespace {
         // Static storage rather than the heap: these have to outlive everything
         // in the game, and a fixed address makes the rewriting below simple to
@@ -168,4 +168,4 @@ namespace VantaMP::Game {
 
         return gPads + static_cast<std::size_t>(slot) * kPadSize;
     }
-} // namespace VantaMP::Game
+} // namespace VantaMP::SDK

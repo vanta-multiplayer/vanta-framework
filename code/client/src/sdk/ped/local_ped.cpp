@@ -182,14 +182,14 @@ namespace VantaMP::SDK {
     }
 
     void SetLocalPlayerMoney(std::int32_t money) {
-        if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(0))) {
+        if (auto *info = reinterpret_cast<CPlayerInfo *>(SDK::PlayerInfoAt(0))) {
             info->m_nMoney        = money;
             info->m_nDisplayMoney = money;
         }
     }
 
     std::int32_t LocalPlayerMoney() {
-        if (const auto *info = reinterpret_cast<const CPlayerInfo *>(Game::PlayerInfoAt(0))) {
+        if (const auto *info = reinterpret_cast<const CPlayerInfo *>(SDK::PlayerInfoAt(0))) {
             return info->m_nMoney;
         }
 
@@ -197,7 +197,7 @@ namespace VantaMP::SDK {
     }
 
     void SetLocalPlayerWanted(std::uint8_t stars) {
-        const auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(0));
+        const auto *info = reinterpret_cast<CPlayerInfo *>(SDK::PlayerInfoAt(0));
 
         if (!info || !info->m_PlayerData.m_pWanted) {
             return;
@@ -207,7 +207,7 @@ namespace VantaMP::SDK {
     }
 
     std::uint8_t LocalPlayerWanted() {
-        const auto *info = reinterpret_cast<const CPlayerInfo *>(Game::PlayerInfoAt(0));
+        const auto *info = reinterpret_cast<const CPlayerInfo *>(SDK::PlayerInfoAt(0));
 
         if (!info || !info->m_PlayerData.m_pWanted) {
             return 0;
@@ -219,13 +219,13 @@ namespace VantaMP::SDK {
     }
 
     void SetLocalPlayerOxygen(float breath) {
-        if (auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(0))) {
+        if (auto *info = reinterpret_cast<CPlayerInfo *>(SDK::PlayerInfoAt(0))) {
             info->m_PlayerData.m_fBreath = breath;
         }
     }
 
     float LocalPlayerOxygen() {
-        if (const auto *info = reinterpret_cast<const CPlayerInfo *>(Game::PlayerInfoAt(0))) {
+        if (const auto *info = reinterpret_cast<const CPlayerInfo *>(SDK::PlayerInfoAt(0))) {
             return info->m_PlayerData.m_fBreath;
         }
 

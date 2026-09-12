@@ -37,7 +37,7 @@ namespace VantaMP::SDK {
         // NOT WHERE THE PLAYERS ARE, once ExpandPlayerSlots has run. That
         // relocates the array and rewrites every reference to it, so the game
         // writes players somewhere else and this address holds the abandoned
-        // original. Read a player through Game::PlayerInfoAt, which knows where
+        // original. Read a player through SDK::PlayerInfoAt, which knows where
         // the live array is; this field is only for the relocation itself.
         uintptr_t CWorld__Players = 0;
 

@@ -116,73 +116,6 @@ namespace VantaMP::Game::VehicleSync::Bike {
 
             return d;
         }
-
-        // WHAT THE PACKET IS ACTUALLY ASKING US TO DO TO THE CHASSIS.
-        //
-        // Meaningful deltas rather than raw matrices: a large pitch or Z
-        // correction here, correlated with a visible hop, is the evidence
-        // that the network is overriding suspension state GTA had legitimately
-        // resolved for itself.
-        // IS THE REMOTE BIKE KEEPING UP, OR TRAILING?
-        //
-        // "Feels laggy" has two very different causes and this separates
-        // them. Printed only while the bike is actually moving.
-        //
-        //   trail  = how far BEHIND the extrapolated target the bike sits,
-        //            measured along its own direction of travel. A steady
-        //            positive number is real positional lag.
-        //   ageMs  = how old the packet being aimed at is. If this climbs
-        //            past ~150ms the packets are late, not the correction.
-        void LogTrail(const Frame &frame) {
-            const auto here = SDK::ReadVehicle(frame.handle);
-
-            const glm::vec2 gtaXY(here.x, here.y);
-            const glm::vec2 wireVelXY(frame.entity->velocity.x, frame.entity->velocity.y);
-
-            const float speed = glm::length(wireVelXY);
-
-            if (speed < 0.02f) {
-                return;
-            }
-
-            const std::uint32_t ageMs = GetTickCount() - frame.packetMs;
-            const float         ageS  = std::clamp(static_cast<float>(ageMs), 0.0f, 250.0f) / 1000.0f;
-
-            const glm::vec2 targetXY = glm::vec2(frame.entity->position.x, frame.entity->position.y) + wireVelXY * 50.0f * ageS;
-            const glm::vec2 delta    = targetXY - gtaXY;
-
-            // Positive = bike is behind where it should be.
-            const float trail = glm::dot(delta, wireVelXY / speed);
-
-            static std::uint32_t lastMs = 0;
-
-            if (const std::uint32_t now = GetTickCount(); now - lastMs >= 250u) {
-                lastMs = now;
-
-                Framework::Logging::GetLogger("BikeDbg")
-                    ->info("BIKE TRAIL  trail{: .3f}m lateral{: .3f}m | speed{:.2f} | packetAge{}ms | gtaSpeed{:.2f} | wireFwdZ{: .3f} gtaFwdZ{: .3f} wheelieAng{: .3f} dRoll{: .2f} dPitch{: .2f}", trail,
-                           glm::length(delta - (wireVelXY / speed) * trail), speed * 50.0f, ageMs,
-                           glm::length(glm::vec2(here.vx, here.vy)) * 50.0f, glm::mat3_cast(glm::normalize(frame.entity->rotation))[1].z,
-                           SDK::BikeForwardZ(frame.handle), SDK::BikeWheelieAngle(frame.handle),
-                           AngleDelta(RollOf(frame.entity->rotation), RollOf(here.rotation)),
-                           AngleDelta(PitchOf(frame.entity->rotation), PitchOf(here.rotation)));
-            }
-        }
-
-        void LogPacketCorrection(const Frame &frame) {
-            const auto here = SDK::ReadVehicle(frame.handle);
-
-            const glm::vec3 gtaPos(here.x, here.y, here.z);
-            const glm::vec3 wirePos = frame.entity->position;
-            const glm::vec3 delta   = wirePos - gtaPos;
-
-            Framework::Logging::GetLogger("BikeDbg")
-                ->info("BIKE PACKET  gtaPos({:.2f},{:.2f},{:.3f}) wirePos({:.2f},{:.2f},{:.3f}) | dXY{:.3f} dZ{: .3f} | dYaw{: .2f} dPitch{: .2f} dRoll{: .2f} | contact{} gtaVz{: .3f}",
-                       gtaPos.x, gtaPos.y, gtaPos.z, wirePos.x, wirePos.y, wirePos.z, glm::length(glm::vec2(delta.x, delta.y)), delta.z,
-                       AngleDelta(YawOf(frame.entity->rotation), YawOf(here.rotation)),
-                       AngleDelta(PitchOf(frame.entity->rotation), PitchOf(here.rotation)),
-                       AngleDelta(RollOf(frame.entity->rotation), RollOf(here.rotation)), SDK::VehicleContactWheels(frame.handle), here.vz);
-        }
     } // namespace
 
     void OnSnapshot(Frame &frame) {
@@ -321,8 +254,6 @@ namespace VantaMP::Game::VehicleSync::Bike {
 
                 SDK::SetBikeHorizontalPosition(frame.handle, gtaXY.x + step.x, gtaXY.y + step.y);
             }
-
-            LogTrail(frame);
 
             // ROLL, BUT ONLY WHEN THE BIKE IS NOT ON BOTH WHEELS.
             //

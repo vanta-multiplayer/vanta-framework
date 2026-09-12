@@ -57,7 +57,7 @@ namespace VantaMP::SDK {
         }
 
         bool IsLocalShooter(CEntity *entity) {
-            return entity && (entity == LocalPed() || Game::SlotOfPed(entity) == Game::kLocalPlayerSlot);
+            return entity && (entity == LocalPed() || Game::SlotOfPed(entity) == SDK::kLocalPlayerSlot);
         }
 
         CWeaponInfo *InfoOf(unsigned int weaponType) {
@@ -374,7 +374,7 @@ namespace VantaMP::SDK {
         // player as far as the game is concerned, so this call would take the
         // first-person / camera branch and ignore the target we passed.
         bool __fastcall FireInstantHit_IsPlayer(CPed *ped) {
-            if (Game::SlotOfPed(ped) > Game::kLocalPlayerSlot) {
+            if (Game::SlotOfPed(ped) > SDK::kLocalPlayerSlot) {
                 return false;
             }
 
@@ -469,7 +469,7 @@ namespace VantaMP::SDK {
 
             // A remote ped's Fire is the replayed fire button aimed with THIS
             // client's camera. Swallow it; the owner's PlayerShot is the shot.
-            if (Game::SlotOfPed(firingEntity) > Game::kLocalPlayerSlot) {
+            if (Game::SlotOfPed(firingEntity) > SDK::kLocalPlayerSlot) {
                 return true;
             }
 
