@@ -62,7 +62,7 @@ namespace VantaMP::Game {
 
         void ClaimLocalPed(void *player) {
             hook::put<int>(SDK::gPatterns.CWorld__PlayerInFocus, 0);
-            RegisterRemotePlayer(SDK::kLocalPlayerSlot, player);
+            SDK::RegisterRemotePlayer(SDK::kLocalPlayerSlot, player);
         }
     } // namespace
 
@@ -116,7 +116,7 @@ namespace VantaMP::Game {
             return;
         }
 
-        UnregisterRemotePlayer(SDK::kLocalPlayerSlot);
+        SDK::UnregisterRemotePlayer(SDK::kLocalPlayerSlot);
 
     }
 

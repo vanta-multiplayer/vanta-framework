@@ -198,7 +198,7 @@ namespace VantaMP::Game::PlayerSyncState {
 
     [[nodiscard]] inline int ClaimSlot() {
         for (int slot = kFirstRemoteSlot; slot < SDK::kMaxPlayers; ++slot) {
-            if (!PedInSlot(slot)) {
+            if (!SDK::PedInSlot(slot)) {
                 return slot;
             }
         }

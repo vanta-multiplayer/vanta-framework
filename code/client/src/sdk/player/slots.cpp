@@ -7,6 +7,8 @@
 #include <logging/logger.h>
 #include <utils/hooking/hooking.h>
 
+#include <array>
+#include <unordered_map>
 #include <cstring>
 
 namespace VantaMP::SDK {
@@ -167,5 +169,61 @@ namespace VantaMP::SDK {
         }
 
         return gPads + static_cast<std::size_t>(slot) * kPadSize;
+    }
+
+    namespace {
+        // Who is in each slot, and the reverse index.
+        //
+        // SlotOfPed used to walk all 260 slots. It is called from the PedIK
+        // hook (sdk/ped/aim.cpp), which GTA runs for every aiming ped every
+        // frame, and six times from the shot path - a full scan per call to
+        // answer a question the array already knew. The map is maintained at
+        // the only two points where an occupant is set or cleared.
+        std::array<void *, kMaxPlayers>       gOccupants {};
+        std::unordered_map<const void *, int> gSlotByPed;
+    } // namespace
+
+    bool RegisterRemotePlayer(int slot, void *ped) {
+        if (slot < 0 || slot >= kMaxPlayers || !ped) {
+            return false;
+        }
+
+        if (void *previous = gOccupants[static_cast<std::size_t>(slot)]) {
+            gSlotByPed.erase(previous);
+        }
+
+        gOccupants[static_cast<std::size_t>(slot)] = ped;
+        gSlotByPed[ped]                           = slot;
+        return true;
+    }
+
+    void UnregisterRemotePlayer(int slot) {
+        if (slot < 0 || slot >= kMaxPlayers) {
+            return;
+        }
+
+        if (void *previous = gOccupants[static_cast<std::size_t>(slot)]) {
+            gSlotByPed.erase(previous);
+        }
+
+        gOccupants[static_cast<std::size_t>(slot)] = nullptr;
+    }
+
+    int SlotOfPed(const void *ped) {
+        if (!ped) {
+            return -1;
+        }
+
+        const auto found = gSlotByPed.find(ped);
+
+        return found == gSlotByPed.end() ? -1 : found->second;
+    }
+
+    void *PedInSlot(int slot) {
+        if (slot < 0 || slot >= kMaxPlayers) {
+            return nullptr;
+        }
+
+        return gOccupants[static_cast<std::size_t>(slot)];
     }
 } // namespace VantaMP::SDK

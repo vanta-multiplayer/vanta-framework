@@ -1,7 +1,6 @@
 #include "aim.h"
 
 #include "sdk/player/slots.h"
-#include "game/entities/remote_players.h"
 #include "sdk/patterns.h"
 
 #include <utils/hooking/hooking.h>
@@ -39,7 +38,7 @@ namespace VantaMP::SDK {
 
             const auto *ped = reinterpret_cast<const std::uint8_t *>(pedIK) - kPedIkOffset;
 
-            const int slot = Game::SlotOfPed(ped);
+            const int slot = SDK::SlotOfPed(ped);
 
             if (slot == SDK::kLocalPlayerSlot) {
                 // TAKEN ON THE WAY THROUGH, NOT CHANGED. This is the one ped

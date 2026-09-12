@@ -20,16 +20,10 @@ namespace VantaMP::Game {
 
     [[nodiscard]] bool AreRemotePlayerHooksInstalled();
 
-    // Claims a slot for a ped, so the hooks know it is not the local player.
-    //
-    // Returns false when every slot is taken.
-    bool RegisterRemotePlayer(int slot, void *ped);
-    void UnregisterRemotePlayer(int slot);
-
-    // Which slot a ped belongs to, or -1 for one Vanta does not own.
-    [[nodiscard]] int SlotOfPed(const void *ped);
-
-    [[nodiscard]] void *PedInSlot(int slot);
+    // RegisterRemotePlayer / UnregisterRemotePlayer / SlotOfPed / PedInSlot
+    // now live in sdk/player/slots.h. They index GTA's patched player array,
+    // which is the same table that header already owns - and keeping them here
+    // made three SDK files depend upwards on game code.
 
     // Where a slot's input lives. Write a remote player's controller state here
     // and the game will act on it the next time that ped is processed.

@@ -10,6 +10,7 @@
 #include <utils/hooking/hooking.h>
 
 #include <array>
+#include <unordered_map>
 #include <atomic>
 #include <cstring>
 
@@ -26,7 +27,6 @@ namespace VantaMP::Game {
     using SDK::PlayerInfoAt;
 
     namespace {
-        std::array<void *, kMaxPlayers> gOccupants {};
 
         bool gInstalled = false;
         std::atomic_bool gSuspended {false};
@@ -162,7 +162,7 @@ namespace VantaMP::Game {
                 return;
             }
 
-            const int slot = SlotOfPed(ped);
+            const int slot = SDK::SlotOfPed(ped);
 
             // The local player, a ped Vanta does not own, or a nested call: all
             // take the ordinary path.
@@ -205,7 +205,7 @@ namespace VantaMP::Game {
         // player's health, weapons and wanted level.
         void *__fastcall GetPlayerInfo_Hook(void *ped, void * /*edx*/) {
             if (ped) {
-                if (const int slot = SlotOfPed(ped); slot >= 0) {
+                if (const int slot = SDK::SlotOfPed(ped); slot >= 0) {
                     return PlayerInfoAt(slot);
                 }
             }
@@ -246,44 +246,9 @@ namespace VantaMP::Game {
         return gInstalled;
     }
 
-    bool RegisterRemotePlayer(int slot, void *ped) {
-        if (slot < 0 || slot >= kMaxPlayers || !ped) {
-            return false;
-        }
 
-        gOccupants[static_cast<std::size_t>(slot)] = ped;
-        return true;
-    }
 
-    void UnregisterRemotePlayer(int slot) {
-        if (slot < 0 || slot >= kMaxPlayers) {
-            return;
-        }
 
-        gOccupants[static_cast<std::size_t>(slot)] = nullptr;
-    }
-
-    int SlotOfPed(const void *ped) {
-        if (!ped) {
-            return -1;
-        }
-
-        for (int slot = 0; slot < kMaxPlayers; ++slot) {
-            if (gOccupants[static_cast<std::size_t>(slot)] == ped) {
-                return slot;
-            }
-        }
-
-        return -1;
-    }
-
-    void *PedInSlot(int slot) {
-        if (slot < 0 || slot >= kMaxPlayers) {
-            return nullptr;
-        }
-
-        return gOccupants[static_cast<std::size_t>(slot)];
-    }
 
     void *InputForSlot(int slot) {
         return PadAt(slot);

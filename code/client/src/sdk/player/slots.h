@@ -47,6 +47,21 @@ namespace VantaMP::SDK {
     [[nodiscard]] void *PlayerInfoAt(int slot);
     [[nodiscard]] void *PadAt(int slot);
 
+    // WHICH PED OCCUPIES WHICH SLOT.
+    //
+    // An index over the same patched player array this header owns, so it
+    // belongs here rather than one layer up - three SDK files were reaching
+    // into game/entities/ for exactly these four calls.
+    //
+    // Register returns false when the slot is out of range or the ped is null.
+    bool RegisterRemotePlayer(int slot, void *ped);
+    void UnregisterRemotePlayer(int slot);
+
+    // Which slot a ped belongs to, or -1 for one Vanta does not own.
+    [[nodiscard]] int SlotOfPed(const void *ped);
+
+    [[nodiscard]] void *PedInSlot(int slot);
+
     // Sizes, verified against the executable's own allocation sites: both push
     // the structure size as an immediate right after the count.
     inline constexpr std::size_t kPlayerInfoSize = 0x190;

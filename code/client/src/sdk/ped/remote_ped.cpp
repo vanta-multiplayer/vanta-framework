@@ -1,7 +1,6 @@
 #include "remote_ped.h"
 
 #include "access.h"
-#include "game/entities/remote_players.h"
 #include "sdk/vehicle/occupancy.h"
 #include "sdk/world/streaming.h"
 
@@ -137,7 +136,7 @@ namespace VantaMP::SDK {
         // game code that may ask for this ped's info, and without the mapping
         // the hook falls back to slot 0 - handing out the LOCAL player's info
         // and corrupting it.
-        Game::RegisterRemotePlayer(slot, ped);
+        SDK::RegisterRemotePlayer(slot, ped);
 
         reinterpret_cast<WorldAddFn>(pat.CWorld__Add)(ped);
 
@@ -178,7 +177,7 @@ namespace VantaMP::SDK {
         // crash a beat after disconnect.
         ReleaseRealTimeShadow(ped);
 
-        Game::UnregisterRemotePlayer(slot);
+        SDK::UnregisterRemotePlayer(slot);
 
         reinterpret_cast<WorldRemoveFn>(gPatterns.CWorld__Remove)(ped);
         reinterpret_cast<OperatorDeleteFn>(gPatterns.CPed__operator_delete)(ped);
