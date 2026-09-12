@@ -4,6 +4,43 @@
 namespace VantaMP::Shared {
     namespace Replication = Framework::Networking::Replication;
 
+    void VehicleEntity::SerializeTransform(Replication::FieldSerializer &fields) {
+        // A PRESENCE BIT, SO THE TWO SIDES CANNOT DISAGREE ABOUT THE SHAPE.
+        //
+        // Suppression has to be visible in the stream. If the writer simply
+        // wrote nothing, a reader would still try to read three vectors and a
+        // quat out of whatever came next - and because this channel carries no
+        // field names, it would not fail, it would silently deserialize
+        // garbage into the pose. So the flag itself goes on the wire, one
+        // bit, and the reader branches on what it actually finds rather than
+        // on any local belief about who is driving.
+        //
+        // On the read side `present` is whatever the SENDER wrote, never this
+        // entity's own driverSyncActive: a receiver is not the owner and has
+        // no business deciding the shape of someone else's message.
+        //
+        // CONSTRUCTION IS SAFE THROUGH THE SAME PATH. The framework seeds a
+        // new replica through this function too, and a suppressed seed would
+        // leave a late joiner with no pose at all. It does not happen,
+        // because the flag is only ever raised on the OWNER, and an owner
+        // never constructs a replica for itself - construction is written by
+        // the server, whose driverSyncActive for this entity is false. The
+        // presence bit keeps that an invariant of the data rather than an
+        // assumption: if a seed ever did arrive suppressed, the receiver
+        // keeps the pose it was constructed with instead of reading rubbish.
+        bool present = !driverSyncActive;
+
+        fields.Field(present);
+
+        if (!present) {
+            return;
+        }
+
+        fields.Field(position);
+        fields.Field(velocity);
+        fields.Field(rotation);
+    }
+
     void VehicleEntity::OnSerializeConstruction(Replication::FieldSerializer &fields) {
         fields.Field(modelId);
         fields.Field(primaryColour);

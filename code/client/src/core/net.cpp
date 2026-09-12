@@ -16,6 +16,9 @@
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
 #include "shared/rpc/vehicle_damage_report.h"
+#include "shared/rpc/vehicle/driver_sync.h"
+#include "shared/rpc/vehicle/sync_owner.h"
+#include "shared/rpc/vehicle/unoccupied_sync.h"
 #include "shared/rpc/world_env.h"
 #include "shared/rpc/world_space.h"
 #include "shared/rpc/eac_messages.h"
@@ -83,6 +86,26 @@ namespace VantaMP::Core::Net {
 
         net->RegisterRPC<Shared::RPC::PlayerOccupancyAbort>([](const Shared::RPC::PlayerOccupancyAbort &abort, MafiaNet::Packet *) {
             Game::ApplyOccupancyAbort(abort.networkId, abort.vehicleId, abort.kind, abort.seat, abort.door);
+        });
+
+        net->RegisterRPC<Shared::RPC::VehicleDriverSync>([](const Shared::RPC::VehicleDriverSync &sync, MafiaNet::Packet *) {
+            Game::ApplyRemoteDriverSync(sync);
+        });
+
+        // How a client learns a vehicle's compact wire id. Until this
+        // arrives, motion for that vehicle cannot be addressed at all and
+        // plain replication carries it - so this has to be handled, not just
+        // sent.
+        net->RegisterRPC<Shared::RPC::VehicleSyncOwner>([](const Shared::RPC::VehicleSyncOwner &owner, MafiaNet::Packet *) {
+            // The id first: the role is useless without a way to address the
+            // vehicle, and the two arrive together precisely so there is no
+            // window where we are the syncer but cannot say so.
+            Game::AdoptVehicleWireId(owner.vehicleId, owner.wireId);
+            Game::SetVehicleSyncerRole(owner.vehicleId, owner.start);
+        });
+
+        net->RegisterRPC<Shared::RPC::VehicleUnoccupiedSync>([](const Shared::RPC::VehicleUnoccupiedSync &batch, MafiaNet::Packet *) {
+            Game::ApplyRemoteUnoccupiedSync(batch);
         });
 
         net->RegisterRPC<Shared::RPC::VehicleDamageReport>([](const Shared::RPC::VehicleDamageReport &report, MafiaNet::Packet *) {
