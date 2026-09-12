@@ -92,6 +92,16 @@ namespace VantaMP {
         // in place whichever way the player enters the world.
         _vehicles.AnnounceAllWireIds(guid);
 
+        // The same for players: this client needs every existing player's
+        // wire id to resolve their movement, and everyone else needs THIS
+        // player's to resolve theirs - so the new mapping is broadcast while
+        // the existing ones are sent just to the joiner.
+        _players.AnnounceAllWireIds(guid);
+
+        if (auto *joined = _players.Find(guid)) {
+            _players.AnnounceWireId(static_cast<std::uint64_t>(joined->GetNetworkID()));
+        }
+
         auto *player = _players.Find(guid);
 
         if (player && Scripting::EmitPlayerReady(static_cast<std::uint64_t>(player->GetNetworkID()))) {

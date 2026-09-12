@@ -13,7 +13,7 @@
 #include "shared/rpc/vehicle/damage.h"
 #include "shared/rpc/vehicle/driver_sync.h"
 #include "shared/rpc/vehicle/unoccupied_sync.h"
-#include "shared/rpc/vehicle/metrics.h"
+#include "shared/rpc/common/metrics.h"
 #include "shared/rpc/common/wire_registry.h"
 #include "shared/sync_rates.h"
 #include "shared/vehicle/colors.h"
@@ -685,7 +685,7 @@ namespace VantaMP::Game {
 
             const auto bytes = static_cast<std::size_t>(bs.GetNumberOfBytesUsed());
 
-            Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::DriverSync, bytes);
+            Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::DriverSync, bytes);
 
             return bytes;
         }
@@ -901,7 +901,7 @@ namespace VantaMP::Game {
                 batch.Serialize(&bs, true);
                 net->BroadcastRPC(batch, MafiaNet::Priority::Medium, MafiaNet::Reliability::Unreliable);
 
-                Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::UnoccupiedSync, bs.GetNumberOfBytesUsed());
+                Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::UnoccupiedSync, bs.GetNumberOfBytesUsed());
 
                 for (std::size_t i = 0; i < committed.size(); ++i) {
                     CommitUnoccupiedEntry(*committed[i].first, committed[i].second.first, committed[i].second.second, committedKeyframe[i], now);

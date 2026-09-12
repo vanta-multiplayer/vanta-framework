@@ -195,6 +195,19 @@ namespace VantaMP::Shared {
         // run TASK_SIMPLE_JETPACK on the primary slot (MTA SetHasJetPack).
         bool hasJetPack = false;
 
+        // WHEN PlayerOnFootSync IS CARRYING THE POSE, THE REPLICA MUST NOT.
+        //
+        // Same rule as VehicleEntity::driverSyncActive: the base NetworkEntity
+        // writes position/velocity/rotation every tick, and once the owner is
+        // also sending PlayerOnFootSync that is ~41 bytes a tick of the same
+        // fact, with two independent chances to disagree.
+        //
+        // Local, never replicated. Set by the owning client while its on-foot
+        // stream is live and cleared the moment it stops - so a player who
+        // gets into a car falls straight back to plain replication with no gap.
+        bool onFootSyncActive = false;
+
+        void SerializeTransform(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnStateForced() override;

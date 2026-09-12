@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "../common/sequence.h"
 #include "../common/wire_id.h"
 
 #include <mafianet/BitStream.h>
@@ -120,13 +121,4 @@ namespace VantaMP::Shared::RPC {
             }
         }
     };
-
-    // True when `incoming` is newer than `applied`, tolerating uint16 wrap.
-    //
-    // A PLAIN `>` WOULD STALL THE CAR FOR AN HOUR at the wrap point, and
-    // would accept a reordered datagram that arrived after a newer one.
-    // Signed difference is the standard sequence comparison.
-    [[nodiscard]] inline bool IsNewerSequence(std::uint16_t incoming, std::uint16_t applied) {
-        return static_cast<std::int16_t>(incoming - applied) > 0;
-    }
 } // namespace VantaMP::Shared::RPC

@@ -9,6 +9,10 @@
 #include "sdk/game.h"
 #include "shared/entity/player_entity.h"
 #include "shared/entity/state_forced.h"
+#include "shared/rpc/common/metrics.h"
+#include "shared/rpc/common/wire_registry.h"
+#include "shared/rpc/player/aim_sync.h"
+#include "shared/rpc/player/onfoot_sync.h"
 #include "shared/rpc/player_script.h"
 #include "shared/rpc/player_weapon.h"
 #include "shared/rpc/world_space.h"
@@ -20,6 +24,7 @@
 
 #include <core_modules.h>
 #include <logging/logger.h>
+#include <networking/network_peer.h>
 #include <networking/replication/replication_manager.h>
 #include <utils/interpolator.h>
 
@@ -151,57 +156,25 @@ namespace VantaMP::Game {
 
         std::unordered_map<int, AimedAt> gAimedBySlot;
 
-        // TEMPORARY TELEMETRY - remove once the desync is closed.
-        struct Telemetry {
-            int newTargets  = 0; // how often a genuinely new state arrived
-            int applies     = 0; // how often ApplyRemoteState ran at all
-            int corrections = 0; // how often the per-ped correction ran
-        int warps       = 0; // how often the gap was big enough to snap
-        int swimStarts  = 0; // how often a swim task had to be installed
-        int velocities  = 0; // how often move speed was written over the game's
+        // Canonical NetworkID <-> compact wire id for players. Separate
+        // registry instance from the vehicle one: a slot number means nothing
+        // across entity kinds, and packets are already typed by their RPC
+        // identifier, so there is nothing to disambiguate on the wire.
+        Shared::RPC::Common::WireRegistry gPlayerWireIds;
 
-        float worstWarp = 0.0f; // and the biggest gap that caused one
-
-            glm::vec3 lastTarget {};
-            glm::vec3 lastPedPosition {};
-
-            float worstError = 0.0f;
-
-            float targetHeading = 0.0f;
-            float pedHeading    = 0.0f;
+        // Newest sequence applied per player, per stream. Movement and aim
+        // carry SEPARATE sequences because they are separate streams at
+        // separate cadences - sharing one would drop every aim update that
+        // arrived between two movement packets.
+        struct AppliedSequence {
+            std::uint16_t onFoot     = 0;
+            std::uint16_t aim        = 0;
+            bool          haveOnFoot = false;
+            bool          haveAim    = false;
         };
 
-        std::unordered_map<int, Telemetry> gTelemetryBySlot;
+        std::unordered_map<std::uint64_t, AppliedSequence> gAppliedSequence;
 
-        std::uint32_t gLastTelemetryMs = 0;
-
-        void ReportTelemetry() {
-            const std::uint32_t now = GetTickCount();
-
-            if (now - gLastTelemetryMs < 1000u) {
-                return;
-            }
-
-            gLastTelemetryMs = now;
-
-            constexpr float kDegrees = 57.2957795f;
-
-            for (auto &[slot, t] : gTelemetryBySlot) {
-                const float error = glm::distance(t.lastTarget, t.lastPedPosition);
-
-                Framework::Logging::GetLogger("SyncDbg")
-                    ->info("RECV slot {} | new {}/s corr {}/s warp {}/s ({:.2f}) swim {}/s vel {}/s | target {:.2f},{:.2f} ped {:.2f},{:.2f} err {:.2f} worst {:.2f} | headTarget {:.1f} headPed {:.1f}", slot, t.newTargets, t.corrections, t.warps, t.worstWarp, t.swimStarts, t.velocities, t.lastTarget.x, t.lastTarget.y, t.lastPedPosition.x, t.lastPedPosition.y, error, t.worstError, t.targetHeading * kDegrees, t.pedHeading * kDegrees);
-
-                t.newTargets  = 0;
-                t.applies     = 0;
-                t.corrections = 0;
-                t.warps       = 0;
-                t.swimStarts  = 0;
-                t.velocities  = 0;
-                t.worstError  = 0.0f;
-                t.worstWarp   = 0.0f;
-            }
-        }
 
         // The default player model. CJ, which is what the local player wears
         // until a server says otherwise.
@@ -333,6 +306,235 @@ namespace VantaMP::Game {
         }
 
         // Copies the local player into the entity the server sees.
+        // --- Outbound player packets ----------------------------------------
+        //
+        // Thresholds below which a change is not worth a field on the wire.
+        // Each sits under what a receiver can show after interpolation.
+        constexpr float kPlayerPositionEpsilon = 0.01f;   // 1 cm
+        constexpr float kPlayerVelocityEpsilon = 0.05f;   // 5 cm/s
+        constexpr float kPlayerAngleEpsilon    = 0.002f;  // ~0.11 deg
+
+        // KEYFRAME, BECAUSE THE STREAM IS UNRELIABLE. Deltas compare against
+        // what was last SENT, and an unreliable packet may never have landed -
+        // so without this a receiver that missed the one packet carrying a
+        // field would hold the wrong value indefinitely. As with vehicles this
+        // bounds the SEND interval, not the divergence: a keyframe drops like
+        // anything else, so real recovery is a multiple of it.
+        constexpr std::uint32_t kPlayerKeyframeMs = 1000;
+
+        struct LocalSendState {
+            std::uint16_t sequence = 0;
+
+            glm::vec3 sentPosition {};
+            glm::vec3 sentVelocity {};
+            float     sentHeading = 0.0f;
+            float     sentCamera  = 0.0f;
+
+            std::int16_t  sentStickX = 0;
+            std::int16_t  sentStickY = 0;
+            std::uint8_t  sentAccel  = 0;
+            std::uint8_t  sentBrake  = 0;
+            std::uint16_t sentButtons = 0;
+            std::uint8_t  sentFlags   = 0xFF;
+
+            std::uint32_t lastKeyframeMs = 0;
+            bool          primed         = false;
+
+            std::uint16_t aimSequence = 0;
+            float         sentAimH    = 0.0f;
+            float         sentAimV    = 0.0f;
+            bool          aimPrimed   = false;
+        };
+
+        LocalSendState gLocalSend;
+
+        // Our own compact id, learned from the server. Until it arrives the
+        // replica still carries everything, so nothing is lost by waiting.
+        Shared::RPC::Common::WireId gLocalWireId {};
+
+        [[nodiscard]] std::uint8_t PackPedFlags(const SDK::LocalPedState &local) {
+            namespace Flag = Shared::RPC::Player::PedFlag;
+
+            std::uint8_t flags = 0;
+
+            if (local.ducked) {
+                flags |= Flag::kDucked;
+            }
+
+            if (local.inAir) {
+                flags |= Flag::kInAir;
+            }
+
+            if (local.inWater) {
+                flags |= Flag::kInWater;
+            }
+
+            return flags;
+        }
+
+        void SendOnFootSync(Shared::PlayerEntity *entity, const SDK::LocalPedState &local, const SDK::ControllerInput &input, bool seated) {
+            namespace Field = Shared::RPC::Player::OnFootField;
+
+            (void)entity;
+
+            if (!gLocalWireId.Valid()) {
+                return;
+            }
+
+            // SEATED PLAYERS SEND NO MOVEMENT AT ALL. Their transform is the
+            // vehicle's and VehicleDriverSync carries it; the input they are
+            // feeding the car travels there too. Sending an on-foot packet as
+            // well would be the duplication this protocol exists to remove.
+            if (seated) {
+                gLocalSend.primed = false;
+                return;
+            }
+
+            auto *net = Framework::CoreModules::GetNetworkPeer();
+
+            if (!net) {
+                return;
+            }
+
+            const std::uint32_t now      = GetTickCount();
+            const bool          keyframe = !gLocalSend.primed || (now - gLocalSend.lastKeyframeMs) >= kPlayerKeyframeMs;
+
+            const glm::vec3 position(local.x, local.y, local.z);
+            const glm::vec3 velocity(local.velocityX, local.velocityY, local.velocityZ);
+            const float     camera = SDK::ReadLocalCameraRotation();
+            const auto      flags  = PackPedFlags(local);
+
+            Shared::RPC::PlayerOnFootSync sync;
+
+            sync.playerId = gLocalWireId;
+            sync.sequence = static_cast<std::uint16_t>(gLocalSend.sequence + 1);
+
+            if (keyframe || glm::distance(position, gLocalSend.sentPosition) > kPlayerPositionEpsilon) {
+                sync.fields |= Field::kPosition;
+                sync.position = position;
+            }
+
+            if (keyframe || std::fabs(local.heading - gLocalSend.sentHeading) > kPlayerAngleEpsilon) {
+                sync.fields |= Field::kHeading;
+                sync.heading = local.heading;
+            }
+
+            if (keyframe || glm::distance(velocity, gLocalSend.sentVelocity) > kPlayerVelocityEpsilon) {
+                sync.fields |= Field::kVelocity;
+                sync.velocity = velocity;
+            }
+
+            // THE CAMERA TRAVELS WITH THE INPUT, not on its own: a stick is
+            // resolved against the view, so the two are one reading. Note
+            // none of these tests look at the VALUE - a stick returning to
+            // centre is a change and must be sent.
+            if (keyframe || input.leftStickX != gLocalSend.sentStickX || input.leftStickY != gLocalSend.sentStickY
+                || input.accelerator != gLocalSend.sentAccel || input.brake != gLocalSend.sentBrake || entity->buttons != gLocalSend.sentButtons
+                || std::fabs(camera - gLocalSend.sentCamera) > kPlayerAngleEpsilon) {
+                sync.fields |= Field::kInput;
+                sync.leftStickX     = input.leftStickX;
+                sync.leftStickY     = input.leftStickY;
+                sync.accelerator    = input.accelerator;
+                sync.brake          = input.brake;
+                sync.buttons        = entity->buttons;
+                sync.cameraRotation = camera;
+            }
+
+            if (keyframe || flags != gLocalSend.sentFlags) {
+                sync.fields |= Field::kFlags;
+                sync.flags = flags;
+            }
+
+            if (sync.fields == 0) {
+                return;
+            }
+
+            MafiaNet::BitStream bs;
+
+            sync.Serialize(&bs, true);
+            net->BroadcastRPC(sync, MafiaNet::Priority::High, MafiaNet::Reliability::Unreliable);
+
+            gLocalSend.sequence = sync.sequence;
+
+            if (keyframe) {
+                gLocalSend.lastKeyframeMs = now;
+            }
+
+            // Only what was actually sent moves the baseline. A suppressed
+            // field must keep comparing against what the receiver last heard.
+            if (sync.fields & Field::kPosition) {
+                gLocalSend.sentPosition = position;
+            }
+
+            if (sync.fields & Field::kHeading) {
+                gLocalSend.sentHeading = local.heading;
+            }
+
+            if (sync.fields & Field::kVelocity) {
+                gLocalSend.sentVelocity = velocity;
+            }
+
+            if (sync.fields & Field::kInput) {
+                gLocalSend.sentStickX  = input.leftStickX;
+                gLocalSend.sentStickY  = input.leftStickY;
+                gLocalSend.sentAccel   = input.accelerator;
+                gLocalSend.sentBrake   = input.brake;
+                gLocalSend.sentButtons = entity->buttons;
+                gLocalSend.sentCamera  = camera;
+            }
+
+            if (sync.fields & Field::kFlags) {
+                gLocalSend.sentFlags = flags;
+            }
+
+            gLocalSend.primed = true;
+
+            Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::PlayerOnFootSync, bs.GetNumberOfBytesUsed());
+        }
+
+        void SendAimSync(Shared::PlayerEntity *entity, const SDK::PedAim &aim) {
+            (void)entity;
+
+            if (!gLocalWireId.Valid()) {
+                return;
+            }
+
+            // NOTHING TO SAY WHILE NOT AIMING, and that is the whole point of
+            // the split: a player running across town sends no aim packets at
+            // all, where before these two angles rode every movement update.
+            const bool changed = !gLocalSend.aimPrimed || std::fabs(aim.horizontal - gLocalSend.sentAimH) > kPlayerAngleEpsilon
+                              || std::fabs(aim.vertical - gLocalSend.sentAimV) > kPlayerAngleEpsilon;
+
+            if (!changed) {
+                return;
+            }
+
+            auto *net = Framework::CoreModules::GetNetworkPeer();
+
+            if (!net) {
+                return;
+            }
+
+            Shared::RPC::PlayerAimSync sync;
+
+            sync.playerId      = gLocalWireId;
+            sync.sequence      = static_cast<std::uint16_t>(gLocalSend.aimSequence + 1);
+            sync.aimHorizontal = aim.horizontal;
+            sync.aimVertical   = aim.vertical;
+
+            MafiaNet::BitStream bs;
+
+            sync.Serialize(&bs, true);
+            net->BroadcastRPC(sync, MafiaNet::Priority::High, MafiaNet::Reliability::Unreliable);
+
+            gLocalSend.aimSequence = sync.sequence;
+            gLocalSend.sentAimH    = aim.horizontal;
+            gLocalSend.sentAimV    = aim.vertical;
+            gLocalSend.aimPrimed   = true;
+
+            Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::PlayerAimSync, bs.GetNumberOfBytesUsed());
+        }
+
         void PushLocalState(Shared::PlayerEntity *entity) {
             if (!IsPlayerSpawned()) {
                 return;
@@ -461,15 +663,18 @@ namespace VantaMP::Game {
             SDK::SetLocalPedAlpha(entity->alpha);
             SDK::SetLocalPedJetPack(entity->hasJetPack);
 
-            // TEMPORARY TELEMETRY - remove once the desync is closed.
-            static std::uint32_t lastSendReportMs = 0;
+            // Movement, input and aim go out as their own packets; everything
+            // written above stays on the replica, where an unchanged field
+            // costs one bit.
+            SendOnFootSync(entity, local, input, seat.seated);
+            SendAimSync(entity, aim);
 
-            if (const std::uint32_t now = GetTickCount(); now - lastSendReportMs >= 1000u) {
-                lastSendReportMs = now;
-
-                Framework::Logging::GetLogger("SyncDbg")
-                    ->info("SEND me {:.2f},{:.2f} head {:.1f} vel {:.2f},{:.2f} stick {},{} buttons {:#x} ducked {} air {} water {} weapon {} ammo {}/{}", local.x, local.y, local.heading * 57.2957795f, local.velocityX, local.velocityY, input.leftStickX, input.leftStickY, entity->buttons, local.ducked, local.inAir, local.inWater, weapon.type, weapon.ammoClip, weapon.ammoTotal);
-            }
+            // Tells every receiver the pose is coming from the packet instead.
+            // Only true while we actually have a wire id AND are on foot: a
+            // seated player sends no on-foot sync, so the replica has to carry
+            // them again (the vehicle carries the transform, but the ped still
+            // needs a pose when they get out).
+            entity->onFootSyncActive = gLocalWireId.Valid() && !seat.seated;
         }
 
         // Applies a remote entity to its ped, creating one if needed.
@@ -624,12 +829,7 @@ namespace VantaMP::Game {
             // each time the ped is processed, so it has to be rewritten.
             auto &aimed = gAimedBySlot[slot];
 
-            auto &telemetry = gTelemetryBySlot[slot];
 
-            ++telemetry.applies;
-            telemetry.lastTarget    = entity->position;
-            telemetry.targetHeading = HeadingFrom(entity->rotation);
-            telemetry.pedHeading    = HeadingFrom(SDK::GetRemotePedRotation(slot));
 
             const std::uint32_t now = GetTickCount();
 
@@ -653,7 +853,6 @@ namespace VantaMP::Game {
             const bool due     = aimed.valid && (now - aimed.whenMs) >= Shared::SyncRate::kPlayerMs;
 
             if (changed || due) {
-                ++telemetry.newTargets;
                 ++aimed.updates;
 
                 // 1. Momentum, but NOT ON EVERY UPDATE WHILE ON FOOT.
@@ -673,7 +872,6 @@ namespace VantaMP::Game {
                 // while airborne, every fourth otherwise.
                 if (entity->isInAir || (aimed.updates % 4u) == 0u) {
                     SDK::SetRemotePedVelocity(slot, entity->velocity.x, entity->velocity.y, entity->velocity.z);
-                    ++telemetry.velocities;
                 }
 
                 // 2. Health, armour, and what is in their hands.
@@ -785,7 +983,6 @@ namespace VantaMP::Game {
             SDK::SetRemotePedDucked(slot, entity->isDucked);
 
             if (entity->isInWater && SDK::StartRemotePedSwimming(slot)) {
-                ++telemetry.swimStarts;
             }
 
             SDK::SetRemotePedInterior(slot, entity->interior);
@@ -832,7 +1029,6 @@ namespace VantaMP::Game {
             ApplyRemoteState(player);
         });
 
-        ReportTelemetry();
 
         for (auto it = gSlotByNetworkId.begin(); it != gSlotByNetworkId.end();) {
             if (seen.contains(it->first)) {
@@ -958,10 +1154,7 @@ namespace VantaMP::Game {
                 // COUNTED BEFORE THE EARLY RETURN. Warping used to leave through
                 // here without recording anything, so the one event most worth
                 // seeing was the one the telemetry could not show.
-                auto &warped = gTelemetryBySlot[slot];
 
-                ++warped.warps;
-                warped.worstWarp = std::max(warped.worstWarp, gap);
 
                 SDK::SetRemotePedPosition(slot, target.x, target.y, target.z);
 
@@ -977,11 +1170,7 @@ namespace VantaMP::Game {
 
         SDK::SetRemotePedPosition(slot, next.x, next.y, next.z);
 
-        auto &telemetry = gTelemetryBySlot[slot];
 
-        ++telemetry.corrections;
-        telemetry.lastPedPosition = next;
-        telemetry.worstError      = std::max(telemetry.worstError, glm::distance(next, telemetry.lastTarget));
     }
 
     void InstallRemotePlayerCorrection() {
@@ -1208,6 +1397,124 @@ namespace VantaMP::Game {
                 player->hasJetPack = script.hasJetPack;
             }
         }
+    }
+
+    void AdoptPlayerWireId(std::uint64_t networkId, std::uint16_t wireId) {
+        gPlayerWireIds.Adopt(networkId, Shared::RPC::Common::WireId {wireId});
+    }
+
+    void SetLocalPlayerWireId(std::uint16_t wireId) {
+        gLocalWireId = Shared::RPC::Common::WireId {wireId};
+    }
+
+    namespace {
+        // Resolves a wire id to the entity it names, refusing our own.
+        //
+        // The server broadcasts, so our own packets come back to us; applying
+        // them would fight the local simulation with a 100 ms-old copy of it.
+        [[nodiscard]] Shared::PlayerEntity *ResolveRemotePlayer(Shared::RPC::Common::WireId wireId, std::uint64_t &networkIdOut) {
+            networkIdOut = gPlayerWireIds.Resolve(wireId);
+
+            // A wire id that does not resolve names a player who has left, or
+            // was minted before a slot was reused. Dropping it is the point of
+            // the generation half of the id.
+            if (networkIdOut == 0 || networkIdOut == gLocalNetworkId) {
+                return nullptr;
+            }
+
+            auto *replication = Framework::CoreModules::GetReplication();
+
+            if (!replication) {
+                return nullptr;
+            }
+
+            auto *entity = dynamic_cast<Shared::PlayerEntity *>(replication->GetEntityByNetworkID(static_cast<MafiaNet::NetworkID>(networkIdOut)));
+
+            return (entity && !entity->IsOwner()) ? entity : nullptr;
+        }
+    } // namespace
+
+    void ApplyRemoteOnFootSync(const Shared::RPC::PlayerOnFootSync &sync) {
+        namespace Field = Shared::RPC::Player::OnFootField;
+
+        std::uint64_t networkId = 0;
+        auto         *entity    = ResolveRemotePlayer(sync.playerId, networkId);
+
+        if (!entity) {
+            return;
+        }
+
+        auto &seen = gAppliedSequence[networkId];
+
+        // LATEST WINS. The stream is Unreliable, so datagrams reorder: an
+        // older snapshot applied after a newer one makes the ped jump back.
+        if (seen.haveOnFoot && !Shared::RPC::IsNewerSequence(sync.sequence, seen.onFoot)) {
+            return;
+        }
+
+        seen.onFoot     = sync.sequence;
+        seen.haveOnFoot = true;
+
+        // ONLY WHAT THE MASK NAMES. A suppressed field keeps the value we
+        // hold - the sender suppressed it BECAUSE it still matches that
+        // value, so overwriting it with a default would be the stale-state
+        // bug this protocol is built to avoid.
+        if (sync.Has(Field::kPosition)) {
+            entity->position = sync.position;
+        }
+
+        if (sync.Has(Field::kHeading)) {
+            entity->rotation = HeadingTo(sync.heading);
+        }
+
+        if (sync.Has(Field::kVelocity)) {
+            entity->velocity = sync.velocity;
+        }
+
+        if (sync.Has(Field::kInput)) {
+            entity->leftStickX     = sync.leftStickX;
+            entity->leftStickY     = sync.leftStickY;
+            entity->accelerator    = sync.accelerator;
+            entity->brake          = sync.brake;
+            entity->buttons        = sync.buttons;
+            entity->cameraRotation = sync.cameraRotation;
+        }
+
+        if (sync.Has(Field::kFlags)) {
+            namespace Flag = Shared::RPC::Player::PedFlag;
+
+            entity->isDucked  = (sync.flags & Flag::kDucked) != 0;
+            entity->isInAir   = (sync.flags & Flag::kInAir) != 0;
+            entity->isInWater = (sync.flags & Flag::kInWater) != 0;
+        }
+
+        // ApplyRemoteState picks these up from the entity on the next frame,
+        // exactly as it did when the replica carried them. Nothing below this
+        // point knows the difference.
+    }
+
+    void ApplyRemoteAimSync(const Shared::RPC::PlayerAimSync &sync) {
+        std::uint64_t networkId = 0;
+        auto         *entity    = ResolveRemotePlayer(sync.playerId, networkId);
+
+        if (!entity) {
+            return;
+        }
+
+        auto &seen = gAppliedSequence[networkId];
+
+        // Aim carries its OWN sequence: it is a separate stream at a separate
+        // cadence, so comparing it against the movement sequence would drop
+        // every aim update sent between two movement packets.
+        if (seen.haveAim && !Shared::RPC::IsNewerSequence(sync.sequence, seen.aim)) {
+            return;
+        }
+
+        seen.aim     = sync.sequence;
+        seen.haveAim = true;
+
+        entity->aimHorizontal = sync.aimHorizontal;
+        entity->aimVertical   = sync.aimVertical;
     }
 
     void ApplyPlayerWeapon(std::uint8_t action, std::uint32_t weaponType, std::uint32_t ammo) {

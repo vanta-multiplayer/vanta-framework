@@ -9,7 +9,7 @@
 #include "shared/rpc/vehicle/authority.h"
 #include "shared/rpc/vehicle/damage.h"
 #include "shared/rpc/vehicle/driver_sync.h"
-#include "shared/rpc/vehicle/metrics.h"
+#include "shared/rpc/common/metrics.h"
 #include "shared/rpc/vehicle/sync_owner.h"
 #include "shared/rpc/vehicle/unoccupied_sync.h"
 #include "shared/catalog/model_catalog.h"
@@ -508,7 +508,7 @@ namespace VantaMP::Game {
         MafiaNet::BitStream sizing;
 
         merged.Serialize(&sizing, true);
-        Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::Damage, sizing.GetNumberOfBytesUsed(),
+        Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::Damage, sizing.GetNumberOfBytesUsed(),
                                                     static_cast<std::uint32_t>(_players.Count()));
     }
 
@@ -541,7 +541,7 @@ namespace VantaMP::Game {
             net->SendRPC(message, MafiaNet::ToGuid(to), MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
         }
 
-        Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::SyncOwner, 11);
+        Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::SyncOwner, 11);
     }
 
     void VehicleManager::AnnounceAllWireIds(MafiaNet::PeerGuid to) {
@@ -658,7 +658,7 @@ namespace VantaMP::Game {
         MafiaNet::BitStream sizing;
 
         relay.Serialize(&sizing, true);
-        Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::DriverSync, sizing.GetNumberOfBytesUsed(),
+        Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::DriverSync, sizing.GetNumberOfBytesUsed(),
                                                     static_cast<std::uint32_t>(_players.Count() > 0 ? _players.Count() - 1 : 0));
 
         return true;
@@ -735,7 +735,7 @@ namespace VantaMP::Game {
 
                 stop.FromParameters(networkId, false, 0, _wireIds.Find(networkId).value);
                 net->SendRPC(stop, MafiaNet::ToGuid(held), MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
-                Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::SyncOwner, 11);
+                Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::SyncOwner, 11);
             }
 
             if (best == MafiaNet::UNASSIGNED_PEER_GUID) {
@@ -747,7 +747,7 @@ namespace VantaMP::Game {
 
             start.FromParameters(networkId, true, 0, _wireIds.Acquire(networkId).value);
             net->SendRPC(start, MafiaNet::ToGuid(best), MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
-            Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::SyncOwner, 11);
+            Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::SyncOwner, 11);
 
             _syncers[networkId] = best;
         }
@@ -833,7 +833,7 @@ namespace VantaMP::Game {
         MafiaNet::BitStream sizing;
 
         relay.Serialize(&sizing, true);
-        Shared::RPC::Vehicle::Metrics::Get().Record(Shared::RPC::Vehicle::PacketType::UnoccupiedSync, sizing.GetNumberOfBytesUsed(),
+        Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::UnoccupiedSync, sizing.GetNumberOfBytesUsed(),
                                                     static_cast<std::uint32_t>(_players.Count() > 0 ? _players.Count() - 1 : 0));
     }
 

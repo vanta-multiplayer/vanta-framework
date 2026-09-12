@@ -1,10 +1,11 @@
-# Player sync audit
+# Player sync protocol
 
-Phase 2, inspection stage. What is on the wire for a player today, measured,
-and what the semantic split should be. **No player code has been changed yet** —
-this is the survey the redesign has to be built on.
+Phase 2. What was on the wire for a player, measured, and the semantic split
+that measurement argued for. The audit came first and drove the migration,
+which is now **done** — the "what is sent today" figures below are the BEFORE
+state, and the measured results are at the end.
 
-## What is sent today
+## What was sent before
 
 One replica, `PlayerEntity`, across the framework's two channels — the same
 shape the vehicle protocol had before Phase 1.
@@ -110,7 +111,7 @@ Deliberate — the header explains a client that missed construction has no
 other way to learn it. Under VDS it costs one bit while unchanged, so this is
 already cheap. **Leave it.**
 
-## Proposed split
+## The split
 
 Following the same rule as vehicles — split on cadence, reliability, authority
 and semantics, not on file size:
@@ -161,3 +162,55 @@ real `BitStream`, before any of it is believed.
   already behave as an on-change event with reliable delivery.
 - **A second entity-ID system** — `WireId` from the vehicle work is reused, not
   duplicated. That is the brief's explicit requirement and the right call.
+
+## Migrated (2026-09-12)
+
+Built exactly as proposed above:
+
+| Packet | Identifier | Reliability | Measured |
+|---|---|---|---|
+| `PlayerOnFootSync` | `VMP:PF` | Unreliable | 31 B all-fields, 15 B position-only, 13 B input-only |
+| `PlayerAimSync` | `VMP:PA` | Unreliable | 8 B |
+
+Add ~9 B RPC4 header to each.
+
+### Measured before vs after
+
+| Scenario | Before | After | |
+|---|---|---|---|
+| Walking, not aiming | 668 B/s | 400 B/s | **-40%** |
+| Walking + aiming | 668 B/s | 570 B/s | **-15%** |
+| Driving (player half) | 410 B/s | 0 B/s | **-100%** |
+| Idle | 0 B/s | 0 B/s | already free |
+| 10 players walking | 6680 B/s | 4000 B/s | **-40%** |
+
+The aiming case is only -15% because `PlayerAimSync` pays its own ~9 B
+identifier header. The split still wins overall because a player who is *not*
+aiming — the common case outside a firefight — now sends nothing for aim at
+all, where before those two float32 angles rode every movement update.
+
+### Legacy removed
+
+`PlayerEntity::SerializeFields` no longer carries `leftStickX/Y`,
+`accelerator`, `brake`, `buttons`, `cameraRotation`, `isDucked`, `isInAir`,
+`isInWater`, `aimHorizontal` or `aimVertical`. They are seeded in
+`OnSerializeConstruction` (once per receiver) so a late joiner still sees a
+still player correctly, and carried per-tick only by the packets.
+
+`SerializeTransform` is overridden with the same presence-bit suppression as
+`VehicleEntity`, so the pose does not travel twice.
+
+The temporary `SyncDbg` telemetry (`Telemetry`, `gTelemetryBySlot`,
+`ReportTelemetry`, the per-tick SEND/RECV logging) is **deleted**.
+
+### Shared, not duplicated
+
+`WireId`, `WireRegistry`, `IsNewerSequence` and the metrics counters moved to
+`shared/rpc/common/` and are used by both protocols. Players and vehicles keep
+**separate registry instances** — a slot number means nothing across kinds, and
+packets are already typed by their RPC identifier.
+
+The wire-id announcement reuses `VehicleSyncOwner` rather than adding a
+near-identical player packet: it already carries "this entity has this wire
+id", and nothing in it is vehicle-specific. The client routes it by resolving
+the entity type.

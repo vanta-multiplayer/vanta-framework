@@ -2,7 +2,12 @@
 
 #include "shared/catalog/model_catalog.h"
 #include "shared/entity/player_entity.h"
+#include "shared/rpc/common/metrics.h"
 #include "shared/rpc/local_player_spawn.h"
+#include "shared/rpc/player/aim_sync.h"
+#include "shared/rpc/player/onfoot_sync.h"
+#include "shared/rpc/vehicle/sync_owner.h"
+#include "shared/vehicle/validate.h"
 #include "shared/rpc/player_script.h"
 #include "shared/rpc/player_weapon.h"
 #include "shared/rpc/world_space.h"
@@ -176,5 +181,173 @@ namespace VantaMP::Game {
         const auto found = _players.find(guid);
 
         return found == _players.end() ? nullptr : found->second;
+    }
+
+    void PlayerManager::AnnounceWireId(std::uint64_t networkId, MafiaNet::PeerGuid to) {
+        auto *net = Framework::CoreModules::GetNetworkPeer();
+
+        if (!net) {
+            return;
+        }
+
+        const auto id = _wireIds.Acquire(networkId);
+
+        if (!id.Valid()) {
+            Framework::Logging::GetLogger(FRAMEWORK_INNER_SERVER)->warn("Wire id space exhausted; player {} stays on plain replication", networkId);
+            return;
+        }
+
+        // Reuses the vehicle handoff packet rather than adding a near-identical
+        // player one: it already carries exactly "this entity has this wire id"
+        // and nothing in it is vehicle-specific. A second packet would be a
+        // second Huffman identifier to pay for the same fact.
+        Shared::RPC::VehicleSyncOwner message;
+
+        message.FromParameters(networkId, false, 0, id.value);
+
+        if (to == MafiaNet::UNASSIGNED_PEER_GUID) {
+            net->BroadcastRPC(message, MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
+        }
+        else {
+            net->SendRPC(message, MafiaNet::ToGuid(to), MafiaNet::Priority::High, MafiaNet::Reliability::ReliableOrdered);
+        }
+    }
+
+    void PlayerManager::AnnounceAllWireIds(MafiaNet::PeerGuid to) {
+        ForEach([&](Shared::PlayerEntity *player) {
+            AnnounceWireId(static_cast<std::uint64_t>(player->GetNetworkID()), to);
+        });
+    }
+
+    void PlayerManager::HandleOnFootSync(Shared::PlayerEntity &sender, const Shared::RPC::PlayerOnFootSync &sync) {
+        namespace Field = Shared::RPC::Player::OnFootField;
+
+        const auto networkId = _wireIds.Resolve(sync.playerId);
+
+        // A PLAYER MAY ONLY MOVE THEMSELVES. The wire id names whose movement
+        // this is; if it is not the sender's own, the packet is forged. This
+        // is the player-side equivalent of the vehicle driver-authority check
+        // and must stay just as strict.
+        if (networkId == 0 || networkId != static_cast<std::uint64_t>(sender.GetNetworkID())) {
+            return;
+        }
+
+        // A SEATED PLAYER HAS NO ON-FOOT MOTION. Their transform belongs to
+        // the vehicle, and accepting this would let a passenger move their ped
+        // out of the car they are sitting in.
+        if (sender.vehicleNetworkId != 0) {
+            return;
+        }
+
+        // Only the fields the mask claims are validated: an absent field is
+        // not invalid, it is simply not being set.
+        if (sync.Has(Field::kPosition) && !Shared::IsValidPosition(sync.position)) {
+            return;
+        }
+
+        if (sync.Has(Field::kVelocity) && !Shared::IsValidVelocity(sync.velocity)) {
+            return;
+        }
+
+        if (sync.Has(Field::kHeading) && !Shared::IsFiniteFloat(sync.heading)) {
+            return;
+        }
+
+        if (sync.Has(Field::kInput) && !Shared::IsFiniteFloat(sync.cameraRotation)) {
+            return;
+        }
+
+        auto &seen = _sequences[networkId];
+
+        if (seen.haveOnFoot && !Shared::RPC::IsNewerSequence(sync.sequence, seen.onFoot)) {
+            return;
+        }
+
+        seen.onFoot     = sync.sequence;
+        seen.haveOnFoot = true;
+
+        // Keep the authoritative replica current: it is what a late joiner
+        // constructs from and what the interest grid measures distance
+        // against, so it must not go stale because motion moved to a packet.
+        if (sync.Has(Field::kPosition)) {
+            sender.position = sync.position;
+        }
+
+        if (sync.Has(Field::kVelocity)) {
+            sender.velocity = sync.velocity;
+        }
+
+        if (sync.Has(Field::kInput)) {
+            sender.leftStickX     = sync.leftStickX;
+            sender.leftStickY     = sync.leftStickY;
+            sender.accelerator    = sync.accelerator;
+            sender.brake          = sync.brake;
+            sender.buttons        = sync.buttons;
+            sender.cameraRotation = sync.cameraRotation;
+        }
+
+        if (sync.Has(Field::kFlags)) {
+            namespace Flag = Shared::RPC::Player::PedFlag;
+
+            sender.isDucked  = (sync.flags & Flag::kDucked) != 0;
+            sender.isInAir   = (sync.flags & Flag::kInAir) != 0;
+            sender.isInWater = (sync.flags & Flag::kInWater) != 0;
+        }
+
+        auto *net = Framework::CoreModules::GetNetworkPeer();
+
+        if (!net) {
+            return;
+        }
+
+        auto relay = sync;
+
+        net->BroadcastRPC(relay, MafiaNet::Priority::High, MafiaNet::Reliability::Unreliable, MafiaNet::ToGuid(sender.ownerGUID));
+
+        MafiaNet::BitStream sizing;
+
+        relay.Serialize(&sizing, true);
+        Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::PlayerOnFootSync, sizing.GetNumberOfBytesUsed(),
+                                                     static_cast<std::uint32_t>(Count() > 0 ? Count() - 1 : 0));
+    }
+
+    void PlayerManager::HandleAimSync(Shared::PlayerEntity &sender, const Shared::RPC::PlayerAimSync &sync) {
+        const auto networkId = _wireIds.Resolve(sync.playerId);
+
+        if (networkId == 0 || networkId != static_cast<std::uint64_t>(sender.GetNetworkID())) {
+            return;
+        }
+
+        if (!Shared::IsFiniteFloat(sync.aimHorizontal) || !Shared::IsFiniteFloat(sync.aimVertical)) {
+            return;
+        }
+
+        auto &seen = _sequences[networkId];
+
+        if (seen.haveAim && !Shared::RPC::IsNewerSequence(sync.sequence, seen.aim)) {
+            return;
+        }
+
+        seen.aim     = sync.sequence;
+        seen.haveAim = true;
+
+        sender.aimHorizontal = sync.aimHorizontal;
+        sender.aimVertical   = sync.aimVertical;
+
+        auto *net = Framework::CoreModules::GetNetworkPeer();
+
+        if (!net) {
+            return;
+        }
+
+        auto relay = sync;
+
+        net->BroadcastRPC(relay, MafiaNet::Priority::High, MafiaNet::Reliability::Unreliable, MafiaNet::ToGuid(sender.ownerGUID));
+
+        MafiaNet::BitStream sizing;
+
+        relay.Serialize(&sizing, true);
+        Shared::RPC::Metrics::Counters::Get().Record(Shared::RPC::Metrics::PacketType::PlayerAimSync, sizing.GetNumberOfBytesUsed(),
+                                                     static_cast<std::uint32_t>(Count() > 0 ? Count() - 1 : 0));
     }
 } // namespace VantaMP::Game

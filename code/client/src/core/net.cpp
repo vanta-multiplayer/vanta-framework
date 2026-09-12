@@ -13,6 +13,8 @@
 #include "shared/rpc/player_occupancy_abort.h"
 #include "shared/rpc/player_script.h"
 #include "shared/rpc/player_weapon.h"
+#include "shared/rpc/player/aim_sync.h"
+#include "shared/rpc/player/onfoot_sync.h"
 #include "shared/rpc/player_reload.h"
 #include "shared/rpc/player_shot.h"
 #include "shared/rpc/vehicle/damage.h"
@@ -27,6 +29,7 @@
 #include <core_modules.h>
 #include <networking/network_peer.h>
 #include <networking/replication/entity_registry.h>
+#include <networking/replication/replication_manager.h>
 
 namespace VantaMP::Core::Net {
     void Register() {
@@ -88,6 +91,14 @@ namespace VantaMP::Core::Net {
             Game::ApplyOccupancyAbort(abort.networkId, abort.vehicleId, abort.kind, abort.seat, abort.door);
         });
 
+        net->RegisterRPC<Shared::RPC::PlayerOnFootSync>([](const Shared::RPC::PlayerOnFootSync &sync, MafiaNet::Packet *) {
+            Game::ApplyRemoteOnFootSync(sync);
+        });
+
+        net->RegisterRPC<Shared::RPC::PlayerAimSync>([](const Shared::RPC::PlayerAimSync &sync, MafiaNet::Packet *) {
+            Game::ApplyRemoteAimSync(sync);
+        });
+
         net->RegisterRPC<Shared::RPC::VehicleDriverSync>([](const Shared::RPC::VehicleDriverSync &sync, MafiaNet::Packet *) {
             Game::ApplyRemoteDriverSync(sync);
         });
@@ -97,9 +108,31 @@ namespace VantaMP::Core::Net {
         // plain replication carries it - so this has to be handled, not just
         // sent.
         net->RegisterRPC<Shared::RPC::VehicleSyncOwner>([](const Shared::RPC::VehicleSyncOwner &owner, MafiaNet::Packet *) {
-            // The id first: the role is useless without a way to address the
-            // vehicle, and the two arrive together precisely so there is no
-            // window where we are the syncer but cannot say so.
+            // ONE ANNOUNCEMENT PACKET, TWO REGISTRIES. Players and vehicles
+            // each keep their own wire-id space (a slot number means nothing
+            // across kinds), so the entity has to be resolved to decide which
+            // registry learns the mapping. Adding a second, near-identical
+            // announcement packet would have cost another Huffman identifier
+            // to carry the same fact.
+            auto *replication = Framework::CoreModules::GetReplication();
+
+            if (!replication) {
+                return;
+            }
+
+            auto *entity = replication->GetEntityByNetworkID(static_cast<MafiaNet::NetworkID>(owner.vehicleId));
+
+            if (dynamic_cast<Shared::PlayerEntity *>(entity)) {
+                Game::AdoptPlayerWireId(owner.vehicleId, owner.wireId);
+
+                // Our own id is what lets this client address its own updates.
+                if (owner.vehicleId == Game::LocalNetworkId()) {
+                    Game::SetLocalPlayerWireId(owner.wireId);
+                }
+
+                return;
+            }
+
             Game::AdoptVehicleWireId(owner.vehicleId, owner.wireId);
             Game::SetVehicleSyncerRole(owner.vehicleId, owner.start);
         });

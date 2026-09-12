@@ -6,8 +6,9 @@
 #include <cstdint>
 #include <string>
 
-namespace VantaMP::Shared::RPC::Vehicle {
-    // Per-packet-type protocol counters.
+namespace VantaMP::Shared::RPC::Metrics {
+    // Per-packet-type protocol counters, for every hot packet in the
+    // project - vehicle and player alike.
     //
     // MEASURED, NOT ESTIMATED. The point of this file is that no claim about
     // bandwidth in this protocol should come from reading a struct
@@ -25,6 +26,8 @@ namespace VantaMP::Shared::RPC::Vehicle {
         Resync,
         Damage,
         SyncOwner,
+        PlayerOnFootSync,
+        PlayerAimSync,
         EnterVehicle,
         ExitVehicle,
         OccupancyAbort,
@@ -40,6 +43,8 @@ namespace VantaMP::Shared::RPC::Vehicle {
         case PacketType::Resync: return "VehicleResync";
         case PacketType::Damage: return "VehicleDamageReport";
         case PacketType::SyncOwner: return "VehicleSyncOwner";
+        case PacketType::PlayerOnFootSync: return "PlayerOnFootSync";
+        case PacketType::PlayerAimSync: return "PlayerAimSync";
         case PacketType::EnterVehicle: return "PlayerEnterVehicle";
         case PacketType::ExitVehicle: return "PlayerExitVehicle";
         case PacketType::OccupancyAbort: return "PlayerOccupancyAbort";
@@ -72,10 +77,10 @@ namespace VantaMP::Shared::RPC::Vehicle {
     // send happens on the game thread (client) or the tick thread (server),
     // and adding a lock to a counter on the hot path would cost more than
     // the thing it measures.
-    class Metrics final {
+    class Counters final {
       public:
-        static Metrics &Get() {
-            static Metrics instance;
+        static Counters &Get() {
+            static Counters instance;
 
             return instance;
         }
@@ -160,4 +165,4 @@ namespace VantaMP::Shared::RPC::Vehicle {
         std::array<PacketCounter, kPacketTypeCount> _counters {};
         std::uint64_t _sinceMs = 0;
     };
-} // namespace VantaMP::Shared::RPC::Vehicle
+} // namespace VantaMP::Shared::RPC::Metrics
