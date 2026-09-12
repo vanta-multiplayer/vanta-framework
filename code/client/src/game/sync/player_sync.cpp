@@ -486,9 +486,39 @@ namespace VantaMP::Game {
 
         // Aim is present only when the sender was actually aiming; absent
         // means "not aiming", NOT "aiming at zero".
+        // AIM RE-AIMS ITS OWN LERP, ON THE PACKET THAT CARRIES IT.
+        //
+        // The view window used to be set only inside ApplyRemoteSnapshot,
+        // which runs on `changed || due` - i.e. when the POSE moved. But aim
+        // changes far more often than the pose does: a player standing still
+        // and tracking a target sends aim every frame and moves not at all, so
+        // the window was never restarted and the lerp kept easing toward a
+        // target that had already been superseded. The arms trailed the real
+        // aim permanently, which is the imprecision.
+        //
+        // MTA has the same coupling and solves it the same way round: its
+        // TICK_RATE_AIM is "min(TICK_RATE, keySyncRotation)" because "keysync
+        // OR puresync update the aim, so use the shortest interval"
+        // (CNetAPI.h:26). Aim is not on the pose's schedule.
         if (sync.Has(Field::kAim)) {
             entity->aimHorizontal = sync.aimHorizontal;
             entity->aimVertical   = sync.aimVertical;
+
+            if (const int slot = SlotOfNetworkId(networkId); slot >= 0) {
+                auto &aimed = gAimedBySlot[slot];
+
+                const auto shown = SDK::GetRemotePedAim(slot);
+                const auto now   = GetTickCount();
+
+                aimed.aimHFrom    = shown.horizontal;
+                aimed.aimHTo      = sync.aimHorizontal;
+                aimed.aimVFrom    = shown.vertical;
+                aimed.aimVTo      = sync.aimVertical;
+                aimed.cameraFrom  = SDK::GetRemoteCameraRotation(slot);
+                aimed.cameraTo    = entity->cameraRotation;
+                aimed.viewBeginMs = now;
+                aimed.viewEndMs   = now + Shared::SyncRate::kPlayerMs;
+            }
         }
 
         if (sync.Has(Field::kFlags)) {

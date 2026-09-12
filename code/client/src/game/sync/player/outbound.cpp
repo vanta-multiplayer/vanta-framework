@@ -118,6 +118,13 @@ namespace VantaMP::Game::PlayerSyncState {
     constexpr float kPlayerVelocityEpsilon = 0.05f;   // 5 cm/s
     constexpr float kPlayerAngleEpsilon    = 0.002f;  // ~0.11 deg
 
+    // AIM IS HELD TIGHTER THAN HEADING, because it is what a weapon points
+    // along. 0.11 deg is a fifth of a metre of miss at 100 m, which is fine
+    // for which way a body faces and far too loose for where a gun is looking.
+    // 0.029 deg is 5 cm at the same range, and still five times the 16-bit
+    // quantizer step, so it cannot thrash on rounding alone.
+    constexpr float kPlayerAimEpsilon      = 0.0005f; // ~0.029 deg
+
     // KEYFRAME, BECAUSE THE STREAM IS UNRELIABLE. Deltas compare against
     // what was last SENT, and an unreliable packet may never have landed -
     // so without this a receiver that missed the one packet carrying a
@@ -230,9 +237,17 @@ namespace VantaMP::Game::PlayerSyncState {
         // buys nothing.
         const bool aiming = (entity->buttons & (SDK::Button::Fire | SDK::Button::Aim)) != 0;
 
+        // WRAPPED DIFFERENCE FOR THE YAW. aim.horizontal is an ABSOLUTE world
+        // angle (gta-reversed CPedIK::PointGunInDirection subtracts the ped's
+        // own rotation internally: LimitRadianAngle(zAngle - m_fCurrentRotation)),
+        // so it wraps at +/-pi like any heading. A raw fabs reports a player
+        // tracking a target through north as a 6.28 rad swing.
+        //
+        // The pitch does not wrap - it is an arm angle, roughly -1..1 - so a
+        // plain difference is correct there.
         if (aiming
-            && (keyframe || std::fabs(aim.horizontal - gLocalSend.sentAimH) > kPlayerAngleEpsilon
-                || std::fabs(aim.vertical - gLocalSend.sentAimV) > kPlayerAngleEpsilon)) {
+            && (keyframe || std::fabs(OffsetRadians(gLocalSend.sentAimH, aim.horizontal)) > kPlayerAimEpsilon
+                || std::fabs(aim.vertical - gLocalSend.sentAimV) > kPlayerAimEpsilon)) {
             sync.fields |= Field::kAim;
             sync.aimHorizontal = aim.horizontal;
             sync.aimVertical   = aim.vertical;
