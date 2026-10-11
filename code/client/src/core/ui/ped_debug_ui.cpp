@@ -4,7 +4,7 @@
 
 #include <cfloat>
 
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 #include "sdk/game.h"
 #include "sdk/patterns.h"
 
@@ -48,7 +48,7 @@ namespace VantaMP::Core::UI {
 
         if (!state.valid) {
             ImGui::TextDisabled("No player ped yet");
-            ImGui::TextDisabled("Players %08X (slot 0)", static_cast<unsigned>(reinterpret_cast<uintptr_t>(VantaMP::Game::PlayerInfoAt(0))));
+            ImGui::TextDisabled("Players %08X (slot 0)", static_cast<unsigned>(reinterpret_cast<uintptr_t>(VantaMP::SDK::PlayerInfoAt(0))));
             ImGui::End();
             return;
         }
@@ -78,7 +78,7 @@ namespace VantaMP::Core::UI {
         }
 
         ImGui::Separator();
-        ImGui::TextDisabled("Players %08X (slot 0)", static_cast<unsigned>(reinterpret_cast<uintptr_t>(VantaMP::Game::PlayerInfoAt(0))));
+        ImGui::TextDisabled("Players %08X (slot 0)", static_cast<unsigned>(reinterpret_cast<uintptr_t>(VantaMP::SDK::PlayerInfoAt(0))));
 
         ImGui::End();
     }

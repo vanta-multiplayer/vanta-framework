@@ -10,6 +10,7 @@
 #include <core_modules.h>
 #include <logging/logger.h>
 #include <voice/server/voice_server.h>
+#include <mafianet/GetTime.h>
 
 namespace VantaMP {
     void Server::PostInit() {
@@ -41,6 +42,23 @@ namespace VantaMP {
 
     void Server::PostUpdate() {
         Eac::Tick();
+
+        // SYNCER ELECTION IS SLOW WORK, DELIBERATELY.
+        //
+        // It walks every vehicle against every player, and nothing it decides
+        // changes faster than a player can walk out of range. Running it on
+        // the sync tick would burn O(vehicles x players) every 100 ms to
+        // reach the same answer. One second is well inside the margin the
+        // syncer range leaves, and a handoff that is a second late costs
+        // nothing: the previous syncer is still in range and still correct.
+        static std::uint64_t lastSyncerSweepMs = 0;
+
+        const auto now = static_cast<std::uint64_t>(MafiaNet::GetTime());
+
+        if (now - lastSyncerSweepMs >= 1000) {
+            lastSyncerSweepMs = now;
+            _vehicles.UpdateUnoccupiedSyncers();
+        }
     }
 
     void Server::PreShutdown() {
@@ -63,6 +81,26 @@ namespace VantaMP {
         // whether they appear, and where. The C++ spawn below is only the
         // fallback for a server with no resource loaded.
         _world.SendTo(guid);
+
+        // EVERY VEHICLE THAT ALREADY EXISTS NEEDS ITS WIRE ID SENT.
+        //
+        // The id is announced when a vehicle is created, so a player who
+        // joins afterwards never heard those announcements. Without this they
+        // hold no mapping for any existing car: inbound motion for it cannot
+        // be resolved and is dropped, and if they drive one they cannot
+        // address their own updates. Sent before the spawn decision, so it is
+        // in place whichever way the player enters the world.
+        _vehicles.AnnounceAllWireIds(guid);
+
+        // The same for players: this client needs every existing player's
+        // wire id to resolve their movement, and everyone else needs THIS
+        // player's to resolve theirs - so the new mapping is broadcast while
+        // the existing ones are sent just to the joiner.
+        _players.AnnounceAllWireIds(guid);
+
+        if (auto *joined = _players.Find(guid)) {
+            _players.AnnounceWireId(static_cast<std::uint64_t>(joined->GetNetworkID()));
+        }
 
         auto *player = _players.Find(guid);
 

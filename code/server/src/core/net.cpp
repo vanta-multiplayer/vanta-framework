@@ -6,12 +6,15 @@
 #include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
 #include "shared/rpc/eac_messages.h"
-#include "shared/rpc/player_death.h"
-#include "shared/rpc/player_enter_vehicle.h"
-#include "shared/rpc/player_exit_vehicle.h"
-#include "shared/rpc/player_reload.h"
-#include "shared/rpc/player_shot.h"
-#include "shared/rpc/vehicle_damage_report.h"
+#include "shared/rpc/player/death.h"
+#include "shared/rpc/player/enter_vehicle.h"
+#include "shared/rpc/player/exit_vehicle.h"
+#include "shared/rpc/player/onfoot_sync.h"
+#include "shared/rpc/player/reload.h"
+#include "shared/rpc/player/shot.h"
+#include "shared/rpc/vehicle/damage.h"
+#include "shared/rpc/vehicle/driver_sync.h"
+#include "shared/rpc/vehicle/unoccupied_sync.h"
 #include "shared/world/spawn_points.h"
 
 #include <core_modules.h>
@@ -103,16 +106,49 @@ namespace VantaMP::Net {
                 return;
             }
 
-            server.Vehicles().HandleExit(*player, incoming.warp, incoming.door, incoming.abortEnter);
+            server.Vehicles().HandleExit(*player, incoming.warp, incoming.door, incoming.abortEnter, incoming.doorRatio, incoming.knockedOff);
         });
 
-        net->RegisterRPC<Shared::RPC::VehicleDamageReport>([&server](const Shared::RPC::VehicleDamageReport &incoming, MafiaNet::Packet *packet) {
-            if (!server.Players().Find(MafiaNet::ToPeerGuid(packet->guid))) {
+        net->RegisterRPC<Shared::RPC::PlayerOnFootSync>([&server](const Shared::RPC::PlayerOnFootSync &incoming, MafiaNet::Packet *packet) {
+            auto *sender = server.Players().Find(MafiaNet::ToPeerGuid(packet->guid));
+
+            if (!sender) {
                 return;
             }
 
-            server.Vehicles().HandleDamage(incoming.vehicleId, incoming.damageEngine, incoming.doorsPacked, incoming.wheelsPacked, incoming.panels,
-                                           incoming.lights, incoming.doorRatiosPacked, incoming.applyRatios, incoming.health);
+            server.Players().HandleOnFootSync(*sender, incoming);
+        });
+
+        net->RegisterRPC<Shared::RPC::VehicleDriverSync>([&server](const Shared::RPC::VehicleDriverSync &incoming, MafiaNet::Packet *packet) {
+            auto *sender = server.Players().Find(MafiaNet::ToPeerGuid(packet->guid));
+
+            if (!sender) {
+                return;
+            }
+
+            server.Vehicles().HandleDriverSync(*sender, incoming);
+        });
+
+        net->RegisterRPC<Shared::RPC::VehicleUnoccupiedSync>([&server](const Shared::RPC::VehicleUnoccupiedSync &incoming, MafiaNet::Packet *packet) {
+            auto *sender = server.Players().Find(MafiaNet::ToPeerGuid(packet->guid));
+
+            if (!sender) {
+                return;
+            }
+
+            server.Vehicles().HandleUnoccupiedSync(*sender, incoming);
+        });
+
+        net->RegisterRPC<Shared::RPC::VehicleDamageReport>([&server](const Shared::RPC::VehicleDamageReport &incoming, MafiaNet::Packet *packet) {
+            auto *reporter = server.Players().Find(MafiaNet::ToPeerGuid(packet->guid));
+
+            // The reporter is passed through, not just proven to exist: the
+            // manager validates the report against where they actually are.
+            if (!reporter) {
+                return;
+            }
+
+            server.Vehicles().HandleDamage(*reporter, incoming);
         });
 
         net->RegisterRPC<Shared::RPC::EacRegister>([&server](const Shared::RPC::EacRegister &incoming, MafiaNet::Packet *packet) {

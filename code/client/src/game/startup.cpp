@@ -2,7 +2,7 @@
 
 #include "core/client_config.h"
 #include "core/diagnostics/breadcrumbs.h"
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 #include "game/entities/remote_players.h"
 #include "game/patches/audio.h"
 #include "game/patches/boot.h"
@@ -54,7 +54,7 @@ namespace VantaMP::Game {
         // Vanta had already changed, and any of those that happened to look
         // like an array reference would be rewritten a second time.
         Diagnostics::Breadcrumbs::SetStage(Diagnostics::Stage::PatchesApplying);
-        Apply("player slots", ExpandPlayerSlots);
+        Apply("player slots", SDK::ExpandPlayerSlots);
 
         // Before the game gets a chance to populate the world. GTA starts
         // inventing pedestrians and traffic as soon as it streams anything in,

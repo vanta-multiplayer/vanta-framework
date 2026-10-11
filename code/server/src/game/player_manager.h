@@ -1,5 +1,8 @@
 #pragma once
 
+#include "shared/rpc/common/sequence.h"
+#include "shared/rpc/common/wire_registry.h"
+
 #include <mafianet/types.h>
 
 #include <cstdint>
@@ -9,6 +12,10 @@
 namespace VantaMP::Shared {
     class PlayerEntity;
 }
+
+namespace VantaMP::Shared::RPC {
+    struct PlayerOnFootSync;
+} // namespace VantaMP::Shared::RPC
 
 namespace VantaMP::Game {
     // Who is on the server, and where.
@@ -59,6 +66,16 @@ namespace VantaMP::Game {
 
         [[nodiscard]] Shared::PlayerEntity *Find(MafiaNet::PeerGuid guid) const;
 
+        // Movement and aim from a player's own client. Validates authority and
+        // values, updates the authoritative replica, relays to everyone else.
+        void HandleOnFootSync(Shared::PlayerEntity &sender, const Shared::RPC::PlayerOnFootSync &sync);
+
+        // Tells one player, or everyone, the compact wire id for a player.
+        void AnnounceWireId(std::uint64_t networkId, MafiaNet::PeerGuid to = MafiaNet::UNASSIGNED_PEER_GUID);
+
+        // Every live player's wire id, for a client that has just joined.
+        void AnnounceAllWireIds(MafiaNet::PeerGuid to);
+
         template <typename Fn>
         void ForEach(Fn &&fn) const {
             for (const auto &[guid, player] : _players) {
@@ -73,6 +90,19 @@ namespace VantaMP::Game {
         }
 
       private:
+        // THE SERVER IS THE ONLY MINTER, as for vehicles. Its own registry
+        // instance: slot numbers do not mean anything across entity kinds.
+        Shared::RPC::Common::WireRegistry _wireIds;
+
+        // Newest on-foot sequence accepted per player, so a reordered or
+        // replayed datagram is dropped here rather than relayed to everyone.
+        struct AcceptedSequence {
+            Shared::RPC::Sequence onFoot = 0;
+            bool          haveOnFoot = false;
+        };
+
+        std::unordered_map<std::uint64_t, AcceptedSequence> _sequences;
+
         // The replication manager owns the entities; this only remembers which
         // belongs to which connection, so a disconnect knows what to destroy.
         std::unordered_map<MafiaNet::PeerGuid, Shared::PlayerEntity *> _players;

@@ -10,7 +10,7 @@
 // What lives here is the handful of primitives that both the local player and
 // remote peds need. Anything used by only one of them belongs in that file.
 
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 #include "sdk/game_sdk.h"
 #include "sdk/patterns.h"
 
@@ -48,6 +48,11 @@ namespace VantaMP::SDK::Internal {
     // files this build does not compile, so `task->GetId()` would want a
     // definition to link against. The vtable is where the answer lives in any
     // case, and the slot is the one plugin-sdk itself uses.
+    // CTask::GetSubTask - after the destructor (0) and Clone (1). A complex
+    // task runs its work through the simple task underneath it, so following
+    // this is how you find what a ped is ACTUALLY doing.
+    inline constexpr std::size_t kTaskGetSubTaskSlot = 2;
+
     inline constexpr std::size_t kTaskGetIdSlot = 4;
 
     // Where the in-water task sits. plugin-sdk names the primary task array but
@@ -220,14 +225,14 @@ namespace VantaMP::SDK::Internal {
         // Slot 0, out of the RELOCATED array. Reading gPatterns.CWorld__Players
         // instead would find the array the game shipped with, which nothing
         // writes to any more once the slots have been expanded.
-        const auto slot = Game::PlayerInfoAt(0);
+        const auto slot = SDK::PlayerInfoAt(0);
 
         return slot ? *reinterpret_cast<CPed **>(slot) : nullptr;
     }
 
     // The ped in a slot, or nullptr if that slot is empty.
     inline CPed *PedAt(int slot) {
-        auto *info = reinterpret_cast<CPlayerInfo *>(Game::PlayerInfoAt(slot));
+        auto *info = reinterpret_cast<CPlayerInfo *>(SDK::PlayerInfoAt(slot));
 
         return info ? info->m_pPed : nullptr;
     }

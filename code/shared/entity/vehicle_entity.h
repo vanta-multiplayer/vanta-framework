@@ -91,6 +91,28 @@ namespace VantaMP::Shared {
         std::uint8_t accelerator = 0;
         std::uint8_t brake       = 0;
 
+        // THE HANDBRAKE IS ITS OWN FACT, NOT `brake > 0`.
+        // `brake` is m_fBreakPedal, the foot brake. GTA's
+        // vehicleFlags.bIsHandbrakeOn is a separate flag set from a separate
+        // button, and a remote bike cannot derive it because its
+        // ProcessControlInputs never runs. So the owner sends it.
+        bool handbrake = false;
+
+        // THE GAS PEDAL IS SIGNED, AND `accelerator` CANNOT CARRY THAT.
+        //
+        // m_fGasPedal runs -1..1, negative meaning REVERSE - see
+        // PostEffects.cpp:968, which biases it with `(m_GasPedal + 1.0f)` to
+        // get a 0..2 range. `accelerator` above is a uint8 that clamps at
+        // zero, so a reversing owner sent 0 and the remote copy could not
+        // tell reverse from coasting: the rider kept the idle pose instead of
+        // the looking-back animation.
+        //
+        // Appended as its own signed field rather than widening
+        // `accelerator`, because changing an existing field's type IS a wire
+        // format change for every other field after it.
+        std::int8_t gasPedal   = 0;
+        std::int8_t brakePedal = 0;
+
         // Packed the way GTA stores them. A late joiner must see a wreck,
         // not wait for a change that already happened.
         std::uint8_t  damageEngine     = 0;
@@ -234,6 +256,27 @@ namespace VantaMP::Shared {
             engineOn = false;
         }
 
+        // WHEN VehicleDriverSync IS CARRYING THE POSE, THE REPLICA MUST NOT.
+        //
+        // The base NetworkEntity writes position/velocity/rotation to the
+        // unreliable transform channel every tick. Once the owner is also
+        // sending VehicleDriverSync, that is the SAME FACT ON THE WIRE TWICE
+        // - about 41 bytes a tick of it - and the two can even disagree for a
+        // frame, because they are independent messages with independent loss.
+        //
+        // So the owner stops writing the transform channel while its driver
+        // stream is live, and the fields keep being updated LOCALLY: the
+        // server's interest grid reads entity->position to decide who can see
+        // this vehicle, and a stale one would stream the car to the wrong
+        // people. The receiving side writes them from the packet instead.
+        //
+        // This flag is local, never replicated. It is set by the owning
+        // client while it is sending driver sync and cleared the moment it
+        // stops, so a vehicle that loses its driver falls straight back to
+        // plain replication with no gap.
+        bool driverSyncActive = false;
+
+        void SerializeTransform(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnSerializeConstruction(Framework::Networking::Replication::FieldSerializer &fields) override;
         void SerializeFields(Framework::Networking::Replication::FieldSerializer &fields) override;
         void OnStateForced() override;

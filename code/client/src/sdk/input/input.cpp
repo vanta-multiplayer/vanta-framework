@@ -48,7 +48,20 @@ namespace VantaMP::SDK {
             buttons |= Button::Fire;
         }
 
-        if (held(state.RightShoulder1)) {
+        // AIM AND HANDBRAKE ARE THE SAME PHYSICAL BUTTON.
+        //
+        // CPad::GetHandBrake (0x540040) returns NewState.RightShoulder1 in
+        // pad modes 0 and 1 - the defaults - which is the very field the
+        // on-foot aim bit is read from and written back to. Sending Aim for a
+        // seated player therefore hands the receiver a permanently held
+        // handbrake, and GTA locks the rear wheel of a car it is meanwhile
+        // being told is doing 60. On a BIKE that is not a skid: a locked rear
+        // wheel under a synced forward velocity is exactly what lays the bike
+        // over onto its side, which is the roll we were chasing.
+        //
+        // Aim means nothing while seated anyway - drive-by aiming comes from
+        // the aim sync, not this bit - so it is simply not sampled there.
+        if (!seated && held(state.RightShoulder1)) {
             buttons |= Button::Aim;
         }
 
@@ -75,7 +88,7 @@ namespace VantaMP::SDK {
     }
 
     void WriteRemoteInput(int slot, const ControllerInput &input) {
-        auto *pad = reinterpret_cast<CPad *>(Game::PadAt(slot));
+        auto *pad = reinterpret_cast<CPad *>(SDK::PadAt(slot));
 
         if (!pad) {
             return;
@@ -114,13 +127,31 @@ namespace VantaMP::SDK {
 
         const auto set = [](bool pressed) -> std::int16_t { return pressed ? 255 : 0; };
 
-        state.ButtonCircle   = set((input.buttons & Button::Fire) != 0);
-        state.RightShoulder1 = set((input.buttons & Button::Aim) != 0);
-        state.ButtonTriangle = set((input.buttons & Button::EnterExit) != 0);
-        state.m_bPedWalk     = set((input.buttons & Button::Walk) != 0);
+        state.ButtonCircle = set((input.buttons & Button::Fire) != 0);
+        state.m_bPedWalk   = set((input.buttons & Button::Walk) != 0);
 
         const auto *ped    = Internal::PedAt(slot);
         const bool  seated = ped && ped->bInVehicle;
+
+        // AIM AND ENTER/EXIT ARE HANDBRAKE BUTTONS BEHIND THE WHEEL.
+        //
+        // CPad::GetHandBrake (0x540040) reads RightShoulder1 in pad modes 0/1
+        // and ButtonTriangle in mode 2. Both of those carry on-foot meanings
+        // here - aim and enter/exit - so writing them into a seated ped's pad
+        // pulls the handbrake on their vehicle for as long as the bit is set.
+        //
+        // Guarded on BOTH sides: the sender no longer samples aim while
+        // seated, and the receiver refuses to write either button into a pad
+        // it is about to hand to a vehicle. A stale packet from an older
+        // client, or one that arrives in the frames around entering a car,
+        // cannot lock the wheels of a car that is being told it is moving.
+        //
+        // Enter/exit is driven by the occupancy RPCs rather than by replaying
+        // this bit, so nothing is lost by dropping it while seated.
+        if (!seated) {
+            state.RightShoulder1 = set((input.buttons & Button::Aim) != 0);
+            state.ButtonTriangle = set((input.buttons & Button::EnterExit) != 0);
+        }
 
         // CROUCH IS A TOGGLE ON FOOT AND A HORN IN A CAR.
         //

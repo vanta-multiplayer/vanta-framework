@@ -12,10 +12,26 @@ Puresync never seats anyone. A flag that said "entering" would restart the
 door animation every tick; an unreliable packet can be missed and leave a
 player standing beside a car everyone else sees them driving.
 
-A new stick press or a jump while walking in cancels the enter task.
-GTA will not drop `CTaskComplexEnterCar` on its own just because you
-moved. The local client aborts, then sends `PlayerExitVehicle` with
-`abortEnter` so remotes stop walking and scripts do not see a leave.
+A new stick press or a jump while walking in cancels the enter task —
+**GTA does that itself**, and we only report it. `CPlayerPed` ends its own
+enter task when the player jumps or steers away; that is what the
+`bHasDisplayedPlayerQuitEnterCarHelpText` save flag is the help text for.
+We used to abort it a second time from the sync tick, which meant GTA's
+unwind and our `MakeAbortable` tore at the same task on the same frame —
+visible as a stuttering, half-played step-back.
+
+MTA never intercepts the cancel key at all. It polls `IsEnteringVehicle()`
+(`CClientPed.cpp:8272`) and, on the frame the task is gone, asks
+`GetRealOccupiedVehicle()` which way it ended: a seat means notify-in, no
+seat means notify-abort. We do the same — the local state machine watches
+for `!occupancy.entering` and sends `PlayerExitVehicle` with `abortEnter`
+so remotes stop walking and scripts do not see a leave.
+
+An abort is **not** an exit on the receiving side either. The ped never
+reached a seat, so `ExitVehicle` has nothing to get them out of; it asks the
+enter task to unwind instead. That matters because *the unwind is what
+closes the door* — deleting the task skips it and leaves the door hanging
+open on every other machine.
 
 ## Keys
 
@@ -70,12 +86,26 @@ VehicleIsBike           VehicleHasLandingGear VehicleHasSirens
 VehicleHasTurret        VehicleHasTaxiLight   VehicleMaxPassengers
 ```
 
-**Type selects capabilities, never a sync path.** A bike is synchronised
-exactly like a car, minus what it does not have. This is MTA's split - see
-[MTA vehicle sync](mta-vehicle-sync.md) section 7.
+**Type selects capabilities.** The table below is about what a vehicle
+*has* — a bike has no `CDamageManager`, a plane has landing gear.
+`RemoteVehicle` caches its type at spawn; nothing in the sync loop switches
+on a model id.
 
-`RemoteVehicle` caches its type at spawn; nothing in the sync loop switches on
-a model id.
+Type *also* selects the physical sync policy, but through one dispatch, not
+scattered `if (bike)` checks. `game/sync/vehicle/handler.cpp` picks a
+`Handler` per GTA vehicle class, and that handler owns the whole physical
+lifecycle for its type:
+
+| File | Owns |
+|------|------|
+| `vehicle_sync.cpp` | Shared infrastructure only: packet receive, snapshot storage, interpolation timing, lookup, authority, type detection, dispatch |
+| `automobile_sync.cpp` | The complete `CAutomobile` lifecycle |
+| `bike_sync.cpp` | The complete `CBike` lifecycle |
+| `common.cpp` | The pieces genuinely shared by more than one handler |
+
+A car and a bike need *different* policies, not the same one minus
+features — see [Bikes](#bikes) below for why. Anything used by exactly one
+handler lives in that handler's file.
 
 | Rule | Applies to |
 |------|------------|
@@ -211,9 +241,14 @@ Rules that keep the doors quiet:
 
 - Call `OpenDoor` only when the current ratio is more than `2/255` from
   the target.
-- Skip the door the local ped is climbing through
-  (`DoorIndexFromTarget`: 0/10 → 2, 8 → 3, 11 → 4, 9 → 5). Writing
-  `OpenDoor` over a climb slams it shut.
+- Skip **every** door a ped is climbing through — local *or remote*
+  (`SDK::OccupiedDoorMask`, which walks the local ped, the vehicle's
+  occupants and anyone whose enter task targets it;
+  `DoorRatioIndexForTarget`: 0/10 → 2, 8 → 3, 11 → 4, 9 → 5). Writing
+  `OpenDoor` over a climb slams it shut. This used to consult only slot 0,
+  so a *remote* player's door was written over on every packet — the door
+  spam. MTA refuses the same writes in `CClientVehicle::SetDoorOpenRatio`
+  (`CClientVehicle.cpp:709`), gated by `AllowDoorRatioSetting`.
 - The **driver owns the swing**. A seated passenger must not report
   ratios. The server ignores ratio reports while seat 0 is taken.
 - Passengers report only while **entering or leaving**, and only if the
@@ -228,6 +263,159 @@ MTA uses for `SetDoorOpenRatio(..., TICK_RATE)`. A per-frame `OpenDoor`
 fights a swinging or damaged door and stutters. Skip those statuses;
 GTA owns the angle. If a parked door drifts, start a new lerp — do
 not snap.
+
+**An aborted entry needs its door angle on the wire.** The masking above
+means nobody else may write that door, and the owner's ratio reports stop
+the moment the enter task ends — but GTA swings the door shut *after* that,
+as part of the ped returning to foot. So the last angle anyone heard was a
+stale half-open one. `PlayerExitVehicle` carries `doorRatio` for exactly
+this, the way MTA writes `GetDoorOpenRatio` into notify-abort
+(`CClientPed.cpp:10443`) and forces it on receipt
+(`CPacketHandler.cpp:1972`). Reporting also continues for a short settle
+window after the ped lets go of the door, so the close itself is
+transmitted rather than only its first frame.
+
+## Bikes
+
+A `CBike` is not a `CAutomobile` with two fewer wheels. Three findings from
+gta-reversed shape the whole handler:
+
+**1. Its orientation is physics, and it fights back.** Nudging the matrix
+every frame is a feedback loop on two wheels. The suspension lines then sit
+wrong against the ground, so GTA raises real turn forces to correct what
+looks to it like a genuine attitude error, and `CPhysical` accumulates them
+into `m_vecTurnSpeed` (`Physical.cpp:740/767/2548`). Measured on a bike
+whose owner reported no rotation at all, `ts` grew `0.0000 → 0.0023 →
+0.0124` and the bike lay down while the owner rode upright. A car absorbs
+those forces through four suspension points; a bike's free axis is **roll**.
+
+**2. Its suspension state is relative to its own position.**
+`m_aGroundOffsets[i] = cp.m_vecPoint - GetPosition()` (`Bike.cpp:486`), and
+`ProcessEntityCollision` compares this frame's wheel ratios against last
+frame's. All of that assumes the chassis moved because *physics* moved it.
+Our sync tick runs in `CTheScripts::Process` (`Game.cpp:746`), **before**
+`CWorld::Process` (781) — so a per-frame position write is followed
+immediately by GTA resolving wheels against ground from a chassis that was
+teleported since it last measured. The chassis visibly bounces.
+
+**3. `CBike::ProcessControlInputs` never runs for a remote bike.** It is
+the only writer of `m_fSteerAngle`, the only thing that clears the
+constructor's default `bIsHandbrakeOn` (`Vehicle.cpp:253`), and the only
+thing that converts pad buttons into `m_fGasPedal`. So steer, handbrake and
+**both pedals** are copied from the wire instead
+(`SDK::ApplyBikeDriverOutputs`). The pad still reaches the engine; it does
+not reach those fields.
+
+The resulting policy:
+
+| Authoritative | GTA's own |
+|---------------|-----------|
+| X, Y (where the bike is on the map) | Z, pitch, roll |
+| Yaw (where the rider pointed it) | suspension, wheel contact, lean |
+
+XY is **dead reckoned** — the packet position is constant for ~100 ms, so
+easing toward it drags the bike backwards against its own motion for the
+whole interval. Extrapolate by the owner's velocity for the packet's age
+instead. Correct it a fraction per frame, never snap: a snap is a teleport,
+and see finding 2.
+
+Pitch is **not** an error. Two machines sit at a persistent 6–7° difference
+with no corrections at all, and both are locally correct — that is each
+one's own suspension under acceleration. Forcing it to zero ten times a
+second *is* the chassis hop.
+
+### Wheelies
+
+The exception to "pitch is GTA's". During a wheelie the two machines differ
+by **eighty** degrees, because the remote copy is not performing the
+manoeuvre at all — the wheelie comes out of `CBike::ProcessControl`, which
+never runs here.
+
+Detect it the way GTA does. `CQuadBike::ProcessControl` (`QuadBike.cpp:222`)
+reads the forward vector's Z and compares it against
+`m_pHandling->m_fWheelieAng`, which `cHandlingDataMgr` stores as
+`sin(angle)` (`cHandlingDataMgr.cpp:359`) — the same space, directly
+comparable. Do **not** count contact wheels: `NUM_SUSP_LINES` is 4 for a
+bike, so a grounded bike reports 4 contacts, not 2, and
+`ProcessControlCollisionCheck` refills `m_aWheelRatios` with 1.0 before our
+tick reads them. Both of those made dead gates.
+
+While it lasts, the owner's whole orientation is authoritative, and it is
+handed to the Framework `Interpolator` rather than blended per frame — the
+error is captured once when the packet lands and spent across exactly one
+packet window. A fixed per-frame slerp toward a target that is constant for
+100 ms is not interpolation; it overshoots early and chases a stale pose
+late.
+
+## Getting knocked off a bike
+
+Crashing a bike throws the rider. Nothing about that is an exit: no leave
+task runs, and the ped never asked to get out.
+
+**Only the owner decides.** Every remote ped is created with
+`CantBeKnockedOffBike = 1` (*Never*), so a viewer's copy can never fall on
+its own — each viewer would decide differently from its own collision, with
+no authority to reconcile them. This is MTA's rule verbatim
+(`CClientPed.cpp:5799`):
+
+```cpp
+// Set remote players to not fall off bikes locally, let them decide
+if (m_bIsLocalPlayer)
+    SetCanBeKnockedOffBike(m_bCanBeKnockedOffBike);
+else
+    SetCanBeKnockedOffBike(false);
+```
+
+The **local** ped must keep GTA's default (`0`), or nobody can be knocked
+off on any machine and the whole path is dead code.
+
+The owner reports it as `PlayerExitVehicle` with `warp = true` and
+`knockedOff = true`. `warp` because they are already out — a non-warp exit
+makes the server fire `vehicleStartExit`, which a script could "veto" after
+the fact, and makes the receiver build a polite `CTaskComplexLeaveCar` for
+someone who was launched over the handlebars.
+
+Receivers raise GTA's own `CEventKnockOffBike` and add it to the ped's event
+group. Do **not** reconstruct the response by hand — it is three steps that
+have to happen together (`EventKnockOffBike.cpp`):
+
+| Step | Address | Does |
+|------|---------|------|
+| `SetPedOutCar` | `0x4AFF60` | `CTaskSimpleCarSetPedOut` with `m_bKnockedOffBike`, then `RemoveCarSitAnim` |
+| `CalcForcesAndAnims` | `0x4B0020` | `ApplyMoveForce` off the bike's Up/Right, returns the fall anim |
+| `SetPedSafePosition` | `0x4B4AC0` | clears the bike's `LeanAngle` / `m_bLeanMatrixCalculated` |
+
+and the responder that plays the anim
+(`CEventHandler::ComputeKnockOffBikeResponse`, `0x4B9FF0`) is not reversed.
+Raising the event runs all of it, including the parts nobody has read.
+
+`m_forceKnockOff = true` is required: `AffectsPed` refuses a ped with
+`CantBeKnockedOffBike` set unless it is on, and every remote ped has that
+flag. `Add` returns `nullptr` when the event is refused (dead ped,
+`STATUS_GHOST` vehicle, ped not in that vehicle) — fall back to a plain warp
+so the rider is never left welded to the bike.
+
+**Nothing may touch the ped while it plays.** `SDK::PedIsFallingOffBike`
+gates position correction, heading interpolation, the seat warp and the
+second ejection that `player_sync` would otherwise start. Getting this wrong
+is what made the animation intermittent:
+
+- The response task lands in **`TASK_PRIMARY_PHYSICAL_RESPONSE` (slot 0)**,
+  not the primary slot — scan every primary slot, and follow `GetSubTask`,
+  because it is a `CTaskComplexFallAndGetUp` chain whose leaf is the simple
+  fall. MTA tests both ends the same way (`CClientPed.cpp:7194`).
+- `CEventGroup::Add` only **queues** the event; the task does not exist
+  until the ped's next `ProcessEvents`. A short grace window after raising
+  it covers those frames, or the correction kills the fall before it starts.
+- Do **not** use `ped->bKnockedOffBike` for this. `CalcForcesAndAnims` sets
+  it and nothing in the reversed source ever clears it, so it would exclude
+  the ped from position correction permanently.
+
+The bike itself still needs an owner. The server keeps vehicle ownership
+across an exit on purpose (an empty bike still rolls), but the ex-rider's
+`m_pDriver` is null the instant they are ejected — so "am I driving it"
+is the wrong test for whether to push its pose. An owner with **no driver
+at all** keeps pushing; a passenger still refuses.
 
 ## Script spawn
 

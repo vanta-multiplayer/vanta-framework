@@ -428,6 +428,9 @@ namespace VantaMP::SDK {
         gPatterns.CTaskSimpleCarSetPedInAsPassenger__Constructor = Resolve("6A FF E9 13 AC DB"); // 0x00646FE0
         gPatterns.CTaskComplexLeaveCar__Constructor            = Resolve("6A FF 68 18 16 84"); // 0x0063B8C0
         gPatterns.CTaskSimpleCarSetPedOut__Constructor         = Resolve("6A FF E9 4B A4 DB"); // 0x006478B0
+        gPatterns.CTaskSimpleCarSetPedOut__ProcessPed          = Resolve("64 A1 00 00 00 00 6A FF 68 16 28"); // 0x00647D10
+        gPatterns.CEventKnockOffBike__Constructor              = Resolve("6A FF E9 4C A5 F5"); // 0x004AFCF0
+        gPatterns.CEventGroup__Add                             = Resolve("51 53 56 8B 74 24 10 57 8B"); // 0x004AB420
         gPatterns.CCarEnterExit__ComputeTargetDoorToEnterAsPassenger = Resolve("8B 54 24 04 8A 8A"); // 0x0064F190
         gPatterns.CCarEnterExit__ComputeTargetDoorToExit             = Resolve("8B 4C 24 04 8B 91 60"); // 0x0064F110
         gPatterns.CCarEnterExit__ComputePassengerIndexFromCarDoor    = Resolve("8B 44 24 04 83 B8"); // 0x0064F1E0

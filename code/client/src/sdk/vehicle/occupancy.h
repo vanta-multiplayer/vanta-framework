@@ -30,7 +30,10 @@ namespace VantaMP::SDK {
     [[nodiscard]] bool IsPedOccupyingVehicle(int slot);
 
     bool EnterVehicle(int slot, void *vehicle, std::uint8_t seat, bool warp, std::uint8_t door = kInvalidDoor);
-    void ExitVehicle(int slot, bool warp, std::uint8_t door = kInvalidDoor);
+    // knockedOff plays GTA's fall-off instead of placing the ped at the door.
+    // Only meaningful with warp, which is how an involuntary ejection is
+    // reported - the ped is already out, so there is no leave animation.
+    void ExitVehicle(int slot, bool warp, std::uint8_t door = kInvalidDoor, bool knockedOff = false);
 
     // Drop an enter walk and stand them back up. Movement cancel and a
     // script veto both land here — GTA will not abort CTaskComplexEnterCar
@@ -60,6 +63,21 @@ namespace VantaMP::SDK {
     [[nodiscard]] bool IsAnyoneEnteringVehicleAsDriver(const void *vehicle);
 
     // CTaskComplexEnterCar holds a raw CVehicle*. Cancel before delete.
+    // GTA's enter/leave door target id (0/8/9/10/11) -> the CDoor array index
+    // (2-5) that damage and ratio code uses. kInvalidDoor if it is not one of
+    // the four climb-through doors.
+    // True while GTA is throwing this ped off a bike or standing them back up.
+    // Their position belongs to the physics of the fall for that whole time,
+    // so network position correction must stand off.
+    [[nodiscard]] bool PedIsFallingOffBike(int slot);
+
+    [[nodiscard]] std::uint8_t DoorRatioIndexForTarget(std::uint8_t target);
+
+    // Bit i set = CDoor i is being driven by a ped's enter/leave animation
+    // right now, so the network must not write a ratio to it. Covers the
+    // local player and every remote ped, which is the half that was missing.
+    [[nodiscard]] std::uint8_t OccupiedDoorMask(void *vehicle);
+
     void CancelEntriesInto(void *vehicle);
 
     // Pointer detach only. SetPedOut re-enters the car; a wreck, a

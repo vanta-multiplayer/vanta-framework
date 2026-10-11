@@ -3,6 +3,7 @@
 #include <cstdint>
 
 namespace VantaMP::Shared::RPC {
+    struct PlayerOnFootSync;
     struct WorldSpace;
     struct PlayerScript;
 }
@@ -67,4 +68,16 @@ namespace VantaMP::Game {
 
     void ApplyPlayerScript(const Shared::RPC::PlayerScript &script);
     void ApplyPlayerWeapon(std::uint8_t action, std::uint32_t weaponType, std::uint32_t ammo);
+
+    // Movement and aim from another player's own client. Decoded into the
+    // same PlayerEntity fields the apply path already reads, so nothing below
+    // the decode knows the state arrived by packet rather than by replica.
+    void ApplyRemoteOnFootSync(const Shared::RPC::PlayerOnFootSync &sync);
+
+    // Server told us a player's compact wire id. Until it arrives, motion for
+    // that player cannot be addressed.
+    void AdoptPlayerWireId(std::uint64_t networkId, std::uint16_t wireId);
+
+    // Our own wire id, so the local client can address its own updates.
+    void SetLocalPlayerWireId(std::uint16_t wireId);
 } // namespace VantaMP::Game

@@ -3,8 +3,8 @@
 #include "access.h"
 #include "aim.h"
 
-#include "game/entities/remote_players.h"
 #include "sdk/patterns.h"
+#include "sdk/player/slots.h"
 
 #include <CCamera.h>
 #include <CPad.h>
@@ -57,7 +57,7 @@ namespace VantaMP::SDK {
         }
 
         bool IsLocalShooter(CEntity *entity) {
-            return entity && (entity == LocalPed() || Game::SlotOfPed(entity) == Game::kLocalPlayerSlot);
+            return entity && (entity == LocalPed() || SDK::SlotOfPed(entity) == SDK::kLocalPlayerSlot);
         }
 
         CWeaponInfo *InfoOf(unsigned int weaponType) {
@@ -322,7 +322,7 @@ namespace VantaMP::SDK {
                 *ignoreSlot = previous;
             }
 
-            return (struck && hit) ? Game::SlotOfPed(hit) : -1;
+            return (struck && hit) ? SDK::SlotOfPed(hit) : -1;
         }
 
         void ReportLocal(unsigned int weaponType, const CVector &origin, const CVector &target, int hitSlot) {
@@ -364,7 +364,7 @@ namespace VantaMP::SDK {
                 gLocalOrigin  = *start;
                 gLocalTarget  = *end;
                 gLocalHasRay  = true;
-                gLocalHitSlot = (struck && hit && *hit) ? Game::SlotOfPed(*hit) : -1;
+                gLocalHitSlot = (struck && hit && *hit) ? SDK::SlotOfPed(*hit) : -1;
             }
 
             return struck;
@@ -374,7 +374,7 @@ namespace VantaMP::SDK {
         // player as far as the game is concerned, so this call would take the
         // first-person / camera branch and ignore the target we passed.
         bool __fastcall FireInstantHit_IsPlayer(CPed *ped) {
-            if (Game::SlotOfPed(ped) > Game::kLocalPlayerSlot) {
+            if (SDK::SlotOfPed(ped) > SDK::kLocalPlayerSlot) {
                 return false;
             }
 
@@ -443,7 +443,7 @@ namespace VantaMP::SDK {
             int hit = gLocalHitSlot;
 
             if (hit < 0 && targetEntity) {
-                hit = Game::SlotOfPed(targetEntity);
+                hit = SDK::SlotOfPed(targetEntity);
             }
 
             if (hit < 0) {
@@ -469,7 +469,7 @@ namespace VantaMP::SDK {
 
             // A remote ped's Fire is the replayed fire button aimed with THIS
             // client's camera. Swallow it; the owner's PlayerShot is the shot.
-            if (Game::SlotOfPed(firingEntity) > Game::kLocalPlayerSlot) {
+            if (SDK::SlotOfPed(firingEntity) > SDK::kLocalPlayerSlot) {
                 return true;
             }
 

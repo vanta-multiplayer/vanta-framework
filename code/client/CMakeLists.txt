@@ -15,6 +15,7 @@ set(VANTAMP_CLIENT_SDK_FILES
     src/sdk/ped/weapon.cpp
     src/sdk/ped/shot.cpp
     src/sdk/vehicle/vehicle.cpp
+    src/sdk/vehicle/bike.cpp
     src/sdk/vehicle/occupancy.cpp
 )
 
@@ -58,14 +59,24 @@ set(VANTAMP_CLIENT_FILES
     # Things in the world, and the slots they live in.
     src/game/camera.cpp
     src/game/entities/local_player.cpp
-    src/game/entities/player_slots.cpp
     src/game/entities/remote_players.cpp
 
     # Keeping those things in step with the server.
     src/game/sync/player_sync.cpp
+    src/game/sync/player/outbound.cpp
+    src/game/sync/player/inbound.cpp
     src/game/sync/shots.cpp
     src/game/sync/death.cpp
     src/game/sync/vehicle_sync.cpp
+    src/game/sync/vehicle/handler.cpp
+    src/game/sync/vehicle/common.cpp
+    src/game/sync/vehicle/automobile_sync.cpp
+    src/game/sync/vehicle/bike_sync.cpp
+    src/game/sync/vehicle/occupancy_sync.cpp
+    src/game/sync/vehicle/damage_sync.cpp
+    src/game/sync/vehicle/outbound.cpp
+    src/game/sync/vehicle/inbound.cpp
+    src/game/sync/vehicle/lifecycle.cpp
     src/game/sync/world_sync.cpp
 
     # Usermode EOS Connect (Steam-free) + optional EAC.
@@ -88,6 +99,7 @@ set(VANTAMP_CLIENT_FILES
     src/sdk/world/environment.cpp
     src/sdk/game_build.cpp
     src/sdk/patterns.cpp
+    src/sdk/player/slots.cpp
     src/sdk/ped/aim.cpp
 
     ${VANTAMP_CLIENT_SDK_FILES}

@@ -7,15 +7,19 @@
 #include "game/sync/world_sync.h"
 #include "shared/entity/player_entity.h"
 #include "shared/entity/vehicle_entity.h"
-#include "shared/rpc/local_player_spawn.h"
-#include "shared/rpc/player_enter_vehicle.h"
-#include "shared/rpc/player_exit_vehicle.h"
-#include "shared/rpc/player_occupancy_abort.h"
-#include "shared/rpc/player_script.h"
-#include "shared/rpc/player_weapon.h"
-#include "shared/rpc/player_reload.h"
-#include "shared/rpc/player_shot.h"
-#include "shared/rpc/vehicle_damage_report.h"
+#include "shared/rpc/player/spawn.h"
+#include "shared/rpc/player/enter_vehicle.h"
+#include "shared/rpc/player/exit_vehicle.h"
+#include "shared/rpc/player/occupancy_abort.h"
+#include "shared/rpc/player/script.h"
+#include "shared/rpc/player/weapon.h"
+#include "shared/rpc/player/onfoot_sync.h"
+#include "shared/rpc/player/reload.h"
+#include "shared/rpc/player/shot.h"
+#include "shared/rpc/vehicle/damage.h"
+#include "shared/rpc/vehicle/driver_sync.h"
+#include "shared/rpc/vehicle/sync_owner.h"
+#include "shared/rpc/vehicle/unoccupied_sync.h"
 #include "shared/rpc/world_env.h"
 #include "shared/rpc/world_space.h"
 #include "shared/rpc/eac_messages.h"
@@ -24,6 +28,7 @@
 #include <core_modules.h>
 #include <networking/network_peer.h>
 #include <networking/replication/entity_registry.h>
+#include <networking/replication/replication_manager.h>
 
 namespace VantaMP::Core::Net {
     void Register() {
@@ -78,16 +83,58 @@ namespace VantaMP::Core::Net {
         });
 
         net->RegisterRPC<Shared::RPC::PlayerExitVehicle>([](const Shared::RPC::PlayerExitVehicle &exit, MafiaNet::Packet *) {
-            Game::ApplyRemoteExitVehicle(exit.networkId, exit.warp, exit.door);
+            Game::ApplyRemoteExitVehicle(exit.networkId, exit.warp, exit.door, exit.abortEnter, exit.doorRatio, exit.knockedOff);
         });
 
         net->RegisterRPC<Shared::RPC::PlayerOccupancyAbort>([](const Shared::RPC::PlayerOccupancyAbort &abort, MafiaNet::Packet *) {
             Game::ApplyOccupancyAbort(abort.networkId, abort.vehicleId, abort.kind, abort.seat, abort.door);
         });
 
+        net->RegisterRPC<Shared::RPC::PlayerOnFootSync>([](const Shared::RPC::PlayerOnFootSync &sync, MafiaNet::Packet *) {
+            Game::ApplyRemoteOnFootSync(sync);
+        });
+
+        net->RegisterRPC<Shared::RPC::VehicleDriverSync>([](const Shared::RPC::VehicleDriverSync &sync, MafiaNet::Packet *) {
+            Game::ApplyRemoteDriverSync(sync);
+        });
+
+        // How a client learns a vehicle's compact wire id. Until this
+        // arrives, motion for that vehicle cannot be addressed at all and
+        // plain replication carries it - so this has to be handled, not just
+        // sent.
+        net->RegisterRPC<Shared::RPC::VehicleSyncOwner>([](const Shared::RPC::VehicleSyncOwner &owner, MafiaNet::Packet *) {
+            // ONE ANNOUNCEMENT PACKET, TWO REGISTRIES - and the packet SAYS
+            // which one. Players and vehicles keep separate wire-id spaces (a
+            // slot number means nothing across kinds).
+            //
+            // This used to resolve the id against the replication manager and
+            // branch on the entity type. That was wrong: the announcements are
+            // sent from OnPlayerReady, before the replicas exist here, so the
+            // lookup returned nullptr and every player id was filed under
+            // vehicles - which silently disabled the whole player sync path.
+            if (owner.kind == Shared::RPC::VehicleSyncOwner::kPlayer) {
+                Game::AdoptPlayerWireId(owner.vehicleId, owner.wireId);
+
+                // Our own id is what lets this client address its own updates.
+                // AdoptPlayerWireId also picks it up lazily once the owned
+                // entity is known, so the two can arrive in either order.
+                if (owner.vehicleId == Game::LocalNetworkId()) {
+                    Game::SetLocalPlayerWireId(owner.wireId);
+                }
+
+                return;
+            }
+
+            Game::AdoptVehicleWireId(owner.vehicleId, owner.wireId);
+            Game::SetVehicleSyncerRole(owner.vehicleId, owner.start);
+        });
+
+        net->RegisterRPC<Shared::RPC::VehicleUnoccupiedSync>([](const Shared::RPC::VehicleUnoccupiedSync &batch, MafiaNet::Packet *) {
+            Game::ApplyRemoteUnoccupiedSync(batch);
+        });
+
         net->RegisterRPC<Shared::RPC::VehicleDamageReport>([](const Shared::RPC::VehicleDamageReport &report, MafiaNet::Packet *) {
-            Game::ApplyRemoteVehicleDamage(report.vehicleId, report.damageEngine, report.doorsPacked, report.wheelsPacked, report.panels, report.lights,
-                                           report.doorRatiosPacked, report.applyRatios, report.health);
+            Game::ApplyRemoteVehicleDamage(report);
         });
 
         net->RegisterRPC<Shared::RPC::EacOpaque>([](const Shared::RPC::EacOpaque &opaque, MafiaNet::Packet *) {

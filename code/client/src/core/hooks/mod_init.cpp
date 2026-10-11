@@ -6,7 +6,7 @@
 #include "core/diagnostics/breadcrumbs.h"
 #include "core/diagnostics/crash_report.h"
 #include "core/globals.h"
-#include "game/entities/player_slots.h"
+#include "sdk/player/slots.h"
 #include "sdk/patterns.h"
 #include "shared/version.h"
 

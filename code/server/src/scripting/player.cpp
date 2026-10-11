@@ -5,8 +5,8 @@
 #include "shared/catalog/model_catalog.h"
 #include "shared/entity/player_entity.h"
 #include "shared/ped/weapon_slot.h"
-#include "shared/rpc/player_script.h"
-#include "shared/rpc/player_weapon.h"
+#include "shared/rpc/player/script.h"
+#include "shared/rpc/player/weapon.h"
 
 #include <scripting/builtins/vector3.h>
 #include <glm/gtc/quaternion.hpp>

@@ -8,7 +8,7 @@ still the source of truth for *why a line exists*; this folder is the map.
 |------|------------------------------|
 | [Architecture](architecture.md) | Understand the layers, who owns what, and which channel a fact rides |
 | [Player sync](player-sync.md) | Change how remotes walk, aim, shoot, duck or swim |
-| [Vehicles](vehicles.md) | Change enter / exit, jacking, doors, steering or car motion |
+| [Vehicles](vehicles.md) | Change enter / exit, jacking, doors, steering, car motion, bikes or knock-offs |
 | [MTA vehicle sync](mta-vehicle-sync.md) | Check what MTA does before changing vehicle sync — a field-by-field audit |
 | [Voice](voice.md) | Proximity talk, devices, PTT, mic test |
 | [World space](world-space.md) | Interiors, dimensions, `player.interior` / `player.dimension` |
@@ -27,6 +27,13 @@ The short version of the whole project:
 - Remote players are **input replay**, not animation replication.
 - Vehicles are **three channels**: occupancy (reliable RPC), motion (owner
   replica), controls (the driver's pad, swapped onto the car).
+- Physical vehicle sync is **per GTA type**: one dispatch in
+  `game/sync/vehicle/handler.cpp`, and a handler per class that owns its
+  whole lifecycle. A bike is not a car minus two wheels.
+- When GTA already does something, **let it** — raise its event or run its
+  task and report the outcome, rather than describing the result over the
+  wire. Cancelling an entry, closing a door and falling off a bike are all
+  the game's own code.
 - `sdk/` is a hard boundary. Game types live there. Everywhere else talks in
   slots, network ids and plain numbers.
 

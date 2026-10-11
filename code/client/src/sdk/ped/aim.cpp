@@ -1,7 +1,6 @@
 #include "aim.h"
 
-#include "game/entities/player_slots.h"
-#include "game/entities/remote_players.h"
+#include "sdk/player/slots.h"
 #include "sdk/patterns.h"
 
 #include <utils/hooking/hooking.h>
@@ -23,7 +22,7 @@ namespace VantaMP::SDK {
         // 0x50C)), and it is the constant MTA subtracts as 1292.
         constexpr std::ptrdiff_t kPedIkOffset = 0x50C;
 
-        std::array<PedAim, static_cast<std::size_t>(Game::kMaxPlayers)> gRemoteAim {};
+        std::array<PedAim, static_cast<std::size_t>(SDK::kMaxPlayers)> gRemoteAim {};
 
         PedAim gLocalAim {};
 
@@ -39,15 +38,15 @@ namespace VantaMP::SDK {
 
             const auto *ped = reinterpret_cast<const std::uint8_t *>(pedIK) - kPedIkOffset;
 
-            const int slot = Game::SlotOfPed(ped);
+            const int slot = SDK::SlotOfPed(ped);
 
-            if (slot == Game::kLocalPlayerSlot) {
+            if (slot == SDK::kLocalPlayerSlot) {
                 // TAKEN ON THE WAY THROUGH, NOT CHANGED. This is the one ped
                 // whose aim the game is computing correctly, and the only chance
                 // to see the numbers before they are used and forgotten.
                 gLocalAim.horizontal = zAngle;
                 gLocalAim.vertical   = pitch;
-            } else if (slot > Game::kLocalPlayerSlot) {
+            } else if (slot > SDK::kLocalPlayerSlot) {
                 const auto &aim = gRemoteAim[static_cast<std::size_t>(slot)];
 
                 zAngle = aim.horizontal;
@@ -64,7 +63,7 @@ namespace VantaMP::SDK {
     }
 
     void SetRemotePedAim(int slot, float horizontal, float vertical) {
-        if (slot < 0 || slot >= Game::kMaxPlayers) {
+        if (slot < 0 || slot >= SDK::kMaxPlayers) {
             return;
         }
 
@@ -72,7 +71,7 @@ namespace VantaMP::SDK {
     }
 
     PedAim GetRemotePedAim(int slot) {
-        if (slot < 0 || slot >= Game::kMaxPlayers) {
+        if (slot < 0 || slot >= SDK::kMaxPlayers) {
             return {};
         }
 
